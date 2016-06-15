@@ -89,3 +89,7 @@ Session.vim
 tags
 
 .idea/
+
+Fixture_Optimization.lp
+solvedout.csv
+solvedout.txt
