@@ -25,18 +25,27 @@ test_files_path = os.path.join(os.path.dirname(src_path),
 
 # Read in the Required Files
 # afc= pd.read_csv("C:\\Users\\kenneth.l.sylvain\\Documents\\Kohl's\\Fixture Optimization\\Full_Test\\Optimal_Space.csv",header=0).set_index("Store")
+
+# TODO: get from gridfs (space artifact)
 optimal_space = pd.read_csv(
     os.path.join(test_files_path, 'Optimal_Space.csv'),
     header=0).set_index("Store")
+
+# TODO: get from gridfs (brand exit artifact)
 brand_exit = pd.read_csv(
     os.path.join(test_files_path, 'Brand_Exit.csv'),
     header=0).set_index("Store").to_dict()
+
+# TODO: Get from job context (webform data)
 tier_count = pd.read_csv(
     os.path.join(test_files_path, 'Tier_Counts.csv'),
     header=0).set_index("Product").to_dict()
+
+# TODO: Get from gridfs (sales artifact)
 sales = pd.read_csv(
     os.path.join(test_files_path, 'Sales_Data.csv'),
     header=0).set_index("Store")  # .to_dict()
+
 # sales_dm=pd.read_csv("C:\\Users\\kenneth.l.sylvain\\Documents\\Kohl's\\Fixture Optimization\\Full_Test\\Wath_Sales.csv",header=0)
 # sales_dm['Estimated Sales']=sales_dm['Estimated Sales']
 # df=sales_dm.set_index(['Store','Product','Level']).to_dict()
@@ -44,12 +53,15 @@ sales = pd.read_csv(
 # testing=pd.DataFrame.from_dict(df,orient='columns')
 
 # Created within Python in Future
-lower_bound = pd.read_csv(
-    os.path.join(test_files_path, 'Lower_Bound.csv'),
-    header=0).set_index("Store").to_dict()
-upper_bound = pd.read_csv(
-    os.path.join(test_files_path, 'Upper_Bound.csv'),
-    header=0).set_index("Store").to_dict()
+# TODO: "Integrate Later" -ken
+# lower_bound = pd.read_csv(
+#     os.path.join(test_files_path, 'Lower_Bound.csv'),
+#     header=0).set_index("Store").to_dict()
+
+# TODO: this is store-category stuff (not used yet) -ken
+# upper_bound = pd.read_csv(
+#     os.path.join(test_files_path, 'Upper_Bound.csv'),
+#     header=0).set_index("Store").to_dict()
 
 increment = 2.5  # Increment for Linear Feet or Fixture Levels | Needs to be created as a NumPy float
 
@@ -89,11 +101,11 @@ NewOptim = LpProblem("FixtureOptim", LpMinimize)  # Define Optimization Problem/
 # Brand Exit Enhancement
 for (j, Category) in enumerate(Categories):
     for (i, Store) in enumerate(Stores):
-        if (upper_bound[Category][Store] == 0):
-            brand_exit[Category][Store] == 1
+        # if (upper_bound[Category][Store] == 0):
+        #     brand_exit[Category][Store] == 1
         if (brand_exit[Category][Store] != 0):
-            upper_bound[Category][Store] = 0
-            lower_bound[Category][Store] = 0
+            # upper_bound[Category][Store] = 0
+            # lower_bound[Category][Store] = 0
             NewOptim += st[Store][Category][0.0] == 1
             NewOptim += ct[Category][0.0] == 1
             df['Estimated Sales'][Store, Category, 0.0] = 0
