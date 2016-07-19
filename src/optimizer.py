@@ -12,7 +12,7 @@ from pulp import *
 import numpy as np
 import pandas as pd
 import os
-
+import json
 
 class SampleFile(object):
 
@@ -25,7 +25,7 @@ class SampleFile(object):
         return os.path.join(cls.test_files_path, filename)
 
 
-def optimize(opt_amt):
+def optimize(opt_amt,tier_count,store_bounding,category_fixt_minimum,category_fixt_maximum,increment):
 
     """
     Run an LP-based optimization
@@ -42,12 +42,7 @@ def optimize(opt_amt):
     ###############################################################################################
     # Reading in of Files & Variable Set Up|| Will be changed upon adoption into tool
     ###############################################################################################
-    # Recalculate W
-
-
-    # Read in the Required Files
-    # afc= pd.read_csv("C:\\Users\\kenneth.l.sylvain\\Documents\\Kohl's\\Fixture Optimization\\Full_Test\\Optimal_Space.csv",header=0).set_index("Store")
-
+    '''
     # TODO: get from gridfs (space artifact)
     optimal_space = pd.read_csv(
         SampleFile.get('fixture_data.csv'),
@@ -67,12 +62,7 @@ def optimize(opt_amt):
     sales = pd.read_csv(
         SampleFile.get('transactions_data.csv'),
         header=0).set_index("Store")  # .to_dict()
-
-    # sales_dm=pd.read_csv("C:\\Users\\kenneth.l.sylvain\\Documents\\Kohl's\\Fixture Optimization\\Full_Test\\Wath_Sales.csv",header=0)
-    # sales_dm['Estimated Sales']=sales_dm['Estimated Sales']
-    # df=sales_dm.set_index(['Store','Product','Level']).to_dict()
-    # for_dict=sales_dm.drop('Estimated Sales',1)
-    # testing=pd.DataFrame.from_dict(df,orient='columns')
+    '''
 
     # Created within Python in Future
     # TODO: "Integrate Later" -ken
@@ -85,7 +75,7 @@ def optimize(opt_amt):
     #     SampleFile.get('Upper_Bound.csv'),
     #     header=0).set_index("Store").to_dict()
 
-    increment = 2.5  # Increment for Linear Feet or Fixture Levels | Needs to be created as a NumPy float
+    #increment = 2.5  # Increment for Linear Feet or Fixture Levels | Needs to be created as a NumPy float
 
     # str(for_dict['Store'][0]),str(for_dict['Product'][0]),str(for_dict['Level'][0])
 
@@ -96,9 +86,6 @@ def optimize(opt_amt):
 
     # Setting up the Selected Tier Combinations -- Need to redo if not getting or creating data for all possible levels
     Categories = optimal_space.columns.values
-    category_fixt_minimum = optimal_space.min().to_dict()
-    category_fixt_maximum = optimal_space.max().to_dict()
-
     minLevel = min(optimal_space.min())
     maxLevel = max(optimal_space.max())
     Levels = list(np.arange(minLevel, maxLevel + increment, increment))
@@ -128,20 +115,20 @@ def optimize(opt_amt):
     NewOptim = LpProblem("FixtureOptim", LpMinimize)  # Define Optimization Problem/
 
     # Brand Exit Enhancement
-    for (j, Category) in enumerate(Categories):
-        for (i, Store) in enumerate(Stores):
-            # if (upper_bound[Category][Store] == 0):
-            #     brand_exit[Category][Store] == 1
-            if (brand_exit[Category][Store] != 0):
-                # upper_bound[Category][Store] = 0
-                # lower_bound[Category][Store] = 0
-                NewOptim += st[Store][Category][0.0] == 1
-                NewOptim += ct[Category][0.0] == 1
-                #df['Estimated Sales'][Store, Category, 0.0] = 0
+    # for (j, Category) in enumerate(Categories):
+    #     for (i, Store) in enumerate(Stores):
+    #         # if (upper_bound[Category][Store] == 0):
+    #         #     brand_exit[Category][Store] == 1
+    #         if (brand_exit[Category][Store] != 0):
+    #             # upper_bound[Category][Store] = 0
+    #             # lower_bound[Category][Store] = 0
+    #             NewOptim += st[Store][Category][0.0] == 1
+    #             NewOptim += ct[Category][0.0] == 1
+    #             #df['Estimated Sales'][Store, Category, 0.0] = 0
 
-    for (j, Category) in enumerate(Categories):
-        if (sum(brand_exit[Category].values()) > 0):
-            tier_count["Upper_Bound"][Category] += 1
+    # for (j, Category) in enumerate(Categories):
+    #     if (sum(brand_exit[Category].values()) > 0):
+    #         tier_count["Upper_Bound"][Category] += 1
     '''
     # sales = sales_data
     # finding sales penetration for each brand in given stores
@@ -195,11 +182,11 @@ def optimize(opt_amt):
         NewOptim += lpSum([st[Store][Category][Level] for (k,Level) in enumerate(Levels)]) == 1#, "One_Level_per_Store-Category_Combination"
 #Test Again to check if better performance when done on ct level
 #Different Bounding Structures
-        NewOptim += lpSum([st[Store][Category][Level] * Level for (k,Level) in enumerate(Levels)]) <= category_fixt_maximum[Category]         
-        if brand_exit[Category][Store] == 0:
-            NewOptim += lpSum([st[Store][Category][Level] * Level for (k,Level) in enumerate(Levels)]) >= category_fixt_minimum[Category] + increment
-        else:
-            NewOptim += lpSum([st[Store][Category][Level] * Level for (k,Level) in enumerate(Levels)]) >= category_fixt_minimum[Category]
+        NewOptim += lpSum([st[Store][Category][Level] * Level for (k,Level) in enumerate(Levels)]) <= spaceBound[Category][1]         
+        # if brand_exit[Category][Store] == 0:
+        #     NewOptim += lpSum([st[Store][Category][Level] * Level for (k,Level) in enumerate(Levels)]) >= spaceBound[Category][0] + increment
+        # else:
+        NewOptim += lpSum([st[Store][Category][Level] * Level for (k,Level) in enumerate(Levels)]) >= spaceBound[Category][0]
             
 #Store Category Level Bounding
         #NewOptim += lpSum([st[Store][Category][Level] * Level for (k,Level) in enumerate(Levels)] ) >= lower_bound[Category][Store]#,
@@ -207,8 +194,8 @@ def optimize(opt_amt):
         
 
     for (j,Category) in enumerate(Categories):
-        NewOptim += lpSum([ct[Category][Level] for (k,Level) in enumerate(Levels)]) >= tier_count["Lower_Bound"][Category] #, "Number_of_Tiers_per_Category"
-        NewOptim += lpSum([ct[Category][Level] for (k,Level) in enumerate(Levels)]) <= tier_count["Upper_Bound"][Category]
+        NewOptim += lpSum([ct[Category][Level] for (k,Level) in enumerate(Levels)]) >= tierCounts[Category][0] #, "Number_of_Tiers_per_Category"
+        NewOptim += lpSum([ct[Category][Level] for (k,Level) in enumerate(Levels)]) <= tierCounts[Category][1]
     #Verify that we still cannot use a constraint if not using a sum - Look to improve efficiency   
         for (k,Level) in enumerate(Levels):
             NewOptim += lpSum([st[Store][Category][Level] for (i,Store) in enumerate(Stores)])/len(Stores) <= ct[Category][Level]#, "Relationship between ct & st"
@@ -226,7 +213,7 @@ def optimize(opt_amt):
 
     #NewOptim.writeLP("Fixture_Optimization.lp")
     NewOptim.solve()
-
+    ''''
     # Debugging
     NegativeCount = 0
     LowCount = 0
@@ -247,12 +234,12 @@ def optimize(opt_amt):
                 elif value(st[Store][Category][Level]) < 0:
                     # print(st[Store][Category][Level],"Value is: ",value(st[Store][Category][Level])) #These values should only be a one or a zero
                     NegativeCount += 1
-
+    
     ctNegativeCount = 0
     ctLowCount = 0
     ctTrueCount = 0
     ctOneCount = 0
-
+    
     for (j, Category) in enumerate(Categories):
         for (k, Level) in enumerate(Levels):
             if value(ct[Category][Level]) == 1:
@@ -299,7 +286,8 @@ def optimize(opt_amt):
     solvedout.write("Number of Created Tiers: " + str(ctOneCount) + "\n")
     solvedout.write("--------------------------------------------------- \n")
     solvedout.write("--------------------------------------------------- \n\n\n")
-
+    '''
+    
     solvedout = open("solvedout.csv", 'w')
     solvedout.write("Store,")
     for (j, Category) in enumerate(Categories):
@@ -315,5 +303,6 @@ def optimize(opt_amt):
 
     # testing=pd.read_csv("solvedout.csv").drop
 
-if __name__ == '__main__':
-    optimize()
+# if __name__ == '__main__':
+#     optimize()
+# Should optimize after completion here call preop instead of in worker?
