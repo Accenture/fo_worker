@@ -37,14 +37,14 @@ def getColumns(df):
 #     metric.columns = master_columns
 #     return metric.div(metric.sum(axis=1),axis='index')
 
-def spreadCalc(sales,boh,receipt,master_columns):
+def spreadCalc(sales,boh,receipt,master_columns,salesPenetrationThreshold):
      # storing input sales and inventory data in separate 2D arrays
 		# finding sales penetration, GAFS and spread for each brand in given stores
 		# calculate adjusted penetration
      #Not necessary -- sales.columns = master_columns
      boh.columns = master_columns
      receipt.columns = master_columns
-     return calcPen(sales) + ((calcPen(sales) - calcPen(boh + receipt)) * float(salesPenetrationThreshold))
+     return calcPen(sales) + ((calcPen(sales) - calcPen(boh.add(receipt))) * float(salesPenetrationThreshold))
 
 def spCalc(metric,master_columns):
     # storing input sales data in an array
@@ -140,7 +140,7 @@ def preoptimize(fixture_data,data,metricAdjustment,salesPenetrationThreshold,opt
         adj_p = invTurn_Calc(sold_units,boh_units,receipts_units,getColumns(data))
     '''
 
-    adj_p = optimizedMetrics['spread']*spreadCalc(sales,boh,receipt,getColumns(data)) + \
+    adj_p = optimizedMetrics['spread']*spreadCalc(sales,boh,receipt,getColumns(data),salesPenetrationThreshold) + \
     optimizedMetrics['salesPenetration']*spCalc(sales,getColumns(data))
     optimizedMetrics['salesPerUnitSpace']*metric_per_metric(sales,bfc,salesPenetrationThreshold,getColumns(data)) + \
     optimizedMetrics['grossMargin']*spCalc(gm_perc,getColumns(data)) + \

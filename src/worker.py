@@ -67,8 +67,8 @@ def main():
         print('!!!!!')
         print(msg)
         print(msg["optimizedMetrics"])
-        fixtureArtifact=pd.read_csv(fetch_artifact(msg["artifacts"]["salesArtifactId"]),header=0)
-        transactionArtifact=pd.read_csv(fetch_artifact(msg["artifacts"]["spaceArtifactId"]),header=0)
+        fixtureArtifact=pd.read_csv(fetch_artifact(msg["artifacts"]["salesArtifactId"]),header=0).set_index('Store #')
+        transactionArtifact=pd.read_csv(fetch_artifact(msg["artifacts"]["spaceArtifactId"]),header=0).set_index('Store')
         opt_amt = preoptimize(fixtureArtifact,transactionArtifact,msg["metricAdjustment"],msg["salesPenetrationThreshold"],msg["optimizedMetrics"],100)
         optimize(opt_amt,msg["tierLevels"],msg["spaceBounds"],100)
         # set status to done
