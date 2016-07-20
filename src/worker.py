@@ -58,19 +58,29 @@ def main():
         # Hardik Code to parse out information
         def fetch_artifact(artifact_id):
             file = fs.get(ObjectId(artifact_id))
+            file = pd.DataFrame(list(file))
+            file.set_index([0])
+            file.columns=file.iloc[0]
+            file.drop([0])
+            # print (file)
             return file
 
         #What are we passing through the optimize params? is there anything?
         #Probably need to call the preoptimize function right here...
         #Then call optimize? or does optimize from preop call optimize...
         # brandExitArtifact=fetch_artifact(job["artifacts"]["brandExitArtifactId"])
-        print('!!!!!')
-        print(msg)
-        print(msg["optimizedMetrics"])
-        fixtureArtifact=pd.read_csv(fetch_artifact(msg["artifacts"]["salesArtifactId"]),header=0).set_index('Store #')
-        transactionArtifact=pd.read_csv(fetch_artifact(msg["artifacts"]["spaceArtifactId"]),header=0).set_index('Store')
+        # print('!!!!!')
+        # print(msg)
+        # print(msg["optimizedMetrics"])
+        fixtureArtifact=fetch_artifact(msg["artifacts"]["salesArtifactId"])
+        # print("\n\n\n"+str(fixtureArtifact.columns)+"\n\n\n")
+        transactionArtifact=fetch_artifact(msg["artifacts"]["spaceArtifactId"])
         opt_amt = preoptimize(fixtureArtifact,transactionArtifact,msg["metricAdjustment"],msg["salesPenetrationThreshold"],msg["optimizedMetrics"],100)
         optimize(opt_amt,msg["tierLevels"],msg["spaceBounds"],100)
+        
+        
+        
+        
         # set status to done
         db.jobs.update_one(
             {'_id': job['_id']},
