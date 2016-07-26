@@ -7,12 +7,18 @@ Created on Thu Jun 30 09:55:06 2016
 import numpy as np
 import pandas as pd
 
-'''
-transaction_data = pd.read_csv("C:\\Users\\kenneth.l.sylvain\\Documents\\Kohl's\\Fixture Optimization\\Sprint 1\\transactions_data.csv",header=0).set_index("Store #")
+
+transaction_data = pd.read_csv("C:\\Users\\kenneth.l.sylvain\\Documents\\Kohls\\Fixture Optimization\\Sprint 1\\transactions_data.csv",header=0).set_index("Store #")
 data=transaction_data
-fixture_data = pd.read_csv("C:\\Users\\kenneth.l.sylvain\\Documents\\Kohl's\\Fixture Optimization\\Sprint 1\\fixture_data.csv",header=0).set_index("Store")
+fixture_data = pd.read_csv("C:\\Users\\kenneth.l.sylvain\\Documents\\Kohls\\Fixture Optimization\\Sprint 1\\fixture_data.csv",header=0).set_index("Store")
 bfc =fixture_data[[ *np.arange(len(fixture_data.columns))[2::2] ]].drop(fixture_data.index[[0]]).convert_objects(convert_numeric=True)
-'''
+
+# Read in Optimized Metrics as a JSON object
+
+# Convert Optimized Metrics to a Dictionary
+
+
+####################
 
 # import os
 ''''
@@ -97,19 +103,7 @@ def roundDF(array,increment):
     return rounded
 
 def preoptimize(fixture_data,data,metricAdjustment,salesPenetrationThreshold,optimizedMetrics,increment):
-    '''    
-    fixture_data = pd.read_csv(
-        SampleFile.get('fixture_data.csv'),
-        header=0).set_index("Store")
-
-    
-    data = pd.read_csv(
-        SampleFile.get('transactions_data.csv'),
-        header=0).set_index("Store #")
-    '''  
-    # print("################################################################\n"+"################################################################\n"+"################################################################\n")
-    # print(fixture_data.columns)
-    # print("################################################################\n"+"################################################################\n"+"################################################################\n")
+ 
     # fixture_data.index  
     bfc = fixture_data[[ *np.arange(len(fixture_data.columns))[2::2] ]].drop(fixture_data.index[[0]]).convert_objects(convert_numeric=True)      
     sales = data[[ *np.arange(len(data.columns))[0::8] ]].drop(data.index[[0]]).convert_objects(convert_numeric=True)
@@ -120,34 +114,6 @@ def preoptimize(fixture_data,data,metricAdjustment,salesPenetrationThreshold,opt
     receipts_units = data[[ *np.arange(len(data.columns))[5::8] ]].drop(data.index[[0]]).convert_objects(convert_numeric=True)
     profit = data[[ *np.arange(len(data.columns))[6::8] ]].drop(data.index[[0]]).convert_objects(convert_numeric=True)
     gm_perc = data[[ *np.arange(len(data.columns))[7::8] ]].drop(data.index[[0]]).convert_objects(convert_numeric=True)
-    '''
-    if metric == 1: #spread
-        adj_p = spreadCalc(sales,boh,receipt,getColumns(data))
-
-    elif metric== 2: #sales_penetration      	
-        adj_p = spCalc(sales,getColumns(data))
-
-    elif metric == 3: #sales_fixture	
-        adj_p = metric_per_metric(sales,bfc,salesPenetrationThreshold,getColumns(data))
-
-    elif metric == 4: #sales_per_lft	
-        adj_p = metric_per_metric(sales,bfc,salesPenetrationThreshold,getColumns(data))
-    
-    elif metric== 5: #gm_penetration		
-        adj_p = spCalc(gm_perc,getColumns(data))
-    
-    elif metric == 6: #profit_linear feet - Similar to Fixture	
-        adj_p = metric_per_metric(profit,bfc,salesPenetrationThreshold,getColumns(data))
-
-    elif metric == 7: #profit_fixture	
-        adj_p = metric_per_metric(profit,bfc,salesPenetrationThreshold,getColumns(data))
-
-    elif metric == 8: #Inventory Turn 	
-        adj_p = invTurn_Calc(sold_units,boh_units,receipts_units,getColumns(data))
-    '''
-    print("################################################################\n"+"################################################################\n"+"################################################################\n")
-    print(boh.columns)
-    print("################################################################\n"+"################################################################\n"+"################################################################\n")
 
     adj_p = optimizedMetrics['spread']*spreadCalc(sales,boh,receipt,getColumns(data),salesPenetrationThreshold) + optimizedMetrics['salesPenetration']*spCalc(sales,getColumns(data)) + optimizedMetrics['salesPerUnitSpace']*metric_per_metric(sales,bfc,salesPenetrationThreshold,getColumns(data)) + optimizedMetrics['grossMargin']*spCalc(gm_perc,getColumns(data)) +optimizedMetrics['marginPerUnitSpace']*metric_per_metric(profit,bfc,salesPenetrationThreshold,getColumns(data)) + optimizedMetrics['inventoryTurns']*invTurn_Calc(sold_units,boh_units,receipts_units,getColumns(data))
     
@@ -161,19 +127,17 @@ def preoptimize(fixture_data,data,metricAdjustment,salesPenetrationThreshold,opt
     adj_p=calcPen(adj_p)
     adj_p[np.isnan(adj_p)] = 0
         
-    #Create Code to make adjustments to adj_p
-    #opt_amt=adj_p.multiply(bfc.sum(axis=1),axis='index')#.as_matrix()
     opt_amt = roundDF(adj_p.multiply(bfc.sum(axis=1),axis='index'),increment)    
     #return adj_p
     return opt_amt
 
-'''
+
 #For Testing 
 metricAdjustment=0
 salesPenetrationThreshold=0
 metric=6
 increment=.25
-adj_p = metric_creation(transaction_data, bfc,metricAdjustment,salesPenetrationThreshold,metric,increment)
-adj_p.head()
-'''
+adj_p = preoptimize(transaction_data, bfc,metricAdjustment,salesPenetrationThreshold,metric,increment)
+#adj_p.head()
+
 #opt_amt=adj_p.multiply(bfc.sum(axis=1),axis='index').as_matrix()

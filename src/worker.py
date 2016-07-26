@@ -9,7 +9,7 @@ from pymongo import MongoClient
 import gridfs
 from bson.objectid import ObjectId
 import pandas as pd
-# import brandExitConversion
+from brandExitConversion import brandExitMung
 from preoptimizer import preoptimize
 from optimizer import optimize
 
@@ -52,19 +52,24 @@ def main():
             }
         )
 
-
-
+        # print("################################################################\n"+"################################################################\n"+"################################################################\n")
+        # print(type(msg))
+        # print(type(msg["optimizedMetrics"]["salesPenetration"]))
+        # print("################################################################\n"+"################################################################\n"+"################################################################\n")
         # retrieve context
         # Hardik Code to parse out information
         def fetch_artifact(artifact_id):
             file = fs.get(ObjectId(artifact_id))
             file = pd.DataFrame(list(file))
-            file.set_index([0])
-            file.columns=file.iloc[0]
-            file.drop([0])
-            # print (file)
+            print("**************************************************************\n"+"**************************************************************\n"+"**************************************************************\n")
+            print (file.loc(0))
+            print("**************************************************************\n"+"**************************************************************\n"+"**************************************************************\n")
+            # file.set_index([0])
+            # file.columns=file.iloc[0]
+            # file.drop([0])
             return file
 
+        
         #What are we passing through the optimize params? is there anything?
         #Probably need to call the preoptimize function right here...
         #Then call optimize? or does optimize from preop call optimize...
@@ -75,11 +80,16 @@ def main():
         fixtureArtifact=fetch_artifact(msg["artifacts"]["salesArtifactId"])
         # print("\n\n\n"+str(fixtureArtifact.columns)+"\n\n\n")
         transactionArtifact=fetch_artifact(msg["artifacts"]["spaceArtifactId"])
-        opt_amt = preoptimize(fixtureArtifact,transactionArtifact,msg["metricAdjustment"],msg["salesPenetrationThreshold"],msg["optimizedMetrics"],100)
-        optimize(opt_amt,msg["tierLevels"],msg["spaceBounds"],100)
+        #brandExitArtifact=brandExitMung(fetch_artifact(msg["artifacts"]["brandExitArtifactId"]))
+        opt_amt = preoptimize(fixtureArtifact,transactionArtifact,msg["metricAdjustment"],msg["salesPenetrationThreshold"],msg["optimizedMetrics"],msg["increment"])
+        optmizedArtifactId = optimize(opt_amt,msg["tierCounts"],msg["spaceBounds"],100)
         
-        
-        
+        #######################################################################################
+        #Write optimized results back to database
+        # def writeArtifact(artifact):
+            # fs.put(artifact)
+            # return
+        #######################################################################################
         
         # set status to done
         db.jobs.update_one(
