@@ -39,8 +39,8 @@ def main():
 
         msg = json.loads(body.decode('utf-8'))
         # job = db.jobs.find_one({'_id': ObjectId(body.decode('utf-8'))})
-        # job = db.jobs.find_one({'_id': ObjectId(msg['_id'])})
-        # print(job)
+        job = db.jobs.find_one({'_id': ObjectId(msg['_id'])})
+        print(job)
         # set status to working
         db.jobs.find_one_and_update(
             # {'_id': ObjectId(body.decode('utf-8'))},
@@ -58,11 +58,13 @@ def main():
         # Hardik Code to parse out information
         def fetch_artifact(artifact_id):
             file = fs.get(ObjectId(artifact_id))
-            file = pd.DataFrame(list(file))
-            file.set_index([0])
-            file.columns=file.iloc[0]
-            file.drop([0])
-            # print (file)
+            file = pd.read_csv(file,header=0)
+            # file.set_index([0])
+            # file.columns=file.iloc[0]
+            # file.drop([0])
+            print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n')
+            print (file)
+            print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n')
             return file
 
         #What are we passing through the optimize params? is there anything?
@@ -72,9 +74,11 @@ def main():
         # print('!!!!!')
         # print(msg)
         # print(msg["optimizedMetrics"])
-        fixtureArtifact=fetch_artifact(msg["artifacts"]["salesArtifactId"])
-        # print("\n\n\n"+str(fixtureArtifact.columns)+"\n\n\n")
-        transactionArtifact=fetch_artifact(msg["artifacts"]["spaceArtifactId"])
+        fixtureArtifact=fetch_artifact(msg["artifacts"]["salesArtifactId"]).set_index("Store #")
+        # print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
+        # print(fixtureArtifact.columns)
+        transactionArtifact=fetch_artifact(msg["artifacts"]["spaceArtifactId"]).set_index("Store")
+        # print(transactionArtifact.columns)
         opt_amt = preoptimize(fixtureArtifact,transactionArtifact,msg["metricAdjustment"],msg["salesPenetrationThreshold"],msg["optimizedMetrics"],100)
         optimize(opt_amt,msg["tierLevels"],msg["spaceBounds"],100)
         
