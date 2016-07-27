@@ -25,7 +25,7 @@ class SampleFile(object):
         return os.path.join(cls.test_files_path, filename)
 
 
-def optimize(opt_amt,tier_count,store_bounding,increment):
+def optimize(opt_amt,tierCounts,spaceBound,increment):
 
     """
     Run an LP-based optimization
@@ -44,7 +44,7 @@ def optimize(opt_amt,tier_count,store_bounding,increment):
     ###############################################################################################
     '''
     # TODO: get from gridfs (space artifact)
-    optimal_space = pd.read_csv(
+    opt_amt = pd.read_csv(
         SampleFile.get('fixture_data.csv'),
         header=0).set_index("Store")
 
@@ -82,12 +82,13 @@ def optimize(opt_amt,tier_count,store_bounding,increment):
     ##########################################################################################
     ##################Vector Creation ||May be moved to another module/ program in the future
     ##########################################################################################
-    Stores = list(optimal_space.index)
+    opt_amt.index=opt_amt.index.astype(int)
+    Stores = list(opt_amt.index)
 
     # Setting up the Selected Tier Combinations -- Need to redo if not getting or creating data for all possible levels
-    Categories = optimal_space.columns.values
-    minLevel = min(optimal_space.min())
-    maxLevel = max(optimal_space.max())
+    Categories = opt_amt.columns.values
+    minLevel = min(opt_amt.min())
+    maxLevel = max(opt_amt.max())
     Levels = list(np.arange(minLevel, maxLevel + increment, increment))
     Levels.append(np.abs(0.0))
 
@@ -96,9 +97,9 @@ def optimize(opt_amt,tier_count,store_bounding,increment):
 
     # Create a Vectors & Arrays of required variables
     # Calculate Total fixtures(TotFixt) per store by summing up the individual fixture counts
-    W = optimal_space.sum(axis=1).sum(axis=0)
-    # TFC = optimal_space.sum(axis=1).reshape(optimal_space.sum(axis=1).shape[0], 1)
-    TFC = optimal_space.sum(axis=1)
+    W = opt_amt.sum(axis=1).sum(axis=0)
+    # TFC = opt_amt.sum(axis=1).reshape(opt_amt.sum(axis=1).shape[0], 1)
+    TFC = opt_amt.sum(axis=1)
     ct = LpVariable.dicts('Created Tiers', (Categories, Levels), 0, upBound=1,
                           cat='Binary')
     st = LpVariable.dicts('Selected Tiers', (Stores, Categories, Levels), 0,
@@ -107,7 +108,7 @@ def optimize(opt_amt,tier_count,store_bounding,increment):
     for (i,Store) in Stores:
         for (j,Category) in Categories:
             for (k,Level) in Levels:
-                if optimal_space(Store,Category) = Level: #exists
+                if opt_amt(Store,Category) = Level: #exists
                     st[Store][Category][Level].setInitialValue(1)
     '''
     # zt = LpVariable.dicts('Tier', df,0, upBound=1, cat='Binary')
@@ -146,13 +147,15 @@ def optimize(opt_amt,tier_count,store_bounding,increment):
 
     # rounded = np.around(opt_amt, 0) + (10-(np.mod(np.around(opt_amt, 0), 10)))
     # opt_amt=roundArray(opt_amt,increment)
-
+    # print(len(opt_amt))
+    # print(len(Stores))
     BA = np.zeros((len(Stores), len(Categories), len(Levels)))
     error = np.zeros((len(Stores), len(Categories), len(Levels)))
     for (i, Store) in enumerate(Stores):
         for (j, Category) in enumerate(Categories):
             for (k, Level) in enumerate(Levels):
-                BA[i][j][k] = opt_amt[i][j]
+                # print("i equals "+i+"and Store equals "+Store)
+                BA[i][j][k] = opt_amt[Category].iloc[i]
                 error[i][j][k] = np.absolute(BA[i][j][k] - Level)
 
     NewOptim += lpSum(
@@ -213,6 +216,10 @@ def optimize(opt_amt,tier_count,store_bounding,increment):
 
     #NewOptim.writeLP("Fixture_Optimization.lp")
     NewOptim.solve()
+    print(LpStatus)
+    print(LpStatusInfeasible)
+    print(LpStatusUndefined)
+    print(LpStatusOptimal)
     ''''
     # Debugging
     NegativeCount = 0
@@ -288,19 +295,27 @@ def optimize(opt_amt,tier_count,store_bounding,increment):
     solvedout.write("--------------------------------------------------- \n\n\n")
     '''
     
-    solvedout = open("solvedout.csv", 'w')
-    solvedout.write("Store,")
-    for (j, Category) in enumerate(Categories):
-        solvedout.write(optimal_space.columns.values[j] + ",")
+    # solvedout = open("solvedout.csv", 'w')
+    # solvedout.write("Store,")
+    # for (j, Category) in enumerate(Categories):
+    #     solvedout.write(opt_amt.columns.values[j] + ",")
+    # for (i, Store) in enumerate(Stores):
+    #     solvedout.write("\n" + str(Store))
+    #     for (j, Category) in enumerate(Categories):
+    #         solvedout.write(",")
+    #         for (k, Level) in enumerate(Levels):
+    #             if value(st[Store][Category][Level]) == 1:
+    #                 solvedout.write(str(Level))
+    # solvedout.close()
+
+    results=pd.DataFrame(index=Stores, columns=Categories)
     for (i, Store) in enumerate(Stores):
-        solvedout.write("\n" + str(Store))
         for (j, Category) in enumerate(Categories):
-            solvedout.write(",")
             for (k, Level) in enumerate(Levels):
                 if value(st[Store][Category][Level]) == 1:
-                    solvedout.write(str(Level))
-    solvedout.close()
+                    results[Store][Category]=Level
 
+    # return results
     # testing=pd.read_csv("solvedout.csv").drop
 
 # if __name__ == '__main__':

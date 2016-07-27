@@ -25,7 +25,7 @@ class SampleFile(object):
         return os.path.join(cls.test_files_path, filename)
 
 
-def optimize(opt_amt,tier_count,store_bounding,category_fixt_minimum,category_fixt_maximum,increment):
+def optimize(opt_amt,tier_count,store_bounding,increment,globalSpace):
 
     """
     Run an LP-based optimization
