@@ -11,7 +11,7 @@ import numpy as np
 
 #Stores = np.unique([var for var in df.values.flatten() if var])
 #Categories = df.columns.values
-def Brand_Exit_Conversion(df):
+def brandExitMung(df):
     brand_exit = pd.DataFrame(index=np.unique([var for var in df.values.flatten() if var]),columns=df.columns.values)
     for k in range(len(df)):
         for (j,Category) in enumerate(Categories):

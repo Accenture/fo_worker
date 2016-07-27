@@ -8,10 +8,19 @@ import time
 from pymongo import MongoClient
 import gridfs
 from bson.objectid import ObjectId
-import optimizer
+import pandas as pd
+# import brandExitConversion
+from preoptimizer import preoptimize
+from optimizer import optimize
 
 
 def main():
+    def make_serializable(db_object):
+        if '_id' in db_object:
+            db_object['_id'] = str(db_object['_id'])
+        if 'uploadDate' in db_object:
+            db_object['uploadDate'] = db_object['uploadDate'].isoformat()
+        return db_object
 
     db = MongoClient()['app']
     fs = gridfs.GridFS(db)
@@ -31,11 +40,11 @@ def main():
         msg = json.loads(body.decode('utf-8'))
         # job = db.jobs.find_one({'_id': ObjectId(body.decode('utf-8'))})
         job = db.jobs.find_one({'_id': ObjectId(msg['_id'])})
-
+        print(job)
         # set status to working
-        db.jobs.update_one(
+        db.jobs.find_one_and_update(
             # {'_id': ObjectId(body.decode('utf-8'))},
-            {'_id': job['_id']},
+            {'_id': msg['_id']},
             {
                 "$set": {
                     "status": "working"
@@ -43,16 +52,39 @@ def main():
             }
         )
 
+
+
         # retrieve context
-        # job
+        # Hardik Code to parse out information
+        def fetch_artifact(artifact_id):
+            file = fs.get(ObjectId(artifact_id))
+            file = pd.read_csv(file,header=0)
+            # file.set_index([0])
+            # file.columns=file.iloc[0]
+            # file.drop([0])
+            print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n')
+            print (file)
+            print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n')
+            return file
 
-        # retrieve artifacts
-
-
-        # do work
-        time.sleep(2)
-        # optimizer.optimize()
-
+        #What are we passing through the optimize params? is there anything?
+        #Probably need to call the preoptimize function right here...
+        #Then call optimize? or does optimize from preop call optimize...
+        # brandExitArtifact=fetch_artifact(job["artifacts"]["brandExitArtifactId"])
+        # print('!!!!!')
+        # print(msg)
+        # print(msg["optimizedMetrics"])
+        fixtureArtifact=fetch_artifact(msg["artifacts"]["salesArtifactId"]).set_index("Store #")
+        # print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
+        # print(fixtureArtifact.columns)
+        transactionArtifact=fetch_artifact(msg["artifacts"]["spaceArtifactId"]).set_index("Store")
+        # print(transactionArtifact.columns)
+        opt_amt = preoptimize(fixtureArtifact,transactionArtifact,msg["metricAdjustment"],msg["salesPenetrationThreshold"],msg["optimizedMetrics"],100)
+        optimize(opt_amt,msg["tierLevels"],msg["spaceBounds"],100)
+        
+        
+        
+        
         # set status to done
         db.jobs.update_one(
             {'_id': job['_id']},
