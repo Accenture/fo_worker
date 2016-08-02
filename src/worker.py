@@ -9,9 +9,11 @@ from pymongo import MongoClient
 import gridfs
 from bson.objectid import ObjectId
 import pandas as pd
-# import brandExitConversion
+from brandExitConversion import brandExitMung
 from preoptimizer import preoptimize
 from optimizer import optimize
+# from TierKey import tierKeyCreate
+# from TierOptim import tierDef
 
 
 def main():
@@ -59,12 +61,23 @@ def main():
         def fetch_artifact(artifact_id):
             file = fs.get(ObjectId(artifact_id))
             file = pd.read_csv(file,header=0)
+            # print(file.ix[0])
+            file=file.dropna()
+            # print(file.loc[[0]])
+            # file.loc[[0]]=file.loc[[0]].astype(int)
+            # print(file.head(2))
+            # print(file.columns)
+            # print("*************************************\n\n")
+            # print("*************************************\n\n")                        
+            # print(file.loc[0])
+            # print(file[0])
+            # print(file[1])
             # file.set_index([0])
             # file.columns=file.iloc[0]
             # file.drop([0])
-            print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n')
-            print (file)
-            print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n')
+            # print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n')
+            # print (file)
+            # print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n')
             return file
 
         #What are we passing through the optimize params? is there anything?
@@ -74,13 +87,13 @@ def main():
         # print('!!!!!')
         # print(msg)
         # print(msg["optimizedMetrics"])
-        fixtureArtifact=fetch_artifact(msg["artifacts"]["salesArtifactId"]).set_index("Store #")
+        fixtureArtifact=fetch_artifact(msg["artifacts"]["spaceArtifactId"]).set_index("Store")
         # print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
         # print(fixtureArtifact.columns)
-        transactionArtifact=fetch_artifact(msg["artifacts"]["spaceArtifactId"]).set_index("Store")
+        transactionArtifact=fetch_artifact(msg["artifacts"]["salesArtifactId"]).set_index("Store #")
         # print(transactionArtifact.columns)
-        opt_amt = preoptimize(fixtureArtifact,transactionArtifact,msg["metricAdjustment"],msg["salesPenetrationThreshold"],msg["optimizedMetrics"],100)
-        optimize(opt_amt,msg["tierLevels"],msg["spaceBounds"],100)
+        opt_amt = preoptimize(fixtureArtifact,transactionArtifact,float(msg["metricAdjustment"]),float(msg["salesPenetrationThreshold"]),msg["optimizedMetrics"],msg["increment"])
+        optimize(opt_amt,msg["tierCounts"],msg["spaceBounds"],msg["increment"])
         
         
         
