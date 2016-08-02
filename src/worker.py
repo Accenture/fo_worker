@@ -9,9 +9,11 @@ from pymongo import MongoClient
 import gridfs
 from bson.objectid import ObjectId
 import pandas as pd
-# import brandExitConversion
+from brandExitConversion import brandExitMung
 from preoptimizer import preoptimize
 from optimizer import optimize
+# from TierKey import tierKeyCreate
+# from TierOptim import tierDef
 
 
 def main():
@@ -90,7 +92,7 @@ def main():
         # print(fixtureArtifact.columns)
         transactionArtifact=fetch_artifact(msg["artifacts"]["salesArtifactId"]).set_index("Store #")
         # print(transactionArtifact.columns)
-        opt_amt = preoptimize(fixtureArtifact,transactionArtifact,msg["metricAdjustment"],msg["salesPenetrationThreshold"],msg["optimizedMetrics"],msg["increment"])
+        opt_amt = preoptimize(fixtureArtifact,transactionArtifact,float(msg["metricAdjustment"]),float(msg["salesPenetrationThreshold"]),msg["optimizedMetrics"],msg["increment"])
         optimize(opt_amt,msg["tierCounts"],msg["spaceBounds"],msg["increment"])
         
         

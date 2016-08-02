@@ -112,53 +112,27 @@ def optimize(opt_amt,tier_count,store_bounding,increment,globalSpace):
     '''
     # zt = LpVariable.dicts('Tier', df,0, upBound=1, cat='Binary')
 
-    NewOptim = LpProblem("FixtureOptim", LpMinimize)  # Define Optimization Problem/
+    NewOptim = LpProblem("FixtureOptim", LpMaximize)  # Define Optimization Problem/
 
     # Brand Exit Enhancement
-    # for (j, Category) in enumerate(Categories):
-    #     for (i, Store) in enumerate(Stores):
-    #         # if (upper_bound[Category][Store] == 0):
-    #         #     brand_exit[Category][Store] == 1
-    #         if (brand_exit[Category][Store] != 0):
-    #             # upper_bound[Category][Store] = 0
-    #             # lower_bound[Category][Store] = 0
-    #             NewOptim += st[Store][Category][0.0] == 1
-    #             NewOptim += ct[Category][0.0] == 1
-    #             #df['Estimated Sales'][Store, Category, 0.0] = 0
+    for (j, Category) in enumerate(Categories):
+        for (i, Store) in enumerate(Stores):
+            # if (upper_bound[Category][Store] == 0):
+            #     brand_exit[Category][Store] == 1
+            if (brand_exit[Category][Store] != 0):
+                # upper_bound[Category][Store] = 0
+                # lower_bound[Category][Store] = 0
+                NewOptim += st[Store][Category][0.0] == 1
+                NewOptim += ct[Category][0.0] == 1
+                #df['Estimated Sales'][Store, Category, 0.0] = 0
 
-    # for (j, Category) in enumerate(Categories):
-    #     if (sum(brand_exit[Category].values()) > 0):
-    #         tier_count["Upper_Bound"][Category] += 1
-    '''
-    # sales = sales_data
-    # finding sales penetration for each brand in given stores
-    sum_sales = sales.sum(axis=1)
-    sp = sales.div(sum_sales, axis='index')
-    # calculate adjusted penetration
-    adj_p = sp
-
-    opt_amt = adj_p.multiply(TFC, axis='index').as_matrix()
-    '''
-    # opt_amt = np.array(adj_p)
-    # for (i,Store) in Stores:
-    #    for (j,Category) in Categories:
-    #        opt_amt[i, j] = adj_p[Store, Category] * TFC[i]
-
-    # rounded = np.around(opt_amt, 0) + (10-(np.mod(np.around(opt_amt, 0), 10)))
-    # opt_amt=roundArray(opt_amt,increment)
-
-    BA = np.zeros((len(Stores), len(Categories), len(Levels)))
-    error = np.zeros((len(Stores), len(Categories), len(Levels)))
-    for (i, Store) in enumerate(Stores):
-        for (j, Category) in enumerate(Categories):
-            for (k, Level) in enumerate(Levels):
-                BA[i][j][k] = opt_amt[i][j]
-                error[i][j][k] = np.absolute(BA[i][j][k] - Level)
-
-    NewOptim += lpSum(
-        [(st[Store][Category][Level] * error[i][j][k]) for (i, Store) in
-         enumerate(Stores) for (j, Category) in enumerate(Categories) for (k, Level)
-         in enumerate(Levels)]), ""
+    for (j, Category) in enumerate(Categories):
+        if (sum(brand_exit[Category].values()) > 0):
+            tier_count["Upper_Bound"][Category] += 1
+    
+    NewOptim += lpSum([(st[Store][Category][Level] * error[i][j][k]) \
+    for (i, Store) in enumerate(Stores) for (j, Category) in enumerate(Categories) for (k, Level)
+        in enumerate(Levels)]), ""
 
 ###############################################################################################################
 ############################################### Constraints
@@ -182,18 +156,19 @@ def optimize(opt_amt,tier_count,store_bounding,increment,globalSpace):
         NewOptim += lpSum([st[Store][Category][Level] for (k,Level) in enumerate(Levels)]) == 1#, "One_Level_per_Store-Category_Combination"
 #Test Again to check if better performance when done on ct level
 #Different Bounding Structures
-        NewOptim += lpSum([st[Store][Category][Level] * Level for (k,Level) in enumerate(Levels)]) <= spaceBound[Category][1]         
+        # NewOptim += lpSum([st[Store][Category][Level] * Level for (k,Level) in enumerate(Levels)] ) >= lower_bound[Category][Store]#,
+        if upper_bound[Category][Store] < spaceBound[Category][1]:
+            NewOptim += lpSum([st[Store][Category][Level] * Level for (k,Level) in enumerate(Levels)] ) <= upper_bound[Category][Store]#,
+        else:
+            NewOptim += lpSum([st[Store][Category][Level] * Level for (k,Level) in enumerate(Levels)]) <= spaceBound[Category][1]
+        if lower_bound[Category][Store] > spaceBound[Category][0]:
+            NewOptim += lpSum([st[Store][Category][Level] * Level for (k,Level) in enumerate(Levels)] ) >= lower_bound[Category][Store]#,
+        else:
+            NewOptim += lpSum([st[Store][Category][Level] * Level for (k,Level) in enumerate(Levels)]) >= spaceBound[Category][0]         
         # if brand_exit[Category][Store] == 0:
         #     NewOptim += lpSum([st[Store][Category][Level] * Level for (k,Level) in enumerate(Levels)]) >= spaceBound[Category][0] + increment
         # else:
-        NewOptim += lpSum([st[Store][Category][Level] * Level for (k,Level) in enumerate(Levels)]) >= spaceBound[Category][0]
-            
-#Store Category Level Bounding
-        #NewOptim += lpSum([st[Store][Category][Level] * Level for (k,Level) in enumerate(Levels)] ) >= lower_bound[Category][Store]#,
-        #NewOptim += lpSum([st[Store][Category][Level] * Level for (k,Level) in enumerate(Levels)] ) <= upper_bound[Category][Store]#,
-        
-
-    for (j,Category) in enumerate(Categories):
+        # NewOptim += lpSum([st[Store][Category][Level] * Level for (k,Level) in enumerate(Levels)]) >= spaceBound[Category][0]
         NewOptim += lpSum([ct[Category][Level] for (k,Level) in enumerate(Levels)]) >= tierCounts[Category][0] #, "Number_of_Tiers_per_Category"
         NewOptim += lpSum([ct[Category][Level] for (k,Level) in enumerate(Levels)]) <= tierCounts[Category][1]
     #Verify that we still cannot use a constraint if not using a sum - Look to improve efficiency   

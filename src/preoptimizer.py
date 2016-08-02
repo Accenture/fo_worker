@@ -118,7 +118,7 @@ def preoptimize(fixture_data,data,metricAdjustment,salesPenetrationThreshold,opt
     # fixture_data.index
     # print(fixture_data.columns)
     # print(fixture_data.index)  
-    fixture_data.drop(fixture_data[["2015 Market Cluster","VSG "]],axis=1,inplace=True)
+    fixture_data.drop(fixture_data[["2015 Market Cluster","VSG "]],axis=1,inplace=True) # Access Columns dynamically
     bfc = fixture_data[[ *np.arange(len(fixture_data.columns))[0::2] ]].convert_objects(convert_numeric=True)   
     sales = data[[ *np.arange(len(data.columns))[0::8] ]].convert_objects(convert_numeric=True)
     boh = data[[ *np.arange(len(data.columns))[1::8] ]].convert_objects(convert_numeric=True)

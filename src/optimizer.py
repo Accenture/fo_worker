@@ -217,9 +217,9 @@ def optimize(opt_amt,tierCounts,spaceBound,increment):
     #NewOptim.writeLP("Fixture_Optimization.lp")
     NewOptim.solve()
     print(LpStatus)
-    print(LpStatusInfeasible)
-    print(LpStatusUndefined)
-    print(LpStatusOptimal)
+    # print(LpStatusInfeasible)
+    # print(LpStatusUndefined)
+    # print(LpStatusOptimal)
     ''''
     # Debugging
     NegativeCount = 0
@@ -309,13 +309,19 @@ def optimize(opt_amt,tierCounts,spaceBound,increment):
     # solvedout.close()
 
     results=pd.DataFrame(index=Stores, columns=Categories)
+    print(results.columns)
+    print(results.index)
+    print(len(results))
+    print(len(results.columns))
     for (i, Store) in enumerate(Stores):
         for (j, Category) in enumerate(Categories):
             for (k, Level) in enumerate(Levels):
                 if value(st[Store][Category][Level]) == 1:
-                    results[Store][Category]=Level
+                    print("Store: "+str(Store))
+                    print("Category: "+str(Category))
+                    results[Category].iloc[Store]=Level
 
-    # return results
+    return results
     # testing=pd.read_csv("solvedout.csv").drop
 
 # if __name__ == '__main__':
