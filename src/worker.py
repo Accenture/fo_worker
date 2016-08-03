@@ -36,77 +36,114 @@ def main():
     print(' [*] Waiting for messages. To exit press CTRL+C')
 
     def callback(ch, method, properties, body):
-        # consume
-        print(" [x] Received %r" % body)
+        # print(" [x] Received %r" % body)
 
         msg = json.loads(body.decode('utf-8'))
-        # job = db.jobs.find_one({'_id': ObjectId(body.decode('utf-8'))})
+        # Find job initially
         job = db.jobs.find_one({'_id': ObjectId(msg['_id'])})
-        print(job)
-        # set status to working
-        db.jobs.find_one_and_update(
-            # {'_id': ObjectId(body.decode('utf-8'))},
-            {'_id': msg['_id']},
-            {
-                "$set": {
-                    "status": "working"
+        job_id = job['_id']
+        job_status = job['status']
+        # print(job_status)
+
+        '''
+        Fetch (twice) and write once to the document by updating status 
+        '''
+        def status_update(status):
+            # TODO: can find_one_and_update return json? minimize read/write to DB
+            db.jobs.find_one_and_update(
+                {'_id': job_id},
+                {
+                    "$set": {
+                        "status": status
+                    }
                 }
-            }
-        )
+            )
+            # Doing double the work... has to be a better way!
+            job = db.jobs.find_one({'_id': ObjectId(msg['_id'])})
+            job_status = job['status']
+            return job_status # pending, opitimizing, ...
 
+        def write_res(art_name,res_id):
+             db.jobs.find_one_and_update(
+                {'_id': job_id},
+                {
+                    "$set": {
+                        "artifactResults": {
+                            art_name:res_id
+                        }
+                    }
+                }
+            )
+        
+        def create_new_res_artifact():
+            artifact_id = fs.put(file.read(),
+                                userId=current_user['id'],
+                                filename=filename,
+                                # shape=df.shape,
+                                # factors=list(df.columns.levels[0]),
+                                description=request.form.get('description', None),
+                                # spaceUnit=inferred_space_unit,
+                                **inspection
+                                )
 
-
-        # retrieve context
+            new_artifact = db.fs.files.find_one({'_id': artifact_id})
+                
         # Hardik Code to parse out information
         def fetch_artifact(artifact_id):
             file = fs.get(ObjectId(artifact_id))
             file = pd.read_csv(file,header=0)
-            # print(file.ix[0])
             file=file.dropna()
-            # print(file.loc[[0]])
-            # file.loc[[0]]=file.loc[[0]].astype(int)
-            # print(file.head(2))
-            # print(file.columns)
-            # print("*************************************\n\n")
-            # print("*************************************\n\n")                        
-            # print(file.loc[0])
-            # print(file[0])
-            # print(file[1])
-            # file.set_index([0])
-            # file.columns=file.iloc[0]
-            # file.drop([0])
-            # print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n')
-            # print (file)
-            # print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n')
             return file
 
-        #What are we passing through the optimize params? is there anything?
-        #Probably need to call the preoptimize function right here...
-        #Then call optimize? or does optimize from preop call optimize...
-        # brandExitArtifact=fetch_artifact(job["artifacts"]["brandExitArtifactId"])
-        # print('!!!!!')
-        # print(msg)
-        # print(msg["optimizedMetrics"])
-        fixtureArtifact=fetch_artifact(msg["artifacts"]["spaceArtifactId"]).set_index("Store")
-        # print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
+        # TODO: turn all these if statements into a consolodated func
+        if job_status == 'pending' or job_status == 'preoptimizing':
+            status_update('preoptimizing')
+            '''
+            on failure we must make sure we log the fail and send a msg back to mq
+            '''
+            # raise Exception('FAIL!') 
+            # fixtureArtifact=fetch_artifact(msg["artifacts"]["spaceArtifactId"]).set_index("Store")
+            # transactionArtifact=fetch_artifact(msg["artifacts"]["salesArtifactId"]).set_index("Store #")
+            # opt_amt = preoptimize(fixtureArtifact,transactionArtifact,float(msg["metricAdjustment"]),float(msg["salesPenetrationThreshold"]),msg["optimizedMetrics"],msg["increment"])
+            write_res('masterResId',51535125)
+            '''
+            Write res to database for next step in optimize to use...
+            '''
+        
+        job_status = status_update('optimizing') 
+        
+        if job_status == 'optimizing':
+            '''
+            on failure we must make sure we log the fail and send a msg back to mq
+            '''
+            print('For the sake of python...')
+            # raise Exception('FAIL!')
+            # optimize(opt_amt,msg["tierCounts"],msg["spaceBounds"],msg["increment"])
+            '''
+            Write res to database for next step in optimize to use...
+            '''
+
+        status_update('done')
+       
+        # fixtureArtifact=fetch_artifact(msg["artifacts"]["spaceArtifactId"]).set_index("Store")
         # print(fixtureArtifact.columns)
-        transactionArtifact=fetch_artifact(msg["artifacts"]["salesArtifactId"]).set_index("Store #")
+        # transactionArtifact=fetch_artifact(msg["artifacts"]["salesArtifactId"]).set_index("Store #")
         # print(transactionArtifact.columns)
-        opt_amt = preoptimize(fixtureArtifact,transactionArtifact,float(msg["metricAdjustment"]),float(msg["salesPenetrationThreshold"]),msg["optimizedMetrics"],msg["increment"])
-        optimize(opt_amt,msg["tierCounts"],msg["spaceBounds"],msg["increment"])
+        # opt_amt = preoptimize(fixtureArtifact,transactionArtifact,float(msg["metricAdjustment"]),float(msg["salesPenetrationThreshold"]),msg["optimizedMetrics"],msg["increment"])
+        # optimize(opt_amt,msg["tierCounts"],msg["spaceBounds"],msg["increment"])
         
         
         
         
         # set status to done
-        db.jobs.update_one(
-            {'_id': job['_id']},
-            {
-                "$set": {
-                    "status": "done"
-                }
-            }
-        )
+        # db.jobs.update_one(
+        #     {'_id': job['_id']},
+        #     {
+        #         "$set": {
+        #             "status": "done"
+        #         }
+        #     }
+        # )
 
         res = dict(
             job_id=msg['_id'],
