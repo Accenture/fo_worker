@@ -27,6 +27,8 @@ def main():
     db = MongoClient()['app']
     fs = gridfs.GridFS(db)
 
+    my_test_file = fs.get(ObjectId("577eabb51d41c808371a6092")).read()
+    
     connection = pika.BlockingConnection(pika.ConnectionParameters(
         host='localhost'))
     channel = connection.channel()
@@ -39,11 +41,21 @@ def main():
         # print(" [x] Received %r" % body)
 
         msg = json.loads(body.decode('utf-8'))
-        # Find job initially
+        # Find job to check status of job
         job = db.jobs.find_one({'_id': ObjectId(msg['_id'])})
+        current_user = job['userId']
         job_id = job['_id']
         job_status = job['status']
         # print(job_status)
+        isPreop = False
+        isOptimize = False
+        # if either flag is True then that optimization piece will be where we start! otherwise if pending we will run the whole thang...
+        if job_status == 'pending':
+            isPreop = True
+        elif job_status == 'optimizing':
+            isOptimize = True
+        else:
+            isPreop = True
 
         '''
         Fetch (twice) and write once to the document by updating status 
@@ -63,30 +75,27 @@ def main():
             job_status = job['status']
             return job_status # pending, opitimizing, ...
 
-        def write_res(art_name,res_id):
-             db.jobs.find_one_and_update(
+        '''
+        Create new artifact that contains optimize result and append it to document model
+        '''
+        def create_new_res_artifact(artifact_name,file,filename):
+            # TODO: is there a better way to show relationship between gridfs files and document models?
+            artifact_id = fs.put(file,
+                                userId=current_user,
+                                filename='res-' + filename,
+                                description=''
+                                )
+            new_artifact = db.fs.files.find_one({'_id': artifact_id})
+            db.jobs.find_one_and_update(
                 {'_id': job_id},
                 {
                     "$set": {
                         "artifactResults": {
-                            art_name:res_id
+                            artifact_name:new_artifact['_id']
                         }
                     }
                 }
             )
-        
-        def create_new_res_artifact():
-            artifact_id = fs.put(file.read(),
-                                userId=current_user['id'],
-                                filename=filename,
-                                # shape=df.shape,
-                                # factors=list(df.columns.levels[0]),
-                                description=request.form.get('description', None),
-                                # spaceUnit=inferred_space_unit,
-                                **inspection
-                                )
-
-            new_artifact = db.fs.files.find_one({'_id': artifact_id})
                 
         # Hardik Code to parse out information
         def fetch_artifact(artifact_id):
@@ -95,35 +104,66 @@ def main():
             file=file.dropna()
             return file
 
-        # TODO: turn all these if statements into a consolodated func
-        if job_status == 'pending' or job_status == 'preoptimizing':
+        if isPreop:
             status_update('preoptimizing')
             '''
             on failure we must make sure we log the fail and send a msg back to mq
             '''
-            # raise Exception('FAIL!') 
+             
             # fixtureArtifact=fetch_artifact(msg["artifacts"]["spaceArtifactId"]).set_index("Store")
             # transactionArtifact=fetch_artifact(msg["artifacts"]["salesArtifactId"]).set_index("Store #")
             # opt_amt = preoptimize(fixtureArtifact,transactionArtifact,float(msg["metricAdjustment"]),float(msg["salesPenetrationThreshold"]),msg["optimizedMetrics"],msg["increment"])
-            write_res('masterResId',51535125)
-            '''
-            Write res to database for next step in optimize to use...
-            '''
-        
-        job_status = status_update('optimizing') 
-        
-        if job_status == 'optimizing':
-            '''
-            on failure we must make sure we log the fail and send a msg back to mq
-            '''
-            print('For the sake of python...')
+            create_new_res_artifact('spaceResId',my_test_file,'spaceArtifact')
+            job_status = status_update('optimizing')
+            isOptimize = True
             # raise Exception('FAIL!')
-            # optimize(opt_amt,msg["tierCounts"],msg["spaceBounds"],msg["increment"])
             '''
             Write res to database for next step in optimize to use...
             '''
-
+        if isOptimize:
+            if not isPreop and isOptimize:
+                print('Rabbit must have failed, but no worries we will start here!')
+                # pull artifact from gridfs so optimzation can use it    
+            else:
+                print('Rabbit must be working smoothly for once...')
+                create_new_res_artifact('salesResId',my_test_file,'salesArtifact')
+                # use what we have in the one worker life span
+            # RUN OPTIMIZATION PIECE...
+        
+        create_new_res_artifact('masterSpaceResId',my_test_file,'optimizedArtifact')
         status_update('done')
+        
+        # TODO: turn all these if statements into a consolodated func
+        # if job_status == 'pending' or job_status == 'preoptimizing':
+        #     status_update('preoptimizing')
+        #     '''
+        #     on failure we must make sure we log the fail and send a msg back to mq
+        #     '''
+        #     # raise Exception('FAIL!') 
+        #     # fixtureArtifact=fetch_artifact(msg["artifacts"]["spaceArtifactId"]).set_index("Store")
+        #     # transactionArtifact=fetch_artifact(msg["artifacts"]["salesArtifactId"]).set_index("Store #")
+        #     # opt_amt = preoptimize(fixtureArtifact,transactionArtifact,float(msg["metricAdjustment"]),float(msg["salesPenetrationThreshold"]),msg["optimizedMetrics"],msg["increment"])
+        #     create_new_res_artifact('masterSpaceResId',my_test_file,'salesArtifact')
+        #     '''
+        #     Write res to database for next step in optimize to use...
+        #     '''
+        
+        # job_status = status_update('optimizing') 
+        
+        # if job_status == 'optimizing':
+        #     '''
+        #     on failure we must make sure we log the fail and send a msg back to mq
+        #     we also need to pull from mongo the document so we can continue optimzation
+        #     DON'T PULL FROM MONGO UNLESS IT DIES AND PICKS UP FROM WHERE WE LEFT OFF.
+        #     '''
+        #     print('For the sake of python...')
+        #     # raise Exception('FAIL!')
+        #     # optimize(opt_amt,msg["tierCounts"],msg["spaceBounds"],msg["increment"])
+        #     '''
+        #     Write res to database for next step in optimize to use...
+        #     '''
+
+        # status_update('done')
        
         # fixtureArtifact=fetch_artifact(msg["artifacts"]["spaceArtifactId"]).set_index("Store")
         # print(fixtureArtifact.columns)
@@ -174,4 +214,5 @@ def main():
 
 
 if __name__ == '__main__':
+    
     main()
