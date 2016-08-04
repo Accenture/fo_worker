@@ -130,7 +130,8 @@ def main():
                 # use what we have in the one worker life span
             # RUN OPTIMIZATION PIECE...
         
-        create_new_res_artifact('masterSpaceResId',my_test_file,'optimizedArtifact')
+        # TODO: (FIX) for some stupid reason create_new_res_artifact is overwritting on each time it runs...
+        create_new_res_artifact('masterOpResId',my_test_file,'optimizedArtifact')
         status_update('done')
         
         # TODO: turn all these if statements into a consolodated func
