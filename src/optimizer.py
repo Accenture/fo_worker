@@ -308,7 +308,7 @@ def optimize(opt_amt,tierCounts,spaceBound,increment):
     #                 solvedout.write(str(Level))
     # solvedout.close()
 
-    results=pd.DataFrame(index=Stores, columns=Categories)
+    results=pd.DataFrame(index=len(Stores), columns=Categories)
     print(results.columns)
     print(results.index)
     print(len(results))
@@ -322,6 +322,8 @@ def optimize(opt_amt,tierCounts,spaceBound,increment):
                     results[Category].iloc[Store]=Level
 
     return results
+
+
     # testing=pd.read_csv("solvedout.csv").drop
 
 # if __name__ == '__main__':

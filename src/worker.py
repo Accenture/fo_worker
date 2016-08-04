@@ -84,6 +84,7 @@ def main():
         #Probably need to call the preoptimize function right here...
         #Then call optimize? or does optimize from preop call optimize...
         # brandExitArtifact=fetch_artifact(job["artifacts"]["brandExitArtifactId"])
+        # newSpace=fetch_artifact(msg["artifacts"]["newSpaceId"]).set_index("Store")
         # print('!!!!!')
         # print(msg)
         # print(msg["optimizedMetrics"])

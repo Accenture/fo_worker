@@ -1,0 +1,12 @@
+	
+	# climate cluster dictionary for mapping stores in input file to climate cluster
+	cc_dict={}  
+	store_list=storeDim.objects.all()
+	for each in store_list:
+		cc_dict[each.store_id]=each.climate_cluster
+
+	if tier_sel==2:
+		tier=np.loadtxt(f3,dtype=str,delimiter=',',usecols=())
+	else:
+		tier=None
+        

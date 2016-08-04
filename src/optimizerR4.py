@@ -25,7 +25,7 @@ class SampleFile(object):
         return os.path.join(cls.test_files_path, filename)
 
 
-def optimize(opt_amt,tier_count,store_bounding,increment,globalSpace):
+def optimize(opt_amt,tier_count,store_bounding,increment):
 
     """
     Run an LP-based optimization
@@ -39,46 +39,10 @@ def optimize(opt_amt,tier_count,store_bounding,increment,globalSpace):
         I just wrapped the script from Ken in a callable - DCE
     """
 
-    ###############################################################################################
+    #############################################################################################
     # Reading in of Files & Variable Set Up|| Will be changed upon adoption into tool
     ###############################################################################################
-    '''
-    # TODO: get from gridfs (space artifact)
-    optimal_space = pd.read_csv(
-        SampleFile.get('fixture_data.csv'),
-        header=0).set_index("Store")
-
-    # TODO: get from gridfs (brand exit artifact)
-    brand_exit = pd.read_csv(
-        SampleFile.get('Brand_Exit.csv'),
-        header=0).set_index("Store").to_dict()
-
-    # TODO: Get from job context (webform data)
-    tier_count = pd.read_csv(
-        SampleFile.get('Tier_Counts.csv'),
-        header=0).set_index("Product").to_dict()
-
-    # TODO: Get from gridfs (sales artifact)
-    sales = pd.read_csv(
-        SampleFile.get('transactions_data.csv'),
-        header=0).set_index("Store")  # .to_dict()
-    '''
-
-    # Created within Python in Future
-    # TODO: "Integrate Later" -ken
-    # lower_bound = pd.read_csv(
-    #     SampleFile.get('Lower_Bound.csv'),
-    #     header=0).set_index("Store").to_dict()
-
-    # TODO: this is store-category stuff (not used yet) -ken
-    # upper_bound = pd.read_csv(
-    #     SampleFile.get('Upper_Bound.csv'),
-    #     header=0).set_index("Store").to_dict()
-
-    #increment = 2.5  # Increment for Linear Feet or Fixture Levels | Needs to be created as a NumPy float
-
-    # str(for_dict['Store'][0]),str(for_dict['Product'][0]),str(for_dict['Level'][0])
-
+   
     ##########################################################################################
     ##################Vector Creation ||May be moved to another module/ program in the future
     ##########################################################################################
@@ -104,11 +68,11 @@ def optimize(opt_amt,tier_count,store_bounding,increment,globalSpace):
     st = LpVariable.dicts('Selected Tiers', (Stores, Categories, Levels), 0,
                           upBound=1, cat='Binary')
     '''
-    for (i,Store) in Stores:
-        for (j,Category) in Categories:
-            for (k,Level) in Levels:
-                if optimal_space(Store,Category) = Level: #exists
-                    st[Store][Category][Level].setInitialValue(1)
+    # for (i,Store) in Stores:
+        # for (j,Category) in Categories:
+            # for (k,Level) in Levels:
+                # if optimal_space(Store,Category) = Level: #exists
+                    # st[Store][Category][Level].setInitialValue(1)
     '''
     # zt = LpVariable.dicts('Tier', df,0, upBound=1, cat='Binary')
 
@@ -120,8 +84,8 @@ def optimize(opt_amt,tier_count,store_bounding,increment,globalSpace):
             # if (upper_bound[Category][Store] == 0):
             #     brand_exit[Category][Store] == 1
             if (brand_exit[Category][Store] != 0):
-                # upper_bound[Category][Store] = 0
-                # lower_bound[Category][Store] = 0
+                upper_bound[Category][Store] = 0
+                lower_bound[Category][Store] = 0
                 NewOptim += st[Store][Category][0.0] == 1
                 NewOptim += ct[Category][0.0] == 1
                 #df['Estimated Sales'][Store, Category, 0.0] = 0
@@ -131,8 +95,7 @@ def optimize(opt_amt,tier_count,store_bounding,increment,globalSpace):
             tier_count["Upper_Bound"][Category] += 1
     
     NewOptim += lpSum([(st[Store][Category][Level] * error[i][j][k]) \
-    for (i, Store) in enumerate(Stores) for (j, Category) in enumerate(Categories) for (k, Level)
-        in enumerate(Levels)]), ""
+    for (i, Store) in enumerate(Stores) for (j, Category) in enumerate(Categories) for (k, Level) in enumerate(Levels)]), ""
 
 ###############################################################################################################
 ############################################### Constraints
@@ -154,31 +117,26 @@ def optimize(opt_amt,tier_count,store_bounding,increment,globalSpace):
 #Makes sure that the number of fixtures, by store, does not go above or below some percentage of the total number of fixtures within the store 
     for (j,Category) in enumerate(Categories):
         NewOptim += lpSum([st[Store][Category][Level] for (k,Level) in enumerate(Levels)]) == 1#, "One_Level_per_Store-Category_Combination"
-#Test Again to check if better performance when done on ct level
-#Different Bounding Structures
-        # NewOptim += lpSum([st[Store][Category][Level] * Level for (k,Level) in enumerate(Levels)] ) >= lower_bound[Category][Store]#,
-        if upper_bound[Category][Store] < spaceBound[Category][1]:
-            NewOptim += lpSum([st[Store][Category][Level] * Level for (k,Level) in enumerate(Levels)] ) <= upper_bound[Category][Store]#,
+
+        NewOptim += lpSum([st[Store][Category][Level] * Level for (k,Level) in enumerate(Levels)] ) <= min(upper_bound[Category][Store],spaceBound[Category][1])
+        
+        if brand_exit[Category][Store] == 0:
+            NewOptim += lpSum([st[Store][Category][Level] * Level for (k,Level) in enumerate(Levels)]) >= max(spaceBound[Category][0],lower_bound[Category][Store]) + increment
         else:
-            NewOptim += lpSum([st[Store][Category][Level] * Level for (k,Level) in enumerate(Levels)]) <= spaceBound[Category][1]
-        if lower_bound[Category][Store] > spaceBound[Category][0]:
-            NewOptim += lpSum([st[Store][Category][Level] * Level for (k,Level) in enumerate(Levels)] ) >= lower_bound[Category][Store]#,
-        else:
-            NewOptim += lpSum([st[Store][Category][Level] * Level for (k,Level) in enumerate(Levels)]) >= spaceBound[Category][0]         
-        # if brand_exit[Category][Store] == 0:
-        #     NewOptim += lpSum([st[Store][Category][Level] * Level for (k,Level) in enumerate(Levels)]) >= spaceBound[Category][0] + increment
-        # else:
-        # NewOptim += lpSum([st[Store][Category][Level] * Level for (k,Level) in enumerate(Levels)]) >= spaceBound[Category][0]
+            NewOptim += lpSum([st[Store][Category][Level] * Level for (k,Level) in enumerate(Levels)]) >= max(spaceBound[Category][0],lower_bound[Category][Store])
+        
+    # Tier Counts            
         NewOptim += lpSum([ct[Category][Level] for (k,Level) in enumerate(Levels)]) >= tierCounts[Category][0] #, "Number_of_Tiers_per_Category"
         NewOptim += lpSum([ct[Category][Level] for (k,Level) in enumerate(Levels)]) <= tierCounts[Category][1]
+    
     #Verify that we still cannot use a constraint if not using a sum - Look to improve efficiency   
         for (k,Level) in enumerate(Levels):
             NewOptim += lpSum([st[Store][Category][Level] for (i,Store) in enumerate(Stores)])/len(Stores) <= ct[Category][Level]#, "Relationship between ct & st"
                           
 
-#NewOptim += lpSum([ct[Category][Level] for (j,Category) in enumerate(Categories) for (k,Level) in enumerate(Levels)]) <= len(Categories)*sum(tier_count["Upper_Bound"].values())
+    #NewOptim += lpSum([ct[Category][Level] for (j,Category) in enumerate(Categories) for (k,Level) in enumerate(Levels)]) <= len(Categories)*sum(tier_count["Upper_Bound"].values())
 
-#Makes sure that the number of fixtures globally does not go above or below some percentage of the total number of fixtures within  
+    # Makes sure that the number of fixtures globally does not go above or below some percentage of the total number of fixtures within  
     NewOptim += lpSum(
         [st[Store][Category][Level] * Level for (i, Store) in enumerate(Stores) for (j, Category) in enumerate(Categories) for
          (k, Level) in enumerate(Levels)]) >= W * (1 - b)
