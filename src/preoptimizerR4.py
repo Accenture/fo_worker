@@ -13,6 +13,8 @@ data=transaction_data
 fixture_data = pd.read_csv("C:\\Users\\kenneth.l.sylvain\\Documents\\Kohl's\\Fixture Optimization\\Sprint 1\\fixture_data.csv",header=0).set_index("Store")
 bfc =fixture_data[[ *np.arange(len(fixture_data.columns))[2::2] ]].drop(fixture_data.index[[0]]).convert_objects(convert_numeric=True)
 '''
+# Need to change functions to allow for TFC as result of Future Space/ Brand Entry
+# Need to create a max & min for category level informaiton to be passed as bounds in a long table format // Matching format to Bounding Info that is added to job context
 
 # import os
 ''''

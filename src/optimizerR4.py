@@ -13,20 +13,12 @@ import numpy as np
 import pandas as pd
 import os
 import json
-
-class SampleFile(object):
-
-    src_path = os.path.dirname(__file__)
-    test_files_path = os.path.join(os.path.dirname(src_path),
-                                   'test/test_optimizer_files')
-
-    @classmethod
-    def get(cls, filename):
-        return os.path.join(cls.test_files_path, filename)
-
+from pymongo import MongoClient
+import gridfs
+db = MongoClient()['app']
+fs = gridfs.GridFS(db)
 
 def optimize(opt_amt,tier_count,store_bounding,increment):
-
     """
     Run an LP-based optimization
 
@@ -221,7 +213,7 @@ def optimize(opt_amt,tier_count,store_bounding,increment):
     solvedout.write("--------------------------------------------------- \n\n\n")
     '''
     
-    solvedout = open("solvedout.csv", 'w')
+    solvedout = new_file()#open("solvedout.csv", 'w')
     solvedout.write("Store,")
     for (j, Category) in enumerate(Categories):
         solvedout.write(optimal_space.columns.values[j] + ",")
