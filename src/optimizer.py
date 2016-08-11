@@ -13,6 +13,10 @@ import numpy as np
 import pandas as pd
 import os
 import json
+import pymongo as pm
+import gridfs
+db = pm.MongoClient()['app']
+fs = gridfs.GridFS(db)
 
 class SampleFile(object):
 
@@ -83,7 +87,7 @@ def optimize(opt_amt,tierCounts,spaceBound,increment):
     ##################Vector Creation ||May be moved to another module/ program in the future
     ##########################################################################################
     opt_amt.index=opt_amt.index.astype(int)
-    Stores = list(opt_amt.index)
+    Stores = opt_amt.index
 
     # Setting up the Selected Tier Combinations -- Need to redo if not getting or creating data for all possible levels
     Categories = opt_amt.columns.values
@@ -216,7 +220,7 @@ def optimize(opt_amt,tierCounts,spaceBound,increment):
 
     #NewOptim.writeLP("Fixture_Optimization.lp")
     NewOptim.solve()
-    print(LpStatus)
+    print(LpStatus[NewOptim.status])
     # print(LpStatusInfeasible)
     # print(LpStatusUndefined)
     # print(LpStatusOptimal)
@@ -295,33 +299,23 @@ def optimize(opt_amt,tierCounts,spaceBound,increment):
     solvedout.write("--------------------------------------------------- \n\n\n")
     '''
     
-    # solvedout = open("solvedout.csv", 'w')
-    # solvedout.write("Store,")
-    # for (j, Category) in enumerate(Categories):
-    #     solvedout.write(opt_amt.columns.values[j] + ",")
-    # for (i, Store) in enumerate(Stores):
-    #     solvedout.write("\n" + str(Store))
-    #     for (j, Category) in enumerate(Categories):
-    #         solvedout.write(",")
-    #         for (k, Level) in enumerate(Levels):
-    #             if value(st[Store][Category][Level]) == 1:
-    #                 solvedout.write(str(Level))
-    # solvedout.close()
-
-    results=pd.DataFrame(index=Stores, columns=Categories)
-    print(results.columns)
-    print(results.index)
-    print(len(results))
-    print(len(results.columns))
-    for (i, Store) in enumerate(Stores):
+    # solvedout, result_id = fs.open_upload_stream("test_file",chunk_size_bytes=4,metadata={"contentType": "text/csv"}) 
+    #open("solvedout.csv", 'w')
+    with fs.new_file(filename="spaceResults.csv",content_type="type/csv") as solvedout:
+        solvedout.write("Store,".encode("UTF-8"))
         for (j, Category) in enumerate(Categories):
-            for (k, Level) in enumerate(Levels):
-                if value(st[Store][Category][Level]) == 1:
-                    print("Store: "+str(Store))
-                    print("Category: "+str(Category))
-                    results[Category].iloc[Store]=Level
+            solvedout.write(opt_amt.columns.values[j].encode("UTF-8") + ",".encode("UTF-8"))
+        for (i, Store) in enumerate(Stores):
+            solvedout.write(str("\n"+str(Store)).encode("UTF-8"))
+            for (j, Category) in enumerate(Categories):
+                solvedout.write(",".encode("UTF-8"))
+                for (k, Level) in enumerate(Levels):
+                    if value(st[Store][Category][Level]) == 1:
+                        solvedout.write(str(Level).encode("UTF-8"))
+        solvedout.close()
+   
+    return #results
 
-    return results
     # testing=pd.read_csv("solvedout.csv").drop
 
 # if __name__ == '__main__':
