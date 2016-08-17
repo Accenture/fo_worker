@@ -11,27 +11,31 @@ ADIDAS&PUMA	    Tier_2	    2.5
 """
 
 import pandas as pd
+#import numpy as np
 
-df = pd.read_csv('C:\\Users\\hardik.sanchawat\\Documents\\Tier Determination Code\\RecordTest_600.csv')
+# df = pd.read_csv('C:\\Users\\kenneth.l.sylvain\\Documents\\Kohls\\Fixture Optimization\\Rpy2\\FOT\\FOT\\RecordTest_600.csv')
 def tierKeyCreate(df):
-    iterdf = iter(df.columns.values)
-    next(iterdf) #Skip first column
-    df3 = df.drop(df.columns.values, axis=1)
+    headers = iter(df.columns.values) #grabs all the brand headers from the csv
+    next(headers) #Skip first column
+    dataFrame = df.drop(df.columns.values, axis=1) #creates the empty dataframe
     # Inserted new columns in dataframe
-    df3.insert(0, 'Category_Name', '', allow_duplicates=False)
-    df3.insert(1, 'Tier_Value', '', allow_duplicates=False)
-    df3.insert(2, 'Space_Value', '', allow_duplicates=False)
+    dataFrame.insert(0, 'Category_Name', '', allow_duplicates=False)
+    dataFrame.insert(1, 'Tier_Value', '', allow_duplicates=False)
+    dataFrame.insert(2, 'Space_Value', '', allow_duplicates=False)
     num_row = 0
-    for d in iterdf:
-        df1 = df.loc[:,d] #Get each column values in Series
-        df2 = sorted(df.loc[:,d].unique().tolist()) #Get unique sorted value of that column
-        for d1 in df1:
-            for d2 in df2:
-                if d1 == d2:
-                    df3.loc[num_row, 'Category_Name'] = d
-                    df3.loc[num_row, 'Tier_Value'] = "Tier {0}".format(str(df2.index(d2) + 1))
-                    df3.loc[num_row, 'Space_Value'] = d1
-                    # df3.to_csv('C:\\Users\\hardik.sanchawat\\Documents\\Tier Determination Code\\RecordTest_output_latest.csv',index=None)
-                    num_row += 1
-    return df3
-Tier(df)
+    for head in headers:
+        #df1 = df.loc[:,head].unique() #Get each column values in Series
+        #df1 = np.sort(df1).tolist()
+        spaceVals = sorted(df.loc[:,head].unique().tolist()) #Get unique sorted value of that column
+        #print(df2) 
+        #for d1 in df1:
+        for val in spaceVals:
+                #if d1 == d2:
+            dataFrame.loc[num_row, 'Category_Name'] = head
+            dataFrame.loc[num_row, 'Tier_Value'] = "Tier {0}".format(str(spaceVals.index(val) + 1))
+            dataFrame.loc[num_row, 'Space_Value'] = val
+            num_row += 1
+    #dataFrame.to_csv('C:\\Users\\tkmae0v\\Desktop\\FOT\\TierKey\\RecordTest_output_latest.csv',index=None)
+    #print(dataFrame)
+    return dataFrame
+# dataFrame=tierKeyCreate(df)

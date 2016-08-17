@@ -104,7 +104,7 @@ def roundDF(array,increment):
                 rounded[j].loc[i] = np.around(array[j].loc[i], 3) - np.mod(np.around(array[j].loc[i], 3), increment)
     return rounded
 
-def preoptimize(fixture_data,data,metricAdjustment,salesPenetrationThreshold,optimizedMetrics,increment):
+def preoptimize(fixture_data,data,metricAdjustment,salesPenetrationThreshold,optimizedMetrics,increment): #Add future Space
     '''    
     fixture_data = pd.read_csv(
         SampleFile.get('fixture_data.csv'),
@@ -114,16 +114,17 @@ def preoptimize(fixture_data,data,metricAdjustment,salesPenetrationThreshold,opt
     data = pd.read_csv(
         SampleFile.get('transactions_data.csv'),
         header=0).set_index("Store #")
-    '''  
+    ''' 
+    print("HEY I'M IN THE PREOPTIMIZATION'")
     # fixture_data.index
     # print(fixture_data.columns)
     # print(fixture_data.index)  
-    fixture_data.drop(fixture_data[["2015 Market Cluster","VSG "]],axis=1,inplace=True) # Access Columns dynamically
-    bfc = fixture_data[[ *np.arange(len(fixture_data.columns))[0::2] ]].convert_objects(convert_numeric=True)   
+    fixture_data.drop(fixture_data[["Climate","VSG "]],axis=1,inplace=True) # Access Columns dynamically
+    # future_space.drop(future_space[["Climate","VSG "]],axis=1,inplace=True) # Access Columns dynamically
+    bfc = fixture_data[[ *np.arange(len(fixture_data.columns))[0::1] ]].convert_objects(convert_numeric=True)
+    # tfc = future_space[[ *np.arange(len(fixture_data.columns))[0::1] ]].convert_objects(convert_numeric=True)
     sales = data[[ *np.arange(len(data.columns))[0::8] ]].convert_objects(convert_numeric=True)
     boh = data[[ *np.arange(len(data.columns))[1::8] ]].convert_objects(convert_numeric=True)
-    # print('!!!!!!!!!!!!!!!!')
-    # print(boh)
     receipt = data[[ *np.arange(len(data.columns))[2::8] ]].convert_objects(convert_numeric=True)
     sold_units = data[[ *np.arange(len(data.columns))[3::8] ]].convert_objects(convert_numeric=True)
     boh_units = data[[ *np.arange(len(data.columns))[4::8] ]].convert_objects(convert_numeric=True)
@@ -163,7 +164,7 @@ def preoptimize(fixture_data,data,metricAdjustment,salesPenetrationThreshold,opt
     # print("*************************************\n\n")
     salesPenetrationThreshold=float(salesPenetrationThreshold)
     # print(salesPenetrationThreshold)
-    adj_p = int(optimizedMetrics['spread'])*spreadCalc(sales,boh,receipt,getColumns(data),salesPenetrationThreshold) + int(optimizedMetrics['salesPenetration'])*spCalc(sales,getColumns(data)) + int(optimizedMetrics['salesPerUnitSpace'])*metric_per_metric(sales,bfc,salesPenetrationThreshold,getColumns(data)) + int(optimizedMetrics['grossMargin'])*spCalc(gm_perc,getColumns(data)) +int(optimizedMetrics['marginPerUnitSpace'])*metric_per_metric(profit,bfc,salesPenetrationThreshold,getColumns(data)) + int(optimizedMetrics['inventoryTurns'])*invTurn_Calc(sold_units,boh_units,receipts_units,getColumns(data))
+    adj_p = int(optimizedMetrics["spread"])*spreadCalc(sales,boh,receipt,getColumns(data),salesPenetrationThreshold) + int(optimizedMetrics['salesPenetration'])*spCalc(sales,getColumns(data)) + int(optimizedMetrics['salesPerUnitSpace'])*metric_per_metric(sales,bfc,salesPenetrationThreshold,getColumns(data)) + int(optimizedMetrics['grossMargin'])*spCalc(gm_perc,getColumns(data)) +int(optimizedMetrics['marginPerUnitSpace'])*metric_per_metric(profit,bfc,salesPenetrationThreshold,getColumns(data)) + int(optimizedMetrics['inventoryTurns'])*invTurn_Calc(sold_units,boh_units,receipts_units,getColumns(data))
     
 
     # print(adj_p.head(2))
@@ -177,7 +178,8 @@ def preoptimize(fixture_data,data,metricAdjustment,salesPenetrationThreshold,opt
         
     #Create Code to make adjustments to adj_p
     #opt_amt=adj_p.multiply(bfc.sum(axis=1),axis='index')#.as_matrix()
-    opt_amt = roundDF(adj_p.multiply(bfc.sum(axis=1),axis='index'),increment)    
+    opt_amt = roundDF(adj_p.multiply(bfc.sum(axis=1),axis='index'),increment)
+    # opt_amt = roundDF(adj_p.multiply(tfc,increment)
     #return adj_p
     # print(opt_amt.head(2))
 

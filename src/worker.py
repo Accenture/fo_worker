@@ -42,7 +42,7 @@ def main():
         msg = json.loads(body.decode('utf-8'))
         # job = db.jobs.find_one({'_id': ObjectId(body.decode('utf-8'))})
         job = db.jobs.find_one({'_id': ObjectId(msg['_id'])})
-        print(job)
+        # print(job)
         # set status to working
         db.jobs.find_one_and_update(
             # {'_id': ObjectId(body.decode('utf-8'))},
@@ -87,14 +87,17 @@ def main():
         # newSpace=fetch_artifact(msg["artifacts"]["newSpaceId"]).set_index("Store")
         # print('!!!!!')
         # print(msg)
-        # print(msg["optimizedMetrics"])
+        print(msg["optimizedMetrics"])
         fixtureArtifact=fetch_artifact(msg["artifacts"]["spaceArtifactId"]).set_index("Store")
         # print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
         # print(fixtureArtifact.columns)
-        transactionArtifact=fetch_artifact(msg["artifacts"]["salesArtifactId"]).set_index("Store #")
+        transactionArtifact=fetch_artifact(msg["artifacts"]["salesArtifactId"]).set_index("Store")
         # print(transactionArtifact.columns)
-        opt_amt = preoptimize(fixtureArtifact,transactionArtifact,float(msg["metricAdjustment"]),float(msg["salesPenetrationThreshold"]),msg["optimizedMetrics"],msg["increment"])
-        optimize(opt_amt,msg["tierCounts"],msg["spaceBounds"],msg["increment"])
+        if (msg["optimizationType"] == 'Traditional'):
+            opt_amt = preoptimize(fixtureArtifact,transactionArtifact,float(msg["metricAdjustment"]),float(msg["salesPenetrationThreshold"]),msg["optimizedMetrics"],msg["increment"])
+            optimize(opt_amt,msg["tierCounts"],msg["spaceBounds"],msg["increment"])
+        # if (msg["optimizationType"] == 'Enhanced'):
+# 
         
         
         
