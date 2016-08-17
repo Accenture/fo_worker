@@ -165,17 +165,23 @@ def main():
         #     '''
 
         # status_update('done')
-       
-        # fixtureArtifact=fetch_artifact(msg["artifacts"]["spaceArtifactId"]).set_index("Store")
+        #What are we passing through the optimize params? is there anything?
+        #Probably need to call the preoptimize function right here...
+        #Then call optimize? or does optimize from preop call optimize...
+        # brandExitArtifact=fetch_artifact(job["artifacts"]["brandExitArtifactId"])
+        # newSpace=fetch_artifact(msg["artifacts"]["newSpaceId"]).set_index("Store")
+        # print('!!!!!')
+        # print(msg)
+        print(msg["optimizedMetrics"])
+        fixtureArtifact=fetch_artifact(msg["artifacts"]["spaceArtifactId"]).set_index("Store")
+        # print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
         # print(fixtureArtifact.columns)
-        # transactionArtifact=fetch_artifact(msg["artifacts"]["salesArtifactId"]).set_index("Store #")
+        transactionArtifact=fetch_artifact(msg["artifacts"]["salesArtifactId"]).set_index("Store")
         # print(transactionArtifact.columns)
-        # opt_amt = preoptimize(fixtureArtifact,transactionArtifact,float(msg["metricAdjustment"]),float(msg["salesPenetrationThreshold"]),msg["optimizedMetrics"],msg["increment"])
-        # optimize(opt_amt,msg["tierCounts"],msg["spaceBounds"],msg["increment"])
-        
-        
-        
-        
+        if (msg["optimizationType"] == 'Traditional'):
+            opt_amt = preoptimize(fixtureArtifact,transactionArtifact,float(msg["metricAdjustment"]),float(msg["salesPenetrationThreshold"]),msg["optimizedMetrics"],msg["increment"])
+            optimize(opt_amt,msg["tierCounts"],msg["spaceBounds"],msg["increment"])
+        # if (msg["optimizationType"] == 'Enhanced'):      
         # set status to done
         # db.jobs.update_one(
         #     {'_id': job['_id']},
