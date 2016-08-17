@@ -47,7 +47,7 @@ try:
     # Here, the resulting return is in the form of an R DataFrame
     big_master_data = r_data_merge(Hist_perf,Hist_space_climate_info,Future_Space_Entry_Data,Brand_Exit,type)
 except:
-    print("Data mergin failed")
+    print("Data merging failed :(")
 
 
 
