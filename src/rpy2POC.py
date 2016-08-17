@@ -43,9 +43,13 @@ try:
     # a local python variable.  The variable can then be used to call the R function
     r_data_merge = robjects.globalenv['Data_merge']
 
-    # Call the R function.  Since there is only one object returned, it can be returned as normal and stored into a python variable
+    # Call the R function (that's stored as a python variable).  Since there is only one object returned, it can be returned as normal and stored into a python variable
     # Here, the resulting return is in the form of an R DataFrame
-    big_master_data = r_data_merge(Hist_perf,Hist_space_climate_info,Future_Space_Entry_Data,Brand_Exit,type)
+    r_big_master_data = r_data_merge(Hist_perf,Hist_space_climate_info,Future_Space_Entry_Data,Brand_Exit,type)
+# end Spencer's work
+    # Convert the R DataFrame to a pandas dataframes
+    p_big_master_data = 
+ 
 except:
     print("Data merging failed :(")
 
