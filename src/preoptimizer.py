@@ -122,6 +122,7 @@ def preoptimize(fixture_data,data,metricAdjustment,salesPenetrationThreshold,opt
     fixture_data.drop(fixture_data[["Climate","VSG "]],axis=1,inplace=True) # Access Columns dynamically
     # future_space.drop(future_space[["Climate","VSG "]],axis=1,inplace=True) # Access Columns dynamically
     bfc = fixture_data[[ *np.arange(len(fixture_data.columns))[0::1] ]].convert_objects(convert_numeric=True)
+    print(bfc.index)
     # tfc = future_space[[ *np.arange(len(fixture_data.columns))[0::1] ]].convert_objects(convert_numeric=True)
     sales = data[[ *np.arange(len(data.columns))[0::8] ]].convert_objects(convert_numeric=True)
     boh = data[[ *np.arange(len(data.columns))[1::8] ]].convert_objects(convert_numeric=True)

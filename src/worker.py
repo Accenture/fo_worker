@@ -98,7 +98,7 @@ def main():
             )
                 
         # Hardik Code to parse out information
-        def fetch_artifact(artifact_id):
+        def fetch_artifact(artifact_id):    
             file = fs.get(ObjectId(artifact_id))
             file = pd.read_csv(file,header=0)
             file=file.dropna()
@@ -168,20 +168,18 @@ def main():
         #What are we passing through the optimize params? is there anything?
         #Probably need to call the preoptimize function right here...
         #Then call optimize? or does optimize from preop call optimize...
-        # brandExitArtifact=fetch_artifact(job["artifacts"]["brandExitArtifactId"])
-        # newSpace=fetch_artifact(msg["artifacts"]["newSpaceId"]).set_index("Store")
-        # print('!!!!!')
-        # print(msg)
-        if isinstance(msg["artifacts"]["futureSpaceId"],str):
-            futureSpace=fetch_artifact(msg["artifacts"]["futureSpaceId"]).set_index("Store")
-        if isinstance(msg["artifacts"]["futureSpaceId"],str):
-            brandExitArtifact=fetch_artifact(msg["artifacts"]["brandExitArtifactId"])
+        # if isinstance(msg["artifacts"]["futureSpaceId"],str):
+        #     futureSpace=fetch_artifact(msg["artifacts"]["futureSpaceId"]).set_index("Store")
+        # if isinstance(msg["artifacts"]["futureSpaceId"],str):
+        #     brandExitArtifact=fetch_artifact(msg["artifacts"]["brandExitArtifactId"])
         fixtureArtifact=fetch_artifact(msg["artifacts"]["spaceArtifactId"]).set_index("Store")
         transactionArtifact=fetch_artifact(msg["artifacts"]["salesArtifactId"]).set_index("Store")
-        print(msg["jobType"])
         if (msg["jobType"] == 'Traditional'):
-            opt_amt = preoptimize(fixtureArtifact,transactionArtifact,float(msg["metricAdjustment"]),float(msg["salesPenetrationThreshold"]),msg["optimizedMetrics"],msg["increment"])
+            opt_amt = preoptimize(fixtureArtifact,transactionArtifact,futureSpace,brandExitArtifact,float(msg["metricAdjustment"]),float(msg["salesPenetrationThreshold"]),msg["optimizedMetrics"],msg["increment"])
             optimize(opt_amt,msg["tierCounts"],msg["spaceBounds"],msg["increment"])
+        if (msg["jobType"] == 'Enhanced'):
+            print("WIP")
+            ### R Stuff
         # if (msg["optimizationType"] == 'Enhanced'):      
         # set status to done
         # db.jobs.update_one(

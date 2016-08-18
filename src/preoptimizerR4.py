@@ -60,7 +60,7 @@ def spCalc(metric,master_columns):
     metric.columns = master_columns
     return calcPen(metric)
 
-def metric_per_metric(metric1,metric2,salesPenetrationThreshold,master_columns,newSpace):
+def metric_per_fixture(metric1,metric2,salesPenetrationThreshold,master_columns,newSpace):
     # storing input sales data in an array
 		# finding penetration for each brand in given stores
 		# calculate adjusted penetration
@@ -69,13 +69,13 @@ def metric_per_metric(metric1,metric2,salesPenetrationThreshold,master_columns,n
     spacePen = metric2.div(newSpace,axis='index')
     return calcPen(metric1) + ((calcPen(metric1) - spacePen) * float(salesPenetrationThreshold))
 
-def metric_per_fixture(metric1,metric2,salesPenetrationThreshold,master_columns):
-    # storing input sales data in an array
-		# finding penetration for each brand in given stores
-		# calculate adjusted penetration
-    metric1.columns = master_columns
-    metric2.columns = master_columns
-    return calcPen(metric1) + ((calcPen(metric1) - calcPen(metric2)) * float(salesPenetrationThreshold))
+# def metric_per_metric(metric1,metric2,salesPenetrationThreshold,master_columns):
+#     # storing input sales data in an array
+# 		# finding penetration for each brand in given stores
+# 		# calculate adjusted penetration
+#     metric1.columns = master_columns
+#     metric2.columns = master_columns
+#     return calcPen(metric1) + ((calcPen(metric1) - calcPen(metric2)) * float(salesPenetrationThreshold))
 
 def invTurn_Calc(sold_units,boh_units,receipts_units,master_columns):
     sold_units.columns = master_columns
@@ -108,17 +108,22 @@ def roundDF(array,increment):
                 rounded[j].loc[i] = np.around(array[j].loc[i], 3) - np.mod(np.around(array[j].loc[i], 3), increment)
     return rounded
 
-def futureSpace(fixture_data,futureFixt):
+def futureSpace(spaceData,brandExit,futureFixt):
     for (i,Store) in Stores:
         if isinstance(futureFixt['Future Space'].iloc[i],str)==True:
             futureFixt['New Space'].iloc[i]=futureFixt['Future Space']
         else:
-            futureFixt['New Space'].iloc[i]=fixture_data.sum(axis=1).iloc[i]
+            futureFixt['New Space'].iloc[i]=spaceData.sum(axis=1).iloc[i]
     return futureFixt['New Space']
 
-def preoptimize(fixture_data,data,metricAdjustment,salesPenetrationThreshold,optimizedMetrics,increment,newSpace):
+def brandExit(spaceData):
+    if brandExit[Category].iloc[Store] == 1:
+        spaceData[Category].iloc[Store] == 0
+    return spaceData
+
+def preoptimize(fixture_data,data,newSpace,metricAdjustment,salesPenetrationThreshold,optimizedMetrics,increment):
     fixture_data.drop(fixture_data.columns[1,2],axis=1,inplace=True) # Access Columns dynamically
-    bfc = fixture_data[[ *np.arange(len(fixture_data.columns))[0::2] ]].convert_objects(convert_numeric=True)   
+    bfc = fixture_data[[ *np.arange(len(fixture_data.columns))[0::2] ]].convert_objects(convert_numeric=True)
     sales = data[[ *np.arange(len(data.columns))[0::8] ]].convert_objects(convert_numeric=True)
     boh = data[[ *np.arange(len(data.columns))[1::8] ]].convert_objects(convert_numeric=True)
     receipt = data[[ *np.arange(len(data.columns))[2::8] ]].convert_objects(convert_numeric=True)
@@ -130,7 +135,7 @@ def preoptimize(fixture_data,data,metricAdjustment,salesPenetrationThreshold,opt
 
     newSpace=futureSpace(fixture_data,newSpace)
     salesPenetrationThreshold=float(salesPenetrationThreshold)
-    adj_p = int(optimizedMetrics['spread'])*spreadCalc(sales,boh,receipt,getColumns(data),salesPenetrationThreshold) + int(optimizedMetrics['salesPenetration'])*spCalc(sales,getColumns(data)) + int(optimizedMetrics['salesPerUnitSpace'])*metric_per_metric(sales,bfc,salesPenetrationThreshold,getColumns(data)) + int(optimizedMetrics['grossMargin'])*spCalc(gm_perc,getColumns(data)) +int(optimizedMetrics['marginPerUnitSpace'])*metric_per_metric(profit,bfc,salesPenetrationThreshold,getColumns(data)) + int(optimizedMetrics['inventoryTurns'])*invTurn_Calc(sold_units,boh_units,receipts_units,getColumns(data))
+    adj_p = int(optimizedMetrics['spread'])*spreadCalc(sales,boh,receipt,getColumns(data),salesPenetrationThreshold) + int(optimizedMetrics['salesPenetration'])*spCalc(sales,getColumns(data)) + int(optimizedMetrics['salesPerUnitSpace'])*metric_per_fixture(sales,bfc,salesPenetrationThreshold,getColumns(data)) + int(optimizedMetrics['grossMargin'])*spCalc(gm_perc,getColumns(data)) +int(optimizedMetrics['marginPerUnitSpace'])*metric_per_fixture(profit,bfc,salesPenetrationThreshold,getColumns(data)) + int(optimizedMetrics['inventoryTurns'])*invTurn_Calc(sold_units,boh_units,receipts_units,getColumns(data))
     
 
     adj_p[np.isnan(adj_p)] = 0

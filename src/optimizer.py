@@ -305,7 +305,7 @@ def optimize(opt_amt,tierCounts,spaceBound,increment):
                     if value(st[Store][Category][Level]) == 1:
                         solvedout.write(str(Level).encode("UTF-8"))
         solvedout.close()
-    print(LpStatus[LpStatus])
+    # print(LpStatus[LpStatus])
     return #results
 
     # testing=pd.read_csv("solvedout.csv").drop
