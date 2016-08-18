@@ -18,19 +18,9 @@ import gridfs
 db = pm.MongoClient()['app']
 fs = gridfs.GridFS(db)
 
-class SampleFile(object):
-
-    src_path = os.path.dirname(__file__)
-    test_files_path = os.path.join(os.path.dirname(src_path),
-                                   'test/test_optimizer_files')
-
-    @classmethod
-    def get(cls, filename):
-        return os.path.join(cls.test_files_path, filename)
-
 
 def optimize(opt_amt,tierCounts,spaceBound,increment):
-    print("HEY I'M IN THE OPTIMIZATION!!!!!!!')
+    print("HEY I'M IN THE OPTIMIZATION!!!!!!!")
     """
     Run an LP-based optimization
 

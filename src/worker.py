@@ -27,7 +27,7 @@ def main():
     db = MongoClient()['app']
     fs = gridfs.GridFS(db)
 
-    my_test_file = fs.get(ObjectId("577eabb51d41c808371a6092")).read()
+    # my_test_file = fs.get(ObjectId("577eabb51d41c808371a6092")).read()
     
     connection = pika.BlockingConnection(pika.ConnectionParameters(
         host='localhost'))
@@ -104,35 +104,35 @@ def main():
             file=file.dropna()
             return file
 
-        if isPreop:
-            status_update('preoptimizing')
-            '''
-            on failure we must make sure we log the fail and send a msg back to mq
-            '''
+        # if isPreop:
+        #     status_update('preoptimizing')
+        #     '''
+        #     on failure we must make sure we log the fail and send a msg back to mq
+        #     '''
              
-            # fixtureArtifact=fetch_artifact(msg["artifacts"]["spaceArtifactId"]).set_index("Store")
-            # transactionArtifact=fetch_artifact(msg["artifacts"]["salesArtifactId"]).set_index("Store #")
-            # opt_amt = preoptimize(fixtureArtifact,transactionArtifact,float(msg["metricAdjustment"]),float(msg["salesPenetrationThreshold"]),msg["optimizedMetrics"],msg["increment"])
-            create_new_res_artifact('spaceResId',my_test_file,'spaceArtifact')
-            job_status = status_update('optimizing')
-            isOptimize = True
-            # raise Exception('FAIL!')
-            '''
-            Write res to database for next step in optimize to use...
-            '''
-        if isOptimize:
-            if not isPreop and isOptimize:
-                print('Rabbit must have failed, but no worries we will start here!')
-                # pull artifact from gridfs so optimzation can use it    
-            else:
-                print('Rabbit must be working smoothly for once...')
-                create_new_res_artifact('salesResId',my_test_file,'salesArtifact')
-                # use what we have in the one worker life span
-            # RUN OPTIMIZATION PIECE...
+        #     # fixtureArtifact=fetch_artifact(msg["artifacts"]["spaceArtifactId"]).set_index("Store")
+        #     # transactionArtifact=fetch_artifact(msg["artifacts"]["salesArtifactId"]).set_index("Store")
+        #     # opt_amt = preoptimize(fixtureArtifact,transactionArtifact,float(msg["metricAdjustment"]),float(msg["salesPenetrationThreshold"]),msg["optimizedMetrics"],msg["increment"])
+        #     # create_new_res_artifact('spaceResId',my_test_file,'spaceArtifact')
+        #     job_status = status_update('optimizing')
+        #     isOptimize = True
+        #     # raise Exception('FAIL!')
+        #     '''
+        #     Write res to database for next step in optimize to use...
+        #     '''
+        # if isOptimize:
+        #     if not isPreop and isOptimize:
+        #         print('Rabbit must have failed, but no worries we will start here!')
+        #         # pull artifact from gridfs so optimzation can use it    
+        #     else:
+        #         print('Rabbit must be working smoothly for once...')
+        #         # create_new_res_artifact('salesResId',my_test_file,'salesArtifact')
+        #         # use what we have in the one worker life span
+        #     # RUN OPTIMIZATION PIECE...
         
-        # TODO: (FIX) for some stupid reason create_new_res_artifact is overwritting on each time it runs...
-        create_new_res_artifact('masterOpResId',my_test_file,'optimizedArtifact')
-        status_update('done')
+        # # TODO: (FIX) for some stupid reason create_new_res_artifact is overwritting on each time it runs...
+        # # create_new_res_artifact('masterOpResId',my_test_file,'optimizedArtifact')
+        # status_update('done')
         
         # TODO: turn all these if statements into a consolodated func
         # if job_status == 'pending' or job_status == 'preoptimizing':
@@ -172,13 +172,14 @@ def main():
         # newSpace=fetch_artifact(msg["artifacts"]["newSpaceId"]).set_index("Store")
         # print('!!!!!')
         # print(msg)
-        print(msg["optimizedMetrics"])
+        if isinstance(msg["artifacts"]["futureSpaceId"],str):
+            futureSpace=fetch_artifact(msg["artifacts"]["futureSpaceId"]).set_index("Store")
+        if isinstance(msg["artifacts"]["futureSpaceId"],str):
+            brandExitArtifact=fetch_artifact(msg["artifacts"]["brandExitArtifactId"])
         fixtureArtifact=fetch_artifact(msg["artifacts"]["spaceArtifactId"]).set_index("Store")
-        # print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
-        # print(fixtureArtifact.columns)
         transactionArtifact=fetch_artifact(msg["artifacts"]["salesArtifactId"]).set_index("Store")
-        # print(transactionArtifact.columns)
-        if (msg["optimizationType"] == 'Traditional'):
+        print(msg["jobType"])
+        if (msg["jobType"] == 'Traditional'):
             opt_amt = preoptimize(fixtureArtifact,transactionArtifact,float(msg["metricAdjustment"]),float(msg["salesPenetrationThreshold"]),msg["optimizedMetrics"],msg["increment"])
             optimize(opt_amt,msg["tierCounts"],msg["spaceBounds"],msg["increment"])
         # if (msg["optimizationType"] == 'Enhanced'):      
