@@ -10,8 +10,8 @@ import gridfs
 from bson.objectid import ObjectId
 import pandas as pd
 from brandExitConversion import brandExitMung
-from preoptimizer import preoptimize
-from optimizer import optimize
+from preoptimizerR4 import preoptimize
+from optimizerR4 import optimize
 # from TierKey import tierKeyCreate
 # from TierOptim import tierDef
 
@@ -101,7 +101,7 @@ def main():
         def fetch_artifact(artifact_id):    
             file = fs.get(ObjectId(artifact_id))
             file = pd.read_csv(file,header=0)
-            file=file.dropna()
+            # file=file.dropna()
             return file
 
         # if isPreop:
@@ -171,14 +171,32 @@ def main():
         # if isinstance(msg["artifacts"]["futureSpaceId"],str):
         #     futureSpace=fetch_artifact(msg["artifacts"]["futureSpaceId"]).set_index("Store")
         # if isinstance(msg["artifacts"]["futureSpaceId"],str):
-        #     brandExitArtifact=fetch_artifact(msg["artifacts"]["brandExitArtifactId"])
+            # brandExitArtifact=brandExitMung(fetch_artifact(msg["artifacts"]["brandExitArtifactId"]))
+        print(msg)
         fixtureArtifact=fetch_artifact(msg["artifacts"]["spaceArtifactId"]).set_index("Store")
+        print("This is the fixtureArtifact")
+        print(fixtureArtifact)
         transactionArtifact=fetch_artifact(msg["artifacts"]["salesArtifactId"]).set_index("Store")
-        if (msg["jobType"] == 'Traditional'):
-            opt_amt = preoptimize(fixtureArtifact,transactionArtifact,futureSpace,brandExitArtifact,float(msg["metricAdjustment"]),float(msg["salesPenetrationThreshold"]),msg["optimizedMetrics"],msg["increment"])
+        # try:
+        print(msg["optimizedMetrics"])
+        try:
+            futureSpace
+            futureSpace=fetch_artifact(msg["artifacts"]["futureSpaceId"]).set_index("Store")
+        except:
+            print('No Future Space')
+        try:
+            brandExitArtifact
+            brandExitArtifact=brandExitMung(fetch_artifact(msg["artifacts"]["brandExitArtifactId"]))
+        except:
+            print('No Brand Exit File')
+
+        if (str(msg["optimizationType"]) == 'traditional'):
+            # opt_amt = preoptimize(fixtureArtifact,transactionArtifact,float(msg["metricAdjustment"]),float(msg["salesPenetrationThreshold"]),msg["optimizedMetrics"],msg["increment"])
+            opt_amt = preoptimize(fixture_data=fixtureArtifact,data=transactionArtifact,metricAdjustment=float(msg["metricAdjustment"]),salesPenetrationThreshold=float(msg["salesPenetrationThreshold"]),optimizedMetrics=msg["optimizedMetrics"],increment=msg["increment"])
             optimize(opt_amt,msg["tierCounts"],msg["spaceBounds"],msg["increment"])
-        if (msg["jobType"] == 'Enhanced'):
-            print("WIP")
+        # try:
+            # if (msg["jobType"] == 'Enhanced'):
+                # print("WIP")
             ### R Stuff
         # if (msg["optimizationType"] == 'Enhanced'):      
         # set status to done
