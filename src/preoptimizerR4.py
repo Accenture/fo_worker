@@ -123,7 +123,7 @@ def brandExit(spaceData):
 def preoptimize(fixture_data,data,metricAdjustment,salesPenetrationThreshold,optimizedMetrics,increment,newSpace=None,brandExitArtifact=None):
 # def preoptimize(fixture_data,data,newSpace=None,metricAdjustment,salesPenetrationThreshold,optimizedMetrics,increment):
     fixture_data.drop(fixture_data.columns[[0,1]],axis=1,inplace=True) # Access Columns dynamically
-    bfc = fixture_data[[ *np.arange(len(fixture_data.columns))[0::1] ]].convert_objects(convert_numeric=True)
+    # bfc = fixture_data[[ *np.arange(len(fixture_data.columns))[0::1] ]].convert_objects(convert_numeric=True)
     sales = data[[ *np.arange(len(data.columns))[0::9] ]].convert_objects(convert_numeric=True)
     boh = data[[ *np.arange(len(data.columns))[1::9] ]].convert_objects(convert_numeric=True)
     receipt = data[[ *np.arange(len(data.columns))[2::9] ]].convert_objects(convert_numeric=True)
@@ -136,19 +136,9 @@ def preoptimize(fixture_data,data,metricAdjustment,salesPenetrationThreshold,opt
     try:
         newSpace
         newSpace=brandExit(newSpace)
-        print("First newSpace")
-        print(newSpace)
         newSpace=futureSpace(fixture_data,newSpace)
-        print("Second newSpace")
-        print(newSpace)
     except:
         newSpace=bfc.sum(axis=1)
-    print("fixture_data")
-    print(fixture_data)
-    print("bfc")
-    print(bfc)
-    print("newSpace")
-    print(newSpace)
 
     salesPenetrationThreshold=float(salesPenetrationThreshold)
     adj_p = int(optimizedMetrics['spread'])*spreadCalc(sales,boh,receipt,getColumns(data),salesPenetrationThreshold) + int(optimizedMetrics['salesPenetration'])*spCalc(sales,getColumns(data)) + int(optimizedMetrics['salesPerSpaceUnit'])*metric_per_fixture(sales,bfc,salesPenetrationThreshold,getColumns(data),newSpace) + int(optimizedMetrics['grossMargin'])*spCalc(gm_perc,getColumns(data)) + int(optimizedMetrics['inventoryTurns'])*invTurn_Calc(sold_units,boh_units,receipts_units,getColumns(data))
@@ -162,12 +152,11 @@ def preoptimize(fixture_data,data,metricAdjustment,salesPenetrationThreshold,opt
             if adj_p[j].loc[i] < metricAdjustment:
                 adj_p[j].loc[i] = 0
     adj_p=calcPen(adj_p)
-
     # adj_p.fillna(0)    
     # adj_p[np.isnan(adj_p)] = 0
         
     #Create Code to make adjustments to adj_p
-    opt_amt = roundDF(adj_p.multiply(newSpace,axis='index'),increment)    
+    opt_amt = roundDF(adj_p.multiply(newSpace,axis='index'),increment)
     return opt_amt
 
 '''

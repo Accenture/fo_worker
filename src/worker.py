@@ -12,6 +12,7 @@ import pandas as pd
 from brandExitConversion import brandExitMung
 from preoptimizerR4 import preoptimize
 from optimizerR4 import optimize
+from pulp import *
 # from TierKey import tierKeyCreate
 # from TierOptim import tierDef
 
@@ -101,6 +102,8 @@ def main():
         def fetch_artifact(artifact_id):    
             file = fs.get(ObjectId(artifact_id))
             file = pd.read_csv(file,header=0)
+            # file.drop([1],axis=1)
+            print(file.head(2))
             # file=file.dropna()
             return file
 
@@ -172,13 +175,10 @@ def main():
         #     futureSpace=fetch_artifact(msg["artifacts"]["futureSpaceId"]).set_index("Store")
         # if isinstance(msg["artifacts"]["futureSpaceId"],str):
             # brandExitArtifact=brandExitMung(fetch_artifact(msg["artifacts"]["brandExitArtifactId"]))
-        print(msg)
-        fixtureArtifact=fetch_artifact(msg["artifacts"]["spaceArtifactId"]).set_index("Store")
-        print("This is the fixtureArtifact")
-        print(fixtureArtifact)
+        fixtureArtifact=fetch_artifact(msg["artifacts"]["spaceArtifactId"])
+        fixtureArtifact=fixtureArtifact.drop(fixtureArtifact.index[[0]]).set_index("Store")
         transactionArtifact=fetch_artifact(msg["artifacts"]["salesArtifactId"]).set_index("Store")
         # try:
-        print(msg["optimizedMetrics"])
         try:
             futureSpace
             futureSpace=fetch_artifact(msg["artifacts"]["futureSpaceId"]).set_index("Store")

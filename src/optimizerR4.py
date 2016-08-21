@@ -18,7 +18,7 @@ import gridfs
 db = pm.MongoClient()['app']
 fs = gridfs.GridFS(db)
 
-def optimize(opt_amt,tierCounts,spaceBound,increment,brandExitArtifact=None):
+def optimize(opt_amt,tierCounts,spaceBound,increment,spaceArtifact,brandExitArtifact=None):
 
     """
     Run an LP-based optimization
@@ -30,11 +30,15 @@ def optimize(opt_amt,tierCounts,spaceBound,increment,brandExitArtifact=None):
 
     Synopsis:
         I just wrapped the script from Ken in a callable - DCE
-        """
+    """
 
     print("HEY I'M IN THE OPTIMIZATION!!!!!!!")
     try:
-        print(spaceBound[Brand1])
+        print(opt_amt.head())
+    except:
+        print("Why can't I print this?")
+    try:
+        print(spaceBound["Brand 1"][0])
     except:
         print("didn't Work")
     ###############################################################################################
@@ -48,23 +52,11 @@ def optimize(opt_amt,tierCounts,spaceBound,increment,brandExitArtifact=None):
     Stores = opt_amt.index.tolist()
 
     # Setting up the Selected Tier Combinations -- Need to redo if not getting or creating data for all possible levels
-    print(opt_amt.columns.values)
-    print(opt_amt.head())
     Categories = opt_amt.columns.values
     minLevel = min(opt_amt.min())
     maxLevel = max(opt_amt.max())
-    print("minLevel")
-    print(minLevel)
-    print("maxLevel")
-    print(maxLevel)
     Levels = list(np.arange(minLevel, maxLevel + increment, increment))
-    print("Levels: ")
-    print(Levels)
     # Levels.append(np.abs(0.0))
-
-    print(Categories)
-    print(Levels)
-
     b = .05
     bI = .1
 
@@ -84,13 +76,12 @@ def optimize(opt_amt,tierCounts,spaceBound,increment,brandExitArtifact=None):
         for (j, Category) in enumerate(Categories):
             for (i, Store) in enumerate(Stores):
                 # if (upper_bound[Category][Store] == 0):
-                #     brandExitArtifact[Category][Store] == 1
+                    # brandExitArtifact[Category][Store] == 1
                 if (brandExitArtifact[Category].loc[Store] != 0):
                     upper_bound[Category].loc[Store] = 0
                     lower_bound[Category].loc[Store] = 0
                     NewOptim += st[Store][Category].loc[0.0] == 1
                     NewOptim += ct[Category].loc[0.0] == 1
-                    #df['Estimated Sales'][Store, Category, 0.0] = 0
 
         for (j, Category) in enumerate(Categories):
             if (sum(brandExitArtifact[Category].values()) > 0):
@@ -103,7 +94,6 @@ def optimize(opt_amt,tierCounts,spaceBound,increment,brandExitArtifact=None):
     for (i, Store) in enumerate(Stores):
         for (j, Category) in enumerate(Categories):
             for (k, Level) in enumerate(Levels):
-                # print("i equals "+i+"and Store equals "+Store)
                 BA[i][j][k] = opt_amt[Category].iloc[i]
                 error[i][j][k] = np.absolute(BA[i][j][k] - Level)
 
@@ -260,7 +250,7 @@ def optimize(opt_amt,tierCounts,spaceBound,increment,brandExitArtifact=None):
                         solvedout.write(str(Level).encode("UTF-8"))
         solvedout.close()
     # print(LpStatus[LpStatus])
-    return #results
+    return st
 
     # testing=pd.read_csv("solvedout.csv").drop
 
