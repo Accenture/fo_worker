@@ -62,6 +62,8 @@ def metric_per_metric(metric1,metric2,salesPenetrationThreshold,master_columns):
     # storing input sales data in an array
 		# finding penetration for each brand in given stores
 		# calculate adjusted penetration
+    print(metric2.columns)
+    print(master_columns)
     metric1.columns = master_columns
     metric2.columns = master_columns
     # print(len(metric2.columns))
@@ -121,16 +123,17 @@ def preoptimize(fixture_data,data,metricAdjustment,salesPenetrationThreshold,opt
     # print(fixture_data.index)  
     fixture_data.drop(fixture_data[["Climate","VSG "]],axis=1,inplace=True) # Access Columns dynamically
     # future_space.drop(future_space[["Climate","VSG "]],axis=1,inplace=True) # Access Columns dynamically
-    bfc = fixture_data[[ *np.arange(len(fixture_data.columns))[0::1] ]].convert_objects(convert_numeric=True)
-    # tfc = future_space[[ *np.arange(len(fixture_data.columns))[0::1] ]].convert_objects(convert_numeric=True)
-    sales = data[[ *np.arange(len(data.columns))[0::8] ]].convert_objects(convert_numeric=True)
-    boh = data[[ *np.arange(len(data.columns))[1::8] ]].convert_objects(convert_numeric=True)
-    receipt = data[[ *np.arange(len(data.columns))[2::8] ]].convert_objects(convert_numeric=True)
-    sold_units = data[[ *np.arange(len(data.columns))[3::8] ]].convert_objects(convert_numeric=True)
-    boh_units = data[[ *np.arange(len(data.columns))[4::8] ]].convert_objects(convert_numeric=True)
-    receipts_units = data[[ *np.arange(len(data.columns))[5::8] ]].convert_objects(convert_numeric=True)
-    profit = data[[ *np.arange(len(data.columns))[6::8] ]].convert_objects(convert_numeric=True)
-    gm_perc = data[[ *np.arange(len(data.columns))[7::8] ]].convert_objects(convert_numeric=True)
+    bfc = fixture_data[[ *np.arange(len(fixture_data.columns))[0::1] ]]
+    print(bfc.index)
+    # tfc = future_space[[ *np.arange(len(fixture_data.columns))[0::1] ]]
+    sales = data[[ *np.arange(len(data.columns))[0::8] ]]
+    boh = data[[ *np.arange(len(data.columns))[1::8] ]]
+    receipt = data[[ *np.arange(len(data.columns))[2::8] ]]
+    sold_units = data[[ *np.arange(len(data.columns))[3::8] ]]
+    boh_units = data[[ *np.arange(len(data.columns))[4::8] ]]
+    receipts_units = data[[ *np.arange(len(data.columns))[5::8] ]]
+    profit = data[[ *np.arange(len(data.columns))[6::8] ]]
+    gm_perc = data[[ *np.arange(len(data.columns))[7::8] ]]
     '''
     if metric == 1: #spread
         adj_p = spreadCalc(sales,boh,receipt,getColumns(data))
@@ -164,7 +167,7 @@ def preoptimize(fixture_data,data,metricAdjustment,salesPenetrationThreshold,opt
     # print("*************************************\n\n")
     salesPenetrationThreshold=float(salesPenetrationThreshold)
     # print(salesPenetrationThreshold)
-    adj_p = int(optimizedMetrics["spread"])*spreadCalc(sales,boh,receipt,getColumns(data),salesPenetrationThreshold) + int(optimizedMetrics['salesPenetration'])*spCalc(sales,getColumns(data)) + int(optimizedMetrics['salesPerUnitSpace'])*metric_per_metric(sales,bfc,salesPenetrationThreshold,getColumns(data)) + int(optimizedMetrics['grossMargin'])*spCalc(gm_perc,getColumns(data)) +int(optimizedMetrics['marginPerUnitSpace'])*metric_per_metric(profit,bfc,salesPenetrationThreshold,getColumns(data)) + int(optimizedMetrics['inventoryTurns'])*invTurn_Calc(sold_units,boh_units,receipts_units,getColumns(data))
+    adj_p = int(optimizedMetrics["spread"])*spreadCalc(sales,boh,receipt,getColumns(data),salesPenetrationThreshold) + int(optimizedMetrics['salesPenetration'])*spCalc(sales,getColumns(data)) + int(optimizedMetrics['salesPerSpaceUnit'])*metric_per_metric(sales,bfc,salesPenetrationThreshold,getColumns(data)) + int(optimizedMetrics['grossMargin'])*spCalc(gm_perc,getColumns(data)) +int(optimizedMetrics['marginPerUnitSpace'])*metric_per_metric(profit,bfc,salesPenetrationThreshold,getColumns(data)) + int(optimizedMetrics['inventoryTurns'])*invTurn_Calc(sold_units,boh_units,receipts_units,getColumns(data))
     
 
     # print(adj_p.head(2))
