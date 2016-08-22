@@ -180,17 +180,21 @@ def main():
         transactionArtifact=fetch_artifact(msg["artifacts"]["salesArtifactId"])
         transactionArtifact=transactionArtifact.drop(transactionArtifact.index[[0]]).set_index("Store")
         # try:
+        '''
         try:
             futureSpace
             futureSpace=fetch_artifact(msg["artifacts"]["futureSpaceId"]).set_index("Store")
+            print("I see the Future Space File")
         except:
             print('No Future Space File ')
+        
         try:
-            brandExitArtifact
             brandExitArtifact=brandExitMung(fetch_artifact(msg["artifacts"]["brandExitArtifactId"]))
+            print("I see the Brand Exit File")
         except:
+            print("Brand Exit")
             print('No Brand Exit File')
-
+        '''
         if (str(msg["optimizationType"]) == 'traditional'):
             preOpt = preoptimize(spaceData=fixtureArtifact,data=transactionArtifact,metricAdjustment=float(msg["metricAdjustment"]),salesPenetrationThreshold=float(msg["salesPenetrationThreshold"]),optimizedMetrics=msg["optimizedMetrics"],increment=msg["increment"])
             try:
@@ -198,6 +202,7 @@ def main():
                 optimize(preOpt,msg["tierCounts"],msg["spaceBounds"],msg["increment"],fixtureArtifact,brandExitArtifact)
             except:    
                 optimize(preOpt,msg["tierCounts"],msg["spaceBounds"],msg["increment"],fixtureArtifact)
+                print("Brand Exit isn't working")
         # try:
             # if (msg["jobType"] == 'Enhanced'):
                 # print("WIP")
