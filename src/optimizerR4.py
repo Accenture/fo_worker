@@ -42,19 +42,15 @@ def createLong(Stores,Categories,Levels,st,Optimal,Penetration,Historical):
     print(lOutput.head())
     return lOutput.to_csv("Long_Output",sep=",")
 
-def createWide(Stores,Categories,Levels,st,Optimal,Penetration,Historical):
+def createWide(Stores,Categories,Levels,st,Results,Optimal,Penetration,Historical):
     Historical=Historical.drop(Historical.columns[[1,2]],axis=1)
-    # Results=pd.DataFrame(index=Stores,columns=Categories)
-    # for (i,Store) in enumerate(Stores):
-    #     for (j,Category) in enumerate(Categories):
-    #         for (k,Level) in enumerate(Levels):
-    #             if value(st[Store][Category][Level]) == 1:
-    #                 Results[Category][Store] = Level
     Optimal.columns = [str(col) + '_optimal' for col in Categories]
     Penetration.columns = [str(col) + '_penetration' for col in Categories]
-    # Results.columns = [str(col) + '_result' for col in Categories]
+    Results.columns = [str(col) + '_result' for col in Categories]
     Historical.columns = [str(col) + '_current' for col in Categories]
-    wOutput=pd.concat((Optimal,Penetration,Historical)) #Results.append([Optimal,Penetration,Historical])
+    print("Historical")
+    print(Historical.head(2))
+    wOutput=pd.concat([Results,Optimal,Penetration,Historical],axis=1) #Results.append([Optimal,Penetration,Historical])
     print(wOutput.head())
     return wOutput.to_csv("Wide_Output",sep=",")
 
@@ -254,10 +250,16 @@ def optimize(preOpt,tierCounts,spaceBound,increment,spaceArtifact,brandExitArtif
     print("Number of Created Tiers: ", ctOneCount)
     '''
     print("Creating Outputs")
+    Results=pd.DataFrame(index=Stores,columns=Categories)
+    for (i,Store) in enumerate(Stores):
+        for (j,Category) in enumerate(Categories):
+            for (k,Level) in enumerate(Levels):
+                if value(st[Store][Category][Level]) == 1:
+                    Results[Category][Store] = Level
     # fs.put(createLong(Stores,Categories,Levels,st,preOpt[1],preOpt[0],spaceArtifact))
     # fs.put(createWide(preopt[1],preOpt[0],Results,spaceArtifact))
-    longOutput=createLong(Stores,Categories,Levels,st,preOpt[1],preOpt[0],spaceArtifact)
-    wideOutput=createWide(Stores,Categories,Levels,st,preOpt[1],preOpt[0],spaceArtifact)
+    createLong(Stores,Categories,Levels,st,preOpt[1],preOpt[0],spaceArtifact)
+    createWide(Stores,Categories,Levels,st,Results,preOpt[1],preOpt[0],spaceArtifact)
     # print(type(longOutput))
     # wideOutput=createWide(preopt[1],preOpt[0],Results,spaceArtifact)
 
@@ -278,7 +280,7 @@ def optimize(preOpt,tierCounts,spaceBound,increment,spaceArtifact,brandExitArtif
         solvedout.close()
     # print(LpStatus[LpStatus])
     '''
-    return (longOutput)#,wideOutput)
+    return #(longOutput)#,wideOutput)
 
     # testing=pd.read_csv("solvedout.csv").drop
 
