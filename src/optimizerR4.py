@@ -18,7 +18,47 @@ import gridfs
 db = pm.MongoClient()['app']
 fs = gridfs.GridFS(db)
 
-def optimize(opt_amt,tierCounts,spaceBound,increment,spaceArtifact,brandExitArtifact=None):
+
+def createLong(Stores,Categories,Levels,st,Optimal,Penetration,Historical):
+    storeDict=Historical[[0,1,2]].T.to_dict()
+    #Historical=Historical.drop(Historical.columns[[1,2]],axis=1)
+    l=0
+    lOutput=pd.DataFrame(index=np.arange(len(Stores)*len(Categories)),columns=["Store","Climate","VSG","Category","Result Space","Optimal Space","Penetration","Historical Space"])
+    for (i,Store) in enumerate(Stores):    
+        for (j,Category) in enumerate(Categories):
+            lOutput["Store"].iloc[l]=Store
+            lOutput["Category"].iloc[l] = Category
+            lOutput["Optimal Space"].iloc[l] = Optimal[Category].iloc[i]        
+            lOutput["Penetration"].iloc[l] = Penetration[Category].iloc[i]
+            # lOutput["Climate"].iloc[l] = storeDict.get("Store",{}).get("Climate",{}) 
+            # lOutput["VSG"].iloc[l] = storeDict.get("Store",{}).get("VSG",{})
+            lOutput["Historical Space"].iloc[l] = Historical[Category].iloc[i]
+            for (k,Level) in enumerate(Levels):        
+                if value(st[Store][Category][Level])== 1:
+                    lOutput["Result Space"].iloc[l] = Level
+            l=l+1
+    lOutput['VSG']=lOutput.Store.apply(lambda x: (storeDict[x]['VSG ']))
+    lOutput['Climate']=lOutput.Store.apply(lambda x: (storeDict[x]['Climate']))
+    print(lOutput.head())
+    return lOutput.to_csv("Long_Output",sep=",")
+
+def createWide(Stores,Categories,Levels,st,Optimal,Penetration,Historical):
+    Historical=Historical.drop(Historical.columns[[1,2]],axis=1)
+    # Results=pd.DataFrame(index=Stores,columns=Categories)
+    # for (i,Store) in enumerate(Stores):
+    #     for (j,Category) in enumerate(Categories):
+    #         for (k,Level) in enumerate(Levels):
+    #             if value(st[Store][Category][Level]) == 1:
+    #                 Results[Category][Store] = Level
+    Optimal.columns = [str(col) + '_optimal' for col in Categories]
+    Penetration.columns = [str(col) + '_penetration' for col in Categories]
+    # Results.columns = [str(col) + '_result' for col in Categories]
+    Historical.columns = [str(col) + '_current' for col in Categories]
+    wOutput=pd.concat((Optimal,Penetration,Historical)) #Results.append([Optimal,Penetration,Historical])
+    print(wOutput.head())
+    return wOutput.to_csv("Wide_Output",sep=",")
+
+def optimize(preOpt,tierCounts,spaceBound,increment,spaceArtifact,brandExitArtifact=None):
 
     """
     Run an LP-based optimization
@@ -31,12 +71,12 @@ def optimize(opt_amt,tierCounts,spaceBound,increment,spaceArtifact,brandExitArti
     Synopsis:
         I just wrapped the script from Ken in a callable - DCE
     """
+    print("Top of spaceArtifact")
+    print(spaceArtifact.head())
+    penetration=preOpt[0]
+    opt_amt=preOpt[1]
 
     print("HEY I'M IN THE OPTIMIZATION!!!!!!!")
-    try:
-        print(opt_amt.head())
-    except:
-        print("Why can't I print this?")
     try:
         print(spaceBound["Brand 1"][0])
     except:
@@ -157,10 +197,7 @@ def optimize(opt_amt,tierCounts,spaceBound,increment,spaceArtifact,brandExitArti
     print("#####################################################################")
     print(LpStatus[NewOptim.status])
     print("#####################################################################")
-    # print(LpStatusInfeasible)
-    # print(LpStatusUndefined)
-    # print(LpStatusOptimal)
-    ''''
+    '''
     # Debugging
     NegativeCount = 0
     LowCount = 0
@@ -215,26 +252,16 @@ def optimize(opt_amt,tierCounts,spaceBound,increment,spaceArtifact,brandExitArti
     print("Number of Zeroes Count is: ", ctLowCount)
     print("Number Above 0 and Below 1 Count is: ", ctTrueCount)
     print("Number of Created Tiers: ", ctOneCount)
-
-    solvedout = open('solvedout.txt', 'w')
-    solvedout.write("Status:" + str(LpStatus[NewOptim.status]) + "\n")
-    solvedout.write("--------------------------------------------------- \n")
-    solvedout.write("For Selected Tiers \n")
-    solvedout.write("Number of Negatives Count is: " + str(NegativeCount) + "\n")
-    solvedout.write("Number of Zeroes Count is: " + str(LowCount) + "\n")
-    solvedout.write("Number Above 0 and Below 1 Count is: " + str(TrueCount) + "\n")
-    solvedout.write("Number of Selected Tiers: " + str(OneCount) + "\n")
-    solvedout.write("--------------------------------------------------- \n")
-    solvedout.write("For Created Tiers \n")
-    solvedout.write("Number of Negatives Count is: " + str(ctNegativeCount) + "\n")
-    solvedout.write("Number of Zeroes Count is: " + str(ctLowCount) + "\n")
-    solvedout.write(
-        "Number Above 0 and Below 1 Count is: " + str(ctTrueCount) + "\n")
-    solvedout.write("Number of Created Tiers: " + str(ctOneCount) + "\n")
-    solvedout.write("--------------------------------------------------- \n")
-    solvedout.write("--------------------------------------------------- \n\n\n")
     '''
-    
+    print("Creating Outputs")
+    # fs.put(createLong(Stores,Categories,Levels,st,preOpt[1],preOpt[0],spaceArtifact))
+    # fs.put(createWide(preopt[1],preOpt[0],Results,spaceArtifact))
+    longOutput=createLong(Stores,Categories,Levels,st,preOpt[1],preOpt[0],spaceArtifact)
+    wideOutput=createWide(Stores,Categories,Levels,st,preOpt[1],preOpt[0],spaceArtifact)
+    # print(type(longOutput))
+    # wideOutput=createWide(preopt[1],preOpt[0],Results,spaceArtifact)
+
+    '''
     # solvedout, result_id = fs.open_upload_stream("test_file",chunk_size_bytes=4,metadata={"contentType": "text/csv"}) 
     #open("solvedout.csv", 'w')
     with fs.new_file(filename="spaceResults.csv",content_type="type/csv") as solvedout:
@@ -250,7 +277,8 @@ def optimize(opt_amt,tierCounts,spaceBound,increment,spaceArtifact,brandExitArti
                         solvedout.write(str(Level).encode("UTF-8"))
         solvedout.close()
     # print(LpStatus[LpStatus])
-    return st
+    '''
+    return (longOutput)#,wideOutput)
 
     # testing=pd.read_csv("solvedout.csv").drop
 

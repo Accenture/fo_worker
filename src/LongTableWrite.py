@@ -28,7 +28,7 @@ def createWide(Optimal,Penetration,Results,Historical,Categories):
     #result.columns = [str(col) + '_result' for col in Categories]
     optimal_space.columns = [str(col) + '_current' for col in Categories]
    # wOutput=opt_amt2.append([opt_amt2,adj_p2,optimal_space])
-    w2Output=pd.concat((opt_amt2,adj_p2,optimal_space))
-    return wOutput
+    #w2Output=pd.concat((opt_amt2,adj_p2,optimal_space))
+    return pd.concat((opt_amt2,adj_p2,optimal_space))
 
-createWide(1,1,1,1)
+createWide(1,1,1,1,Categories)

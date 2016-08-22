@@ -120,10 +120,12 @@ def brandExit(spaceData):
         spaceData[Category].iloc[Store] == 0
     return spaceData
 
-def preoptimize(fixture_data,data,metricAdjustment,salesPenetrationThreshold,optimizedMetrics,increment,newSpace=None,brandExitArtifact=None):
+def preoptimize(spaceData,data,metricAdjustment,salesPenetrationThreshold,optimizedMetrics,increment,newSpace=None,brandExitArtifact=None):
 # def preoptimize(fixture_data,data,newSpace=None,metricAdjustment,salesPenetrationThreshold,optimizedMetrics,increment):
-    fixture_data.drop(fixture_data.columns[[0,1]],axis=1,inplace=True) # Access Columns dynamically
-    # bfc = fixture_data[[ *np.arange(len(fixture_data.columns))[0::1] ]].convert_objects(convert_numeric=True)
+    fixture_data=spaceData.drop(spaceData.columns[[0,1]],axis=1)
+    # spaceData.drop(spaceData.columns[[0,1]],axis=1,inplace=True) 
+    # fixture_data.drop(fixture_data.columns[[0,1]],axis=1,inplace=True) # Access Columns dynamically
+    bfc = fixture_data[[ *np.arange(len(fixture_data.columns))[0::1] ]].convert_objects(convert_numeric=True)
     sales = data[[ *np.arange(len(data.columns))[0::9] ]].convert_objects(convert_numeric=True)
     boh = data[[ *np.arange(len(data.columns))[1::9] ]].convert_objects(convert_numeric=True)
     receipt = data[[ *np.arange(len(data.columns))[2::9] ]].convert_objects(convert_numeric=True)
@@ -157,7 +159,7 @@ def preoptimize(fixture_data,data,metricAdjustment,salesPenetrationThreshold,opt
         
     #Create Code to make adjustments to adj_p
     opt_amt = roundDF(adj_p.multiply(newSpace,axis='index'),increment)
-    return opt_amt
+    return (adj_p,opt_amt)
 
 '''
 #For Testing 

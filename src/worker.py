@@ -177,13 +177,14 @@ def main():
             # brandExitArtifact=brandExitMung(fetch_artifact(msg["artifacts"]["brandExitArtifactId"]))
         fixtureArtifact=fetch_artifact(msg["artifacts"]["spaceArtifactId"])
         fixtureArtifact=fixtureArtifact.drop(fixtureArtifact.index[[0]]).set_index("Store")
-        transactionArtifact=fetch_artifact(msg["artifacts"]["salesArtifactId"]).set_index("Store")
+        transactionArtifact=fetch_artifact(msg["artifacts"]["salesArtifactId"])
+        transactionArtifact=transactionArtifact.drop(transactionArtifact.index[[0]]).set_index("Store")
         # try:
         try:
             futureSpace
             futureSpace=fetch_artifact(msg["artifacts"]["futureSpaceId"]).set_index("Store")
         except:
-            print('No Future Space')
+            print('No Future Space File ')
         try:
             brandExitArtifact
             brandExitArtifact=brandExitMung(fetch_artifact(msg["artifacts"]["brandExitArtifactId"]))
@@ -191,23 +192,26 @@ def main():
             print('No Brand Exit File')
 
         if (str(msg["optimizationType"]) == 'traditional'):
-            # opt_amt = preoptimize(fixtureArtifact,transactionArtifact,float(msg["metricAdjustment"]),float(msg["salesPenetrationThreshold"]),msg["optimizedMetrics"],msg["increment"])
-            opt_amt = preoptimize(fixture_data=fixtureArtifact,data=transactionArtifact,metricAdjustment=float(msg["metricAdjustment"]),salesPenetrationThreshold=float(msg["salesPenetrationThreshold"]),optimizedMetrics=msg["optimizedMetrics"],increment=msg["increment"])
-            optimize(opt_amt,msg["tierCounts"],msg["spaceBounds"],msg["increment"])
+            preOpt = preoptimize(spaceData=fixtureArtifact,data=transactionArtifact,metricAdjustment=float(msg["metricAdjustment"]),salesPenetrationThreshold=float(msg["salesPenetrationThreshold"]),optimizedMetrics=msg["optimizedMetrics"],increment=msg["increment"])
+            try:
+                brandExitArtifact.head()
+                optimize(preOpt,msg["tierCounts"],msg["spaceBounds"],msg["increment"],fixtureArtifact,brandExitArtifact)
+            except:    
+                optimize(preOpt,msg["tierCounts"],msg["spaceBounds"],msg["increment"],fixtureArtifact)
         # try:
             # if (msg["jobType"] == 'Enhanced'):
                 # print("WIP")
             ### R Stuff
         # if (msg["optimizationType"] == 'Enhanced'):      
         # set status to done
-        # db.jobs.update_one(
-        #     {'_id': job['_id']},
-        #     {
-        #         "$set": {
-        #             "status": "done"
-        #         }
-        #     }
-        # )
+        db.jobs.update_one(
+            {'_id': job['_id']},
+            {
+                "$set": {
+                    "status": "done"
+                }
+            }
+        )
 
         res = dict(
             job_id=msg['_id'],

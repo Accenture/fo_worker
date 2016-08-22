@@ -84,10 +84,10 @@ def createLongOld(Stores,Categories,lOutput,Optimal,Penetration,Historical):
 #Write out climate & VSG information from input file
 #Re-order the columns
 def createWide(Optimal,Penetration,Results,Historical):
-    opt_amt2.columns = [str(col) + '_optimal' for col in Categories]
-    adj_p2.columns = [str(col) + '_penetration' for col in Categories]
+    Optimal.columns = [str(col) + '_optimal' for col in Categories]
+    Penetration.columns = [str(col) + '_penetration' for col in Categories]
     #result.columns = [str(col) + '_result' for col in Categories]
-    optimal_space.columns = [str(col) + '_current' for col in Categories]
-    wOutput=opt_amt2.append([opt_amt2,adj_p2,optimal_space])
+    Historical.columns = [str(col) + '_current' for col in Categories]
+    wOutput=Results.append([Optimal,Penetration,Historical])
     return wOutput
     #                Output['Role'][j] = Position_Dict.get(roster['Position'][j],'null')                
