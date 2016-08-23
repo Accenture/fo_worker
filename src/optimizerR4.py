@@ -285,7 +285,7 @@ def optimize(job_id,preOpt,tierCounts,spaceBound,increment,spaceArtifact,brandEx
         {
             "$set": {
                 "artifactResults": {
-                    'long_table':long_id
+                    'long_table':long_id,
                     'wide_table':wide_id
                 }
             }

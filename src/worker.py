@@ -49,9 +49,13 @@ def main():
         msg = json.loads(body.decode('utf-8'))
         # Find job to check status of job
         job = db.jobs.find_one({'_id': ObjectId(msg['_id'])})
-        
+        try:
+            job_id = job['_id']
+        except TypeError as e:
+            print('Job Not Found')
+            return False
+
         # current_user = job['userId']
-        job_id = job['_id']
         # job_status = job['status']
 
         '''
