@@ -51,27 +51,24 @@ def createLong(Stores, Categories, Levels, st, Optimal, Penetration, Historical)
             l=l+1
     lOutput['VSG']=lOutput.Store.apply(lambda x: (storeDict[x]['VSG ']))
     lOutput['Climate']=lOutput.Store.apply(lambda x: (storeDict[x]['Climate']))
+    lOutput.set_index("Store")
     print(lOutput.head())
-    return str(create_output_artifact_from_dataframe(lOutput,filename=jo))
-    # return lOutput.to_csv("Long_Output",sep=",")
+    return str(create_output_artifact_from_dataframe(lOutput))
 
-
-def createWide(Stores, Categories, Levels, st, Results, Optimal, Penetration, Historical):
-    """
-    Return str oid of GridFS artifact
-    """
+def createWide(Stores,Categories,Levels,st,Results,Optimal,Penetration,Historical):
+    storeDict=Historical[[0,1,2]].T.to_dict()
     Historical=Historical.drop(Historical.columns[[1,2]],axis=1)
     Optimal.columns = [str(col) + '_optimal' for col in Categories]
     Penetration.columns = [str(col) + '_penetration' for col in Categories]
     Results.columns = [str(col) + '_result' for col in Categories]
     Historical.columns = [str(col) + '_current' for col in Categories]
     print("Historical")
-    print(Historical.head(2))
     wOutput=pd.concat([Results,Optimal,Penetration,Historical],axis=1) #Results.append([Optimal,Penetration,Historical])
-    print(wOutput.head())
-    return str(create_output_artifact_from_dataframe(wOutput,filename=jo))
-    # return wOutput.to_csv("Wide_Output",sep=",")
-
+    wOutput["Store"]=wOutput.index
+    wOutput['VSG']=wOutput.Store.apply(lambda x: (storeDict[x]['VSG ']))
+    wOutput['Climate']=wOutput.Store.apply(lambda x: (storeDict[x]['Climate']))
+    wOutput.set_index("Store")
+    return str(create_output_artifact_from_dataframe(wOutput))
 
 def optimize(job_id,preOpt,tierCounts,spaceBound,increment,spaceArtifact,brandExitArtifact=None):
 
@@ -119,13 +116,13 @@ def optimize(job_id,preOpt,tierCounts,spaceBound,increment,spaceArtifact,brandEx
     # Calculate Total fixtures(TotFixt) per store by summing up the individual fixture counts
     W = opt_amt.sum(axis=1).sum(axis=0)
     TFC = opt_amt.sum(axis=1)
-    ct = LpVariable.dicts('Created Tiers', (Categories, Levels), 0, upBound=1,
+    ct = LpVariable.dicts('CT', (Categories, Levels), 0, upBound=1,
                           cat='Binary')
-    st = LpVariable.dicts('Selected Tiers', (Stores, Categories, Levels), 0,
+    st = LpVariable.dicts('ST', (Stores, Categories, Levels), 0,
                           upBound=1, cat='Binary')
 
     NewOptim = LpProblem("FixtureOptim", LpMinimize)  # Define Optimization Problem/
-
+    '''
     try:
         # Brand Exit Enhancement
         for (j, Category) in enumerate(Categories):
@@ -143,7 +140,7 @@ def optimize(job_id,preOpt,tierCounts,spaceBound,increment,spaceArtifact,brandEx
                 tier_count["Upper_Bound"][Category] += 1
     except:
         print("No Brand Exit")
-
+    '''
     BA = np.zeros((len(Stores), len(Categories), len(Levels)))
     error = np.zeros((len(Stores), len(Categories), len(Levels)))
     for (i, Store) in enumerate(Stores):
