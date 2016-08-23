@@ -16,6 +16,11 @@ from pulp import *
 # from TierKey import tierKeyCreate
 # from TierOptim import tierDef
 
+JOB_STATUS = {
+    'QUEUED':'QUEUED',
+    'RUNNING':'RUNNING',
+    'DONE':'DONE'
+}
 
 def main():
     def make_serializable(db_object):
@@ -44,19 +49,10 @@ def main():
         msg = json.loads(body.decode('utf-8'))
         # Find job to check status of job
         job = db.jobs.find_one({'_id': ObjectId(msg['_id'])})
-        current_user = job['userId']
+        
+        # current_user = job['userId']
         job_id = job['_id']
-        job_status = job['status']
-        # print(job_status)
-        isPreop = False
-        isOptimize = False
-        # if either flag is True then that optimization piece will be where we start! otherwise if pending we will run the whole thang...
-        if job_status == 'pending':
-            isPreop = True
-        elif job_status == 'optimizing':
-            isOptimize = True
-        else:
-            isPreop = True
+        # job_status = job['status']
 
         '''
         Fetch (twice) and write once to the document by updating status 
@@ -71,32 +67,7 @@ def main():
                     }
                 }
             )
-            # Doing double the work... has to be a better way!
-            job = db.jobs.find_one({'_id': ObjectId(msg['_id'])})
-            job_status = job['status']
-            return job_status # pending, opitimizing, ...
 
-        '''
-        Create new artifact that contains optimize result and append it to document model
-        '''
-        def create_new_res_artifact(artifact_name,file,filename):
-            # TODO: is there a better way to show relationship between gridfs files and document models?
-            artifact_id = fs.put(file,
-                                userId=current_user,
-                                filename='res-' + filename,
-                                description=''
-                                )
-            new_artifact = db.fs.files.find_one({'_id': artifact_id})
-            db.jobs.find_one_and_update(
-                {'_id': job_id},
-                {
-                    "$set": {
-                        "artifactResults": {
-                            artifact_name:new_artifact['_id']
-                        }
-                    }
-                }
-            )
                 
         # Hardik Code to parse out information
         def fetch_artifact(artifact_id):    
@@ -199,9 +170,9 @@ def main():
             preOpt = preoptimize(spaceData=fixtureArtifact,data=transactionArtifact,metricAdjustment=float(msg["metricAdjustment"]),salesPenetrationThreshold=float(msg["salesPenetrationThreshold"]),optimizedMetrics=msg["optimizedMetrics"],increment=msg["increment"])
             try:
                 brandExitArtifact.head()
-                optimize(preOpt,msg["tierCounts"],msg["spaceBounds"],msg["increment"],fixtureArtifact,brandExitArtifact)
+                optimize(job_id,preOpt,msg["tierCounts"],msg["spaceBounds"],msg["increment"],fixtureArtifact,brandExitArtifact)
             except:    
-                optimize(preOpt,msg["tierCounts"],msg["spaceBounds"],msg["increment"],fixtureArtifact)
+                optimize(job_id,preOpt,msg["tierCounts"],msg["spaceBounds"],msg["increment"],fixtureArtifact)
                 print("Brand Exit isn't working")
         # try:
             # if (msg["jobType"] == 'Enhanced'):

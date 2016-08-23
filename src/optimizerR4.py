@@ -52,7 +52,7 @@ def createLong(Stores, Categories, Levels, st, Optimal, Penetration, Historical)
     lOutput['VSG']=lOutput.Store.apply(lambda x: (storeDict[x]['VSG ']))
     lOutput['Climate']=lOutput.Store.apply(lambda x: (storeDict[x]['Climate']))
     print(lOutput.head())
-    return str(create_output_artifact_from_dataframe(lOutput))
+    return str(create_output_artifact_from_dataframe(lOutput,filename=jo))
     # return lOutput.to_csv("Long_Output",sep=",")
 
 
@@ -69,11 +69,11 @@ def createWide(Stores, Categories, Levels, st, Results, Optimal, Penetration, Hi
     print(Historical.head(2))
     wOutput=pd.concat([Results,Optimal,Penetration,Historical],axis=1) #Results.append([Optimal,Penetration,Historical])
     print(wOutput.head())
-    return str(create_output_artifact_from_dataframe(wOutput))
+    return str(create_output_artifact_from_dataframe(wOutput,filename=jo))
     # return wOutput.to_csv("Wide_Output",sep=",")
 
 
-def optimize(preOpt,tierCounts,spaceBound,increment,spaceArtifact,brandExitArtifact=None):
+def optimize(job_id,preOpt,tierCounts,spaceBound,increment,spaceArtifact,brandExitArtifact=None):
 
     """
     Run an LP-based optimization
@@ -277,10 +277,23 @@ def optimize(preOpt,tierCounts,spaceBound,increment,spaceArtifact,brandExitArtif
                     Results[Category][Store] = Level
     # fs.put(createLong(Stores,Categories,Levels,st,preOpt[1],preOpt[0],spaceArtifact))
     # fs.put(createWide(preopt[1],preOpt[0],Results,spaceArtifact))
-    createLong(Stores,Categories,Levels,st,preOpt[1],preOpt[0],spaceArtifact)
-    createWide(Stores,Categories,Levels,st,Results,preOpt[1],preOpt[0],spaceArtifact)
+    # TODO: use jobid in long and wide filenames(filename key word argument)
+    long_id = createLong(Stores,Categories,Levels,st,preOpt[1],preOpt[0],spaceArtifact)
+    wide_id = createWide(Stores,Categories,Levels,st,Results,preOpt[1],preOpt[0],spaceArtifact)
     # print(type(longOutput))
     # wideOutput=createWide(preopt[1],preOpt[0],Results,spaceArtifact)
+
+    db.jobs.find_one_and_update(
+        {'_id': job_id},
+        {
+            "$set": {
+                "artifactResults": {
+                    'long_table':long_id
+                    'wide_table':wide_id
+                }
+            }
+        }
+    )
 
     '''
     # solvedout, result_id = fs.open_upload_stream("test_file",chunk_size_bytes=4,metadata={"contentType": "text/csv"}) 
