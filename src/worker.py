@@ -13,6 +13,7 @@ from brandExitConversion import brandExitMung
 from preoptimizerR4 import preoptimize
 from optimizerR4 import optimize
 from pulp import *
+import config
 # from TierKey import tierKeyCreate
 # from TierOptim import tierDef
 
@@ -30,13 +31,13 @@ def main():
             db_object['uploadDate'] = db_object['uploadDate'].isoformat()
         return db_object
 
-    db = MongoClient()['app']
+    db = MongoClient(config.MONGO_CON)['app']
     fs = gridfs.GridFS(db)
 
     # my_test_file = fs.get(ObjectId("577eabb51d41c808371a6092")).read()
     
     connection = pika.BlockingConnection(pika.ConnectionParameters(
-        host='localhost'))
+        host=config.AMQP_URI))
     channel = connection.channel()
 
     channel.queue_declare(queue='task_queue', durable=True)
