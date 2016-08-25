@@ -15,7 +15,10 @@ import os
 import json
 import pymongo as pm
 import gridfs
-db = pm.MongoClient()['app']
+
+import config
+
+db = pm.MongoClient(config.MONGO_CON)['app']
 fs = gridfs.GridFS(db)
 
 def optimize(opt_amt,tierCounts,spaceBound,increment):
