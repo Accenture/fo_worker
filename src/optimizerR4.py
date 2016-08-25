@@ -55,22 +55,23 @@ def createLong(Stores, Categories, Levels, st, Optimal, Penetration, Historical)
     return str(create_output_artifact_from_dataframe(lOutput))
 
 def createWide(Stores,Categories,Levels,st,Results,Optimal,Penetration,Historical):
-    print(Categories)
-    Categories2=Results.columns
-    print(Categories2)
     storeDict=Historical[[0,1,2]].T.to_dict()
-    Historical=Historical.drop(Historical.columns[[1,2]],axis=1)
+    Historical=Historical.drop(Historical.columns[[0,1]],axis=1)
     print(Historical.columns)
     Optimal.columns = [str(col) + '_optimal' for col in Categories]
     Penetration.columns = [str(col) + '_penetration' for col in Categories]
     Results.columns = [str(col) + '_result' for col in Categories]
-    Historical.columns = [str(col) + '_current' for col in Categories]
+    Historical.columns = [str(col) + '_current' for col in Historical.columns]
     wOutput=pd.concat([Results,Optimal,Penetration,Historical],axis=1) #Results.append([Optimal,Penetration,Historical])
     wOutput["Store"]=wOutput.index
-    # .sum(axis=1)
-    # .sum(axis=1)
+    print("Head of Historical")
+    print(Historical.head())
+    print(Historical.sum(axis=1))
     wOutput['VSG']=wOutput.Store.apply(lambda x: (storeDict[x]['VSG ']))
     wOutput['Climate']=wOutput.Store.apply(lambda x: (storeDict[x]['Climate']))
+    print("Head of Historical")
+    print(Historical.head())
+    print(Historical.sum(axis=1))
     wOutput['Current_Total']=Historical.sum(axis=1)
     wOutput['Results_Total']=Results.sum(axis=1)
     wOutput.set_index("Store")

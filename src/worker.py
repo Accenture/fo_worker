@@ -78,7 +78,7 @@ def main():
             file = fs.get(ObjectId(artifact_id))
             file = pd.read_csv(file,header=0)
             # file.drop([1],axis=1)
-            print(file.head(2))
+            # print(file.head(2))
             # file=file.dropna()
             return file
 
@@ -159,23 +159,27 @@ def main():
         try:
             msg["artifacts"]["futureSpaceID"]
             futureSpace=fetch_artifact(msg["artifacts"]["futureSpaceId"]).set_index("Store")
-            print("I see the Future Space File")
+            print("Future Space was Uploaded")
         except:
-            print('No Future Space File ')
-        if msg["artifacts"]["brandExitArtifactId"] is not None:
-            print("Stores & Categories are set")
+            futureSpace=None
+            print("Future Space was not Uploaded")
+
+        try:
+            msg["artifacts"]["brandExitArtifactId"]
             brandExitArtifact=fetch_artifact(msg["artifacts"]["brandExitArtifactId"])
-            print("brandExitArtifact Uploaded ")
             brandExitArtifact=brandExitMung(brandExitArtifact,Stores,Categories)
-        else:
-            print('No Brand Exit File')
+            print("Brand Exit was Uploaded")
+        except:
+            print("Brand Exit was not Uploaded")
+            brandExitArtifact=None
 
         if (str(msg["optimizationType"]) == 'traditional'):
-            preOpt = preoptimize(Stores=Stores,Categories=Categories,spaceData=fixtureArtifact,data=transactionArtifact,metricAdjustment=float(msg["metricAdjustment"]),salesPenetrationThreshold=float(msg["salesPenetrationThreshold"]),optimizedMetrics=msg["optimizedMetrics"],increment=msg["increment"],brandExitArtifact=brandExitArtifact)
+            preOpt = preoptimize(Stores=Stores,Categories=Categories,spaceData=fixtureArtifact,data=transactionArtifact,metricAdjustment=float(msg["metricAdjustment"]),salesPenetrationThreshold=float(msg["salesPenetrationThreshold"]),optimizedMetrics=msg["optimizedMetrics"],increment=msg["increment"],brandExitArtifact=brandExitArtifact,newSpace=futureSpace)
             optimize(job_id,preOpt,msg["tierCounts"],msg["spaceBounds"],msg["increment"],fixtureArtifact,brandExitArtifact)
+        
         if (msg["optimizationType"] == 'enhanced'):
             print("Ken hasn't finished development for that yet")
-        # set status to done
+            # set status to done
         db.jobs.update_one(
             {'_id': job['_id']},
             {
