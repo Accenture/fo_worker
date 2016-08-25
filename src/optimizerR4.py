@@ -52,26 +52,32 @@ def createLong(Stores, Categories, Levels, st, Optimal, Penetration, Historical)
     lOutput['VSG']=lOutput.Store.apply(lambda x: (storeDict[x]['VSG ']))
     lOutput['Climate']=lOutput.Store.apply(lambda x: (storeDict[x]['Climate']))
     lOutput.set_index("Store")
-    print(lOutput.head())
     return str(create_output_artifact_from_dataframe(lOutput))
 
 def createWide(Stores,Categories,Levels,st,Results,Optimal,Penetration,Historical):
+    print(Categories)
+    Categories2=Results.columns
+    print(Categories2)
     storeDict=Historical[[0,1,2]].T.to_dict()
     Historical=Historical.drop(Historical.columns[[1,2]],axis=1)
+    print(Historical.columns)
     Optimal.columns = [str(col) + '_optimal' for col in Categories]
     Penetration.columns = [str(col) + '_penetration' for col in Categories]
     Results.columns = [str(col) + '_result' for col in Categories]
     Historical.columns = [str(col) + '_current' for col in Categories]
-    print("Historical")
     wOutput=pd.concat([Results,Optimal,Penetration,Historical],axis=1) #Results.append([Optimal,Penetration,Historical])
     wOutput["Store"]=wOutput.index
+    # .sum(axis=1)
+    # .sum(axis=1)
     wOutput['VSG']=wOutput.Store.apply(lambda x: (storeDict[x]['VSG ']))
     wOutput['Climate']=wOutput.Store.apply(lambda x: (storeDict[x]['Climate']))
+    wOutput['Current_Total']=Historical.sum(axis=1)
+    wOutput['Results_Total']=Results.sum(axis=1)
     wOutput.set_index("Store")
+
     return str(create_output_artifact_from_dataframe(wOutput))
 
 def optimize(job_id,preOpt,tierCounts,spaceBound,increment,spaceArtifact,brandExitArtifact=None):
-
     """
     Run an LP-based optimization
 
@@ -83,16 +89,11 @@ def optimize(job_id,preOpt,tierCounts,spaceBound,increment,spaceArtifact,brandEx
     Synopsis:
         I just wrapped the script from Ken in a callable - DCE
     """
-    print("Top of spaceArtifact")
-    print(spaceArtifact.head())
+
     penetration=preOpt[0]
     opt_amt=preOpt[1]
 
     print("HEY I'M IN THE OPTIMIZATION!!!!!!!")
-    try:
-        print(spaceBound["Brand 1"][0])
-    except:
-        print("didn't Work")
     ###############################################################################################
     # Reading in of Files & Variable Set Up|| Will be changed upon adoption into tool
     ###############################################################################################
@@ -108,7 +109,7 @@ def optimize(job_id,preOpt,tierCounts,spaceBound,increment,spaceArtifact,brandEx
     minLevel = min(opt_amt.min())
     maxLevel = max(opt_amt.max())
     Levels = list(np.arange(minLevel, maxLevel + increment, increment))
-    # Levels.append(np.abs(0.0))
+    Levels.append(np.abs(0.0))
     b = .05
     bI = .1
 
@@ -122,25 +123,38 @@ def optimize(job_id,preOpt,tierCounts,spaceBound,increment,spaceArtifact,brandEx
                           upBound=1, cat='Binary')
 
     NewOptim = LpProblem("FixtureOptim", LpMinimize)  # Define Optimization Problem/
-    '''
-    try:
-        # Brand Exit Enhancement
-        for (j, Category) in enumerate(Categories):
-            for (i, Store) in enumerate(Stores):
+
+    # Brand Exit Enhancement
+    if brandExitArtifact is None:
+        print("No Brand Exit in the Optimization")
+    else:
+        # print("Stores")
+        # print(Stores)
+        # print("Index")
+        # print(brandExitArtifact.index)
+        # print("Columns")
+        # print(brandExitArtifact.columns)
+        # print(brandExitArtifact.head())
+        for (i, Store) in enumerate(Stores):
+            for (j, Category) in enumerate(Categories):
                 # if (upper_bound[Category][Store] == 0):
                     # brandExitArtifact[Category][Store] == 1
-                if (brandExitArtifact[Category].loc[Store] != 0):
-                    upper_bound[Category].loc[Store] = 0
-                    lower_bound[Category].loc[Store] = 0
-                    NewOptim += st[Store][Category].loc[0.0] == 1
-                    NewOptim += ct[Category].loc[0.0] == 1
+                # print("Store")
+                # print(Store)
+                # print("Category")
+                # print(Category)
+                # print(brandExitArtifact[Category].loc[int(Store)])
+                if (brandExitArtifact[Category].loc[int(Store)] != 0):
+                    # upper_bound[Category].loc[Store] = 0
+                    # lower_bound[Category].loc[Store] = 0
+                    NewOptim += st[Store][Category][0.0] == 1
+                    NewOptim += ct[Category][0.0] == 1
+                    spaceBound[Category][0] = 0
 
-        for (j, Category) in enumerate(Categories):
-            if (sum(brandExitArtifact[Category].values()) > 0):
-                tier_count["Upper_Bound"][Category] += 1
-    except:
-        print("No Brand Exit")
-    '''
+        # for (j, Category) in enumerate(Categories):
+        #     if (sum(brandExitArtifact[Category].values()) > 0):
+        #         tier_count["Upper_Bound"][Category] += 1
+
     BA = np.zeros((len(Stores), len(Categories), len(Levels)))
     error = np.zeros((len(Stores), len(Categories), len(Levels)))
     for (i, Store) in enumerate(Stores):
@@ -177,10 +191,13 @@ def optimize(job_id,preOpt,tierCounts,spaceBound,increment,spaceArtifact,brandEx
 #Test Again to check if better performance when done on ct level
 #Different Bounding Structures
         NewOptim += lpSum([st[Store][Category][Level] * Level for (k,Level) in enumerate(Levels)]) <= spaceBound[Category][1]         
-        # if brandExitArtifact[Category].iloc[Store] == 0:
-        #     NewOptim += lpSum([st[Store][Category][Level] * Level for (k,Level) in enumerate(Levels)]) >= spaceBound[Category][0] + increment
-        # else:
-        NewOptim += lpSum([st[Store][Category][Level] * Level for (k,Level) in enumerate(Levels)]) >= spaceBound[Category][0]
+        if brandExitArtifact is not None:
+            if brandExitArtifact[Category].iloc[int(i)] == 0:
+                NewOptim += lpSum([st[Store][Category][Level] * Level for (k,Level) in enumerate(Levels)]) >= spaceBound[Category][0] + increment
+            else:
+                NewOptim += lpSum([st[Store][Category][Level] * Level for (k,Level) in enumerate(Levels)]) >= spaceBound[Category][0]
+        else:
+            NewOptim += lpSum([st[Store][Category][Level] * Level for (k,Level) in enumerate(Levels)]) >= spaceBound[Category][0]
             
 #Store Category Level Bounding
         #NewOptim += lpSum([st[Store][Category][Level] * Level for (k,Level) in enumerate(Levels)] ) >= lower_bound[Category][Store]#,
@@ -277,8 +294,6 @@ def optimize(job_id,preOpt,tierCounts,spaceBound,increment,spaceArtifact,brandEx
     # TODO: use jobid in long and wide filenames(filename key word argument)
     long_id = createLong(Stores,Categories,Levels,st,preOpt[1],preOpt[0],spaceArtifact)
     wide_id = createWide(Stores,Categories,Levels,st,Results,preOpt[1],preOpt[0],spaceArtifact)
-    # print(type(longOutput))
-    # wideOutput=createWide(preopt[1],preOpt[0],Results,spaceArtifact)
 
     db.jobs.find_one_and_update(
         {'_id': job_id},

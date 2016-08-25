@@ -151,38 +151,30 @@ def main():
         # if isinstance(msg["artifacts"]["futureSpaceId"],str):
             # brandExitArtifact=brandExitMung(fetch_artifact(msg["artifacts"]["brandExitArtifactId"]))
         fixtureArtifact=fetch_artifact(msg["artifacts"]["spaceArtifactId"])
-        fixtureArtifact=fixtureArtifact.drop(fixtureArtifact.index[[0]]).set_index("Store")
         transactionArtifact=fetch_artifact(msg["artifacts"]["salesArtifactId"])
         transactionArtifact=transactionArtifact.drop(transactionArtifact.index[[0]]).set_index("Store")
-        # try:
-        '''
+        fixtureArtifact=fixtureArtifact.drop(fixtureArtifact.index[[0]]).set_index("Store")
+        Stores=fixtureArtifact.index.values.astype(int)
+        Categories=fixtureArtifact.columns[2:].values
         try:
-            futureSpace
+            msg["artifacts"]["futureSpaceID"]
             futureSpace=fetch_artifact(msg["artifacts"]["futureSpaceId"]).set_index("Store")
             print("I see the Future Space File")
         except:
             print('No Future Space File ')
-        
-        try:
-            brandExitArtifact=brandExitMung(fetch_artifact(msg["artifacts"]["brandExitArtifactId"]))
-            print("I see the Brand Exit File")
-        except:
-            print("Brand Exit")
+        if msg["artifacts"]["brandExitArtifactId"] is not None:
+            print("Stores & Categories are set")
+            brandExitArtifact=fetch_artifact(msg["artifacts"]["brandExitArtifactId"])
+            print("brandExitArtifact Uploaded ")
+            brandExitArtifact=brandExitMung(brandExitArtifact,Stores,Categories)
+        else:
             print('No Brand Exit File')
-        '''
+
         if (str(msg["optimizationType"]) == 'traditional'):
-            preOpt = preoptimize(spaceData=fixtureArtifact,data=transactionArtifact,metricAdjustment=float(msg["metricAdjustment"]),salesPenetrationThreshold=float(msg["salesPenetrationThreshold"]),optimizedMetrics=msg["optimizedMetrics"],increment=msg["increment"])
-            try:
-                brandExitArtifact.head()
-                optimize(job_id,preOpt,msg["tierCounts"],msg["spaceBounds"],msg["increment"],fixtureArtifact,brandExitArtifact)
-            except:    
-                optimize(job_id,preOpt,msg["tierCounts"],msg["spaceBounds"],msg["increment"],fixtureArtifact)
-                print("Brand Exit isn't working")
-        # try:
-            # if (msg["jobType"] == 'Enhanced'):
-                # print("WIP")
-            ### R Stuff
-        # if (msg["optimizationType"] == 'Enhanced'):      
+            preOpt = preoptimize(Stores=Stores,Categories=Categories,spaceData=fixtureArtifact,data=transactionArtifact,metricAdjustment=float(msg["metricAdjustment"]),salesPenetrationThreshold=float(msg["salesPenetrationThreshold"]),optimizedMetrics=msg["optimizedMetrics"],increment=msg["increment"],brandExitArtifact=brandExitArtifact)
+            optimize(job_id,preOpt,msg["tierCounts"],msg["spaceBounds"],msg["increment"],fixtureArtifact,brandExitArtifact)
+        if (msg["optimizationType"] == 'enhanced'):
+            print("Ken hasn't finished development for that yet")
         # set status to done
         db.jobs.update_one(
             {'_id': job['_id']},

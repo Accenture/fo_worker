@@ -7,12 +7,6 @@ Created on Thu Jun 30 09:55:06 2016
 import numpy as np
 import pandas as pd
 
-'''
-transaction_data = pd.read_csv("C:\\Users\\kenneth.l.sylvain\\Documents\\Kohl's\\Fixture Optimization\\Sprint 1\\transactions_data.csv",header=0).set_index("Store #")
-data=transaction_data
-fixture_data = pd.read_csv("C:\\Users\\kenneth.l.sylvain\\Documents\\Kohl's\\Fixture Optimization\\Sprint 1\\fixture_data.csv",header=0).set_index("Store")
-bfc =fixture_data[[ *np.arange(len(fixture_data.columns))[2::2] ]].drop(fixture_data.index[[0]]).convert_objects(convert_numeric=True)
-'''
 # Need to change functions to allow for TFC as result of Future Space/ Brand Entry
 # Need to create a max & min for category level informaiton to be passed as bounds in a long table format // Matching format to Bounding Info that is added to job context
 
@@ -61,8 +55,6 @@ def metric_per_fixture(metric1,metric2,salesPenetrationThreshold,master_columns,
     # storing input sales data in an array
 		# finding penetration for each brand in given stores
 		# calculate adjusted penetration
-    # print(metric1.columns)
-    print(master_columns)
     metric1.columns = master_columns
     # metric2.columns = master_columns
     spacePen = metric2.div(newSpace,axis='index')
@@ -107,20 +99,26 @@ def roundDF(array,increment):
                 rounded[j].loc[i] = np.around(array[j].loc[i], 3) - np.mod(np.around(array[j].loc[i], 3), increment)
     return rounded
 
-def futureSpace(spaceData,brandExit,futureFixt):
+def futureSpace(spaceData,futureFixt):
     for (i,Store) in Stores:
         if isinstance(futureFixt['Future Space'].iloc[i],str)==True:
             futureFixt['New Space'].iloc[i]=futureFixt['Future Space']
         else:
             futureFixt['New Space'].iloc[i]=spaceData.sum(axis=1).iloc[i]
+
+    
     return futureFixt['New Space']
 
-def brandExit(spaceData):
-    if brandExit[Category].iloc[Store] == 1:
-        spaceData[Category].iloc[Store] == 0
-    return spaceData
+def brandExit(spaceData,brandExit,Stores,Categories):
+    # brandExit.index.apply(lambda x: if(brandExit[Category].iloc[x]==1: spaceData[Category].iloc[x]=0))
+    newSpace=pd.DataFrame(index=Stores,columns=Categories)
+    for (i,Store) in enumerate(Stores):
+        for (j,Category) in enumerate(Categories):
+            if brandExit[Category].iloc[i] == 1:
+                newSpace[Category].iloc[i] = 0
+    return newSpace
 
-def preoptimize(spaceData,data,metricAdjustment,salesPenetrationThreshold,optimizedMetrics,increment,newSpace=None,brandExitArtifact=None):
+def preoptimize(Stores,Categories,spaceData,data,metricAdjustment,salesPenetrationThreshold,optimizedMetrics,increment,newSpace=None,brandExitArtifact=None):
 # def preoptimize(fixture_data,data,newSpace=None,metricAdjustment,salesPenetrationThreshold,optimizedMetrics,increment):
     fixture_data=spaceData.drop(spaceData.columns[[0,1]],axis=1)
     # spaceData.drop(spaceData.columns[[0,1]],axis=1,inplace=True) 
@@ -134,13 +132,19 @@ def preoptimize(spaceData,data,metricAdjustment,salesPenetrationThreshold,optimi
     receipts_units = data[[ *np.arange(len(data.columns))[5::9] ]].convert_objects(convert_numeric=True)
     profit = data[[ *np.arange(len(data.columns))[6::9] ]].convert_objects(convert_numeric=True)
     gm_perc = data[[ *np.arange(len(data.columns))[7::9] ]].convert_objects(convert_numeric=True)
-
-    try:
-        newSpace
-        newSpace=brandExit(newSpace)
-        newSpace=futureSpace(fixture_data,newSpace)
-    except:
+    
+    if newSpace is None:
         newSpace=bfc.sum(axis=1)
+        print("We don't have futureSpace.")
+    else:
+        print("We have futureSpace!")
+        newSpace=futureSpace(fixture_data,newSpace)
+        
+    if brandExitArtifact is not None:
+        print("We have brandExitArtifact!")    
+        # newSpace=brandExit(fixture_data,brandExitArtifact,Stores,Categories)
+    else:
+        print("We don't have brandExitArtifact")
 
     salesPenetrationThreshold=float(salesPenetrationThreshold)
     adj_p = int(optimizedMetrics['spread'])*spreadCalc(sales,boh,receipt,getColumns(data),salesPenetrationThreshold) + int(optimizedMetrics['salesPenetration'])*spCalc(sales,getColumns(data)) + int(optimizedMetrics['salesPerSpaceUnit'])*metric_per_fixture(sales,bfc,salesPenetrationThreshold,getColumns(data),newSpace) + int(optimizedMetrics['grossMargin'])*spCalc(gm_perc,getColumns(data)) + int(optimizedMetrics['inventoryTurns'])*invTurn_Calc(sold_units,boh_units,receipts_units,getColumns(data))
@@ -154,11 +158,13 @@ def preoptimize(spaceData,data,metricAdjustment,salesPenetrationThreshold,optimi
             if adj_p[j].loc[i] < metricAdjustment:
                 adj_p[j].loc[i] = 0
     adj_p=calcPen(adj_p)
-    # adj_p.fillna(0)    
+    adj_p.fillna(0)    
     # adj_p[np.isnan(adj_p)] = 0
         
     #Create Code to make adjustments to adj_p
     opt_amt = roundDF(adj_p.multiply(newSpace,axis='index'),increment)
+    print(adj_p.index)
+    print(opt_amt.index)
     return (adj_p,opt_amt)
 
 '''
