@@ -57,21 +57,20 @@ def createLong(Stores, Categories, Levels, st, Optimal, Penetration, Historical)
 def createWide(Stores,Categories,Levels,st,Results,Optimal,Penetration,Historical):
     storeDict=Historical[[0,1,2]].T.to_dict()
     Historical=Historical.drop(Historical.columns[[0,1]],axis=1)
-    print(Historical.columns)
     Optimal.columns = [str(col) + '_optimal' for col in Categories]
     Penetration.columns = [str(col) + '_penetration' for col in Categories]
     Results.columns = [str(col) + '_result' for col in Categories]
     Historical.columns = [str(col) + '_current' for col in Historical.columns]
     wOutput=pd.concat([Results,Optimal,Penetration,Historical],axis=1) #Results.append([Optimal,Penetration,Historical])
     wOutput["Store"]=wOutput.index
-    print("Head of Historical")
-    print(Historical.head())
-    print(Historical.sum(axis=1))
+    # x: (pd.to_numeric(x,errors='coerce'))
     wOutput['VSG']=wOutput.Store.apply(lambda x: (storeDict[x]['VSG ']))
     wOutput['Climate']=wOutput.Store.apply(lambda x: (storeDict[x]['Climate']))
-    print("Head of Historical")
-    print(Historical.head())
-    print(Historical.sum(axis=1))
+    # print(Historical.iloc[0])
+    # rowCount=0
+    # for col2 in Historical.columns:
+        # rowCount=rowCount + int(Historical[col2].iloc[1])
+        # print(str(col2)+ ": " +str(rowCount))
     wOutput['Current_Total']=Historical.sum(axis=1)
     wOutput['Results_Total']=Results.sum(axis=1)
     wOutput.set_index("Store")
@@ -110,7 +109,10 @@ def optimize(job_id,preOpt,tierCounts,spaceBound,increment,spaceArtifact,brandEx
     minLevel = min(opt_amt.min())
     maxLevel = max(opt_amt.max())
     Levels = list(np.arange(minLevel, maxLevel + increment, increment))
-    Levels.append(np.abs(0.0))
+    if 0.0 not in Levels:
+        Levels.append(np.abs(0.0))
+    print("Levels: ")
+    print(Levels)
     b = .05
     bI = .1
 
@@ -187,18 +189,18 @@ def optimize(job_id,preOpt,tierCounts,spaceBound,increment,spaceArtifact,brandEx
                                enumerate(Levels)]) >= TFC[Store] - (increment * 2)#, "Lower Bound for Fixtures per Store"
         
 #Makes sure that the number of fixtures, by store, does not go above or below some percentage of the total number of fixtures within the store 
-    for (j,Category) in enumerate(Categories):
-        NewOptim += lpSum([st[Store][Category][Level] for (k,Level) in enumerate(Levels)]) == 1#, "One_Level_per_Store-Category_Combination"
-#Test Again to check if better performance when done on ct level
-#Different Bounding Structures
-        NewOptim += lpSum([st[Store][Category][Level] * Level for (k,Level) in enumerate(Levels)]) <= spaceBound[Category][1]         
-        if brandExitArtifact is not None:
-            if brandExitArtifact[Category].iloc[int(i)] == 0:
-                NewOptim += lpSum([st[Store][Category][Level] * Level for (k,Level) in enumerate(Levels)]) >= spaceBound[Category][0] + increment
+        for (j,Category) in enumerate(Categories):
+            NewOptim += lpSum([st[Store][Category][Level] for (k,Level) in enumerate(Levels)]) == 1#, "One_Level_per_Store-Category_Combination"
+    #Test Again to check if better performance when done on ct level
+    #Different Bounding Structures
+            NewOptim += lpSum([st[Store][Category][Level] * Level for (k,Level) in enumerate(Levels)]) <= spaceBound[Category][1]         
+            if brandExitArtifact is not None:
+                if brandExitArtifact[Category].iloc[int(i)] == 0:
+                    NewOptim += lpSum([st[Store][Category][Level] * Level for (k,Level) in enumerate(Levels)]) >= spaceBound[Category][0] + increment
+                else:
+                    NewOptim += lpSum([st[Store][Category][Level] * Level for (k,Level) in enumerate(Levels)]) >= spaceBound[Category][0]
             else:
                 NewOptim += lpSum([st[Store][Category][Level] * Level for (k,Level) in enumerate(Levels)]) >= spaceBound[Category][0]
-        else:
-            NewOptim += lpSum([st[Store][Category][Level] * Level for (k,Level) in enumerate(Levels)]) >= spaceBound[Category][0]
             
 #Store Category Level Bounding
         #NewOptim += lpSum([st[Store][Category][Level] * Level for (k,Level) in enumerate(Levels)] ) >= lower_bound[Category][Store]#,
@@ -210,7 +212,7 @@ def optimize(job_id,preOpt,tierCounts,spaceBound,increment,spaceArtifact,brandEx
     #Verify that we still cannot use a constraint if not using a sum - Look to improve efficiency   
         for (k,Level) in enumerate(Levels):
             NewOptim += lpSum([st[Store][Category][Level] for (i,Store) in enumerate(Stores)])/len(Stores) <= ct[Category][Level]#, "Relationship between ct & st"
-                          
+
 
 #NewOptim += lpSum([ct[Category][Level] for (j,Category) in enumerate(Categories) for (k,Level) in enumerate(Levels)]) <= len(Categories)*sum(tier_count["Upper_Bound"].values())
 
@@ -222,12 +224,11 @@ def optimize(job_id,preOpt,tierCounts,spaceBound,increment,spaceArtifact,brandEx
         [st[Store][Category][Level] * Level for (i, Store) in enumerate(Stores) for (j, Category) in enumerate(Categories) for
          (k, Level) in enumerate(Levels)]) <= W * (1 + b)
 
-    #NewOptim.writeLP("Fixture_Optimization.lp")
+    # NewOptim.writeLP("Fixture_Optimization.lp")
     NewOptim.solve()
     print("#####################################################################")
     print(LpStatus[NewOptim.status])
     print("#####################################################################")
-    '''
     # Debugging
     NegativeCount = 0
     LowCount = 0
@@ -282,8 +283,8 @@ def optimize(job_id,preOpt,tierCounts,spaceBound,increment,spaceArtifact,brandEx
     print("Number of Zeroes Count is: ", ctLowCount)
     print("Number Above 0 and Below 1 Count is: ", ctTrueCount)
     print("Number of Created Tiers: ", ctOneCount)
-    '''
     print("Creating Outputs")
+
     Results=pd.DataFrame(index=Stores,columns=Categories)
     for (i,Store) in enumerate(Stores):
         for (j,Category) in enumerate(Categories):
@@ -307,7 +308,6 @@ def optimize(job_id,preOpt,tierCounts,spaceBound,increment,spaceArtifact,brandEx
             }
         }
     )
-
     '''
     # solvedout, result_id = fs.open_upload_stream("test_file",chunk_size_bytes=4,metadata={"contentType": "text/csv"}) 
     #open("solvedout.csv", 'w')

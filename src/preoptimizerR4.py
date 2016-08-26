@@ -135,16 +135,16 @@ def preoptimize(Stores,Categories,spaceData,data,metricAdjustment,salesPenetrati
     
     if newSpace is None:
         newSpace=bfc.sum(axis=1)
-        print("We don't have futureSpace.")
+        print("We don't have futureSpace in preoptimize.")
     else:
-        print("We have futureSpace!")
+        print("We have futureSpace in preoptimize!")
         newSpace=futureSpace(fixture_data,newSpace)
         
     if brandExitArtifact is not None:
-        print("We have brandExitArtifact!")    
+        print("We have brandExitArtifact in preoptimize!")    
         # newSpace=brandExit(fixture_data,brandExitArtifact,Stores,Categories)
     else:
-        print("We don't have brandExitArtifact")
+        print("We don't have brandExitArtifact in preoptimize")
 
     salesPenetrationThreshold=float(salesPenetrationThreshold)
     adj_p = int(optimizedMetrics['spread'])*spreadCalc(sales,boh,receipt,getColumns(data),salesPenetrationThreshold) + int(optimizedMetrics['salesPenetration'])*spCalc(sales,getColumns(data)) + int(optimizedMetrics['salesPerSpaceUnit'])*metric_per_fixture(sales,bfc,salesPenetrationThreshold,getColumns(data),newSpace) + int(optimizedMetrics['grossMargin'])*spCalc(gm_perc,getColumns(data)) + int(optimizedMetrics['inventoryTurns'])*invTurn_Calc(sold_units,boh_units,receipts_units,getColumns(data))
@@ -163,8 +163,6 @@ def preoptimize(Stores,Categories,spaceData,data,metricAdjustment,salesPenetrati
         
     #Create Code to make adjustments to adj_p
     opt_amt = roundDF(adj_p.multiply(newSpace,axis='index'),increment)
-    print(adj_p.index)
-    print(opt_amt.index)
     return (adj_p,opt_amt)
 
 '''

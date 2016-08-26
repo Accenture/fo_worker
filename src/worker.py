@@ -157,6 +157,7 @@ def main():
         fixtureArtifact=fixtureArtifact.drop(fixtureArtifact.index[[0]]).set_index("Store")
         Stores=fixtureArtifact.index.values.astype(int)
         Categories=fixtureArtifact.columns[2:].values
+        print("There are "+str(len(Stores)) + "and " + str(len(Categories)) + " Categories")
         try:
             msg["artifacts"]["futureSpaceID"]
             futureSpace=fetch_artifact(msg["artifacts"]["futureSpaceId"]).set_index("Store")
@@ -164,7 +165,6 @@ def main():
         except:
             futureSpace=None
             print("Future Space was not Uploaded")
-
         try:
             msg["artifacts"]["brandExitArtifactId"]
             brandExitArtifact=fetch_artifact(msg["artifacts"]["brandExitArtifactId"])
@@ -173,10 +173,13 @@ def main():
         except:
             print("Brand Exit was not Uploaded")
             brandExitArtifact=None
-
         if (str(msg["optimizationType"]) == 'traditional'):
+            # try:
             preOpt = preoptimize(Stores=Stores,Categories=Categories,spaceData=fixtureArtifact,data=transactionArtifact,metricAdjustment=float(msg["metricAdjustment"]),salesPenetrationThreshold=float(msg["salesPenetrationThreshold"]),optimizedMetrics=msg["optimizedMetrics"],increment=msg["increment"],brandExitArtifact=brandExitArtifact,newSpace=futureSpace)
             optimize(job_id,preOpt,msg["tierCounts"],msg["spaceBounds"],msg["increment"],fixtureArtifact,brandExitArtifact)
+            # except:
+                # print(TypeError)
+                # print("Traditional Optimization has Failed")
         
         if (msg["optimizationType"] == 'enhanced'):
             print("Ken hasn't finished development for that yet")
