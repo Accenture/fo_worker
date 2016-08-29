@@ -57,27 +57,24 @@ def createLong(Stores, Categories, Levels, st, Optimal, Penetration, Historical)
 
 def createWide(Stores,Categories,Levels,st,Results,Optimal,Penetration,Historical):
     bfc = Historical[[ *np.arange(len(Historical.columns))[0::1] ]].convert_objects(convert_numeric=True)
-    storeDict=Historical[[0,1,2]].T.to_dict()
+    storeDict=Historical[[0,1]]#.T.to_dict()
+    # storeDict["Store"]=storeDict.index
     Historical=Historical.drop(Historical.columns[[0,1]],axis=1)
     Optimal.columns = [str(col) + '_optimal' for col in Categories]
     Penetration.columns = [str(col) + '_penetration' for col in Categories]
     Results.columns = [str(col) + '_result' for col in Categories]
     Historical.columns = [str(col) + '_current' for col in Historical.columns]
-    wOutput=pd.concat([Results,Optimal,Penetration,Historical],axis=1) #Results.append([Optimal,Penetration,Historical])
-    wOutput["Store"]=wOutput.index
-    # x: (pd.to_numeric(x,errors='coerce'))
-    wOutput['VSG']=wOutput.Store.apply(lambda x: (storeDict[x]['VSG ']))
-    wOutput['Climate']=wOutput.Store.apply(lambda x: (storeDict[x]['Climate']))
-    
-    # print(Historical.iloc[0])
-    # rowCount=0
-    # for col2 in Historical.columns:
-        # rowCount=rowCount + int(Historical[col2].iloc[1])
-        # print(str(col2)+ ": " +str(rowCount))
-    wOutput['Total_current']=bfc.sum(axis=1)
-    wOutput['Total_result']=Results.sum(axis=1)
-    wOutput.set_index("Store")
-
+    sumOutput=pd.DataFrame(index=Stores,columns=['Total_result','Total_current'])
+    sumOutput['Total_result']=Results.sum(axis=1)
+    sumOutput['Total_current']=bfc.sum(axis=1)
+    wOutput=pd.concat([storeDict,Results,Historical,Optimal,sumOutput,Penetration],axis=1) #Results.append([Optimal,Penetration,Historical])
+    # wOutput["Store"]=wOutput.index
+    # wOutput['VSG']=wOutput.Store.apply(lambda x: (storeDict[x]['VSG ']))
+    # wOutput['Climate']=wOutput.Store.apply(lambda x: (storeDict[x]['Climate']))    
+    # wOutput.set_index("Store")
+    # end=len(wOutput.columns)-3
+    # wOutput=wOutput.columns[[-3,-1,-2]]
+    # wOutput=wOutput.drop(wOutput.columns[[-5]],axis=1)
     return str(create_output_artifact_from_dataframe(wOutput))
 
 def optimize(job_id,preOpt,tierCounts,spaceBound,increment,spaceArtifact,brandExitArtifact=None):
