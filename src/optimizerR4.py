@@ -15,11 +15,23 @@ import os
 import json
 import pymongo as pm
 import gridfs
+
 db = pm.MongoClient()['app']
 fs = gridfs.GridFS(db)
 
 
-def createLong(Stores,Categories,Levels,st,Optimal,Penetration,Historical):
+def create_output_artifact_from_dataframe(dataframe, *args, **kwargs):
+    """
+    Returns the bson.objectid.ObjectId of the resulting GridFS artifact
+
+    """
+    return fs.put(dataframe.to_csv().encode(), **kwargs)
+
+
+def createLong(Stores, Categories, Levels, st, Optimal, Penetration, Historical):
+    """
+    Return str oid of GridFS artifact
+    """
     storeDict=Historical[[0,1,2]].T.to_dict()
     #Historical=Historical.drop(Historical.columns[[1,2]],axis=1)
     l=0
@@ -40,9 +52,14 @@ def createLong(Stores,Categories,Levels,st,Optimal,Penetration,Historical):
     lOutput['VSG']=lOutput.Store.apply(lambda x: (storeDict[x]['VSG ']))
     lOutput['Climate']=lOutput.Store.apply(lambda x: (storeDict[x]['Climate']))
     print(lOutput.head())
-    return lOutput.to_csv("Long_Output",sep=",")
+    return str(create_output_artifact_from_dataframe(lOutput))
+    # return lOutput.to_csv("Long_Output",sep=",")
 
-def createWide(Stores,Categories,Levels,st,Results,Optimal,Penetration,Historical):
+
+def createWide(Stores, Categories, Levels, st, Results, Optimal, Penetration, Historical):
+    """
+    Return str oid of GridFS artifact
+    """
     Historical=Historical.drop(Historical.columns[[1,2]],axis=1)
     Optimal.columns = [str(col) + '_optimal' for col in Categories]
     Penetration.columns = [str(col) + '_penetration' for col in Categories]
@@ -52,7 +69,9 @@ def createWide(Stores,Categories,Levels,st,Results,Optimal,Penetration,Historica
     print(Historical.head(2))
     wOutput=pd.concat([Results,Optimal,Penetration,Historical],axis=1) #Results.append([Optimal,Penetration,Historical])
     print(wOutput.head())
-    return wOutput.to_csv("Wide_Output",sep=",")
+    return str(create_output_artifact_from_dataframe(wOutput))
+    # return wOutput.to_csv("Wide_Output",sep=",")
+
 
 def optimize(preOpt,tierCounts,spaceBound,increment,spaceArtifact,brandExitArtifact=None):
 
@@ -287,3 +306,8 @@ def optimize(preOpt,tierCounts,spaceBound,increment,spaceArtifact,brandExitArtif
 # if __name__ == '__main__':
 #     optimize()
 # Should optimize after completion here call preop instead of in worker?
+
+
+if __name__ == '__main__':
+    df = pd.DataFrame(np.random.randn(10, 5), columns=['a', 'b', 'c', 'd', 'e'])
+    create_output_artifact_from_dataframe(df, filename='hello.csv')
