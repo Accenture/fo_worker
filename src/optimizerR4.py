@@ -346,7 +346,7 @@ def optimize(job_id,preOpt,tierCounts,spaceBound,increment,spaceArtifact,brandEx
 #     optimize()
 # Should optimize after completion here call preop instead of in worker?
 
-
+    return LpStatus[NewOptim.status]
 if __name__ == '__main__':
     df = pd.DataFrame(np.random.randn(10, 5), columns=['a', 'b', 'c', 'd', 'e'])
     create_output_artifact_from_dataframe(df, filename='hello.csv')

@@ -91,7 +91,6 @@ def main():
         except:
             futureSpace=None
             print("Future Space was not Uploaded")
-        brandExitArtifact=fetch_artifact(msg["artifacts"]["brandExitArtifactId"])
         try:
             brandExitArtifact=fetch_artifact(msg["artifacts"]["brandExitArtifactId"])
             print("Brand Exit was Uploaded")
