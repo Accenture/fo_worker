@@ -141,14 +141,21 @@ def brandExit(spaceData,brandExit,Stores,Categories):
     newSpace=pd.DataFrame(index=Stores,columns=Categories)
     for (i,Store) in enumerate(Stores):
         for (j,Category) in enumerate(Categories):
-            if brandExit[Category].iloc[i] == 1:
-                newSpace[Category].iloc[i] = 0
+            if brandExit[Category][Store] == 1:
+                newSpace[Category][Store] = 0
+                # transaction.iloc[i]=pd.Series(0,np.arange(9))
     return newSpace
 
 def preoptimize(Stores,Categories,spaceData,data,metricAdjustment,salesPenetrationThreshold,optimizedMetrics,increment,newSpace=None,brandExitArtifact=None):
     fixture_data=spaceData.drop(spaceData.columns[[0,1]],axis=1)
     # spaceData.drop(spaceData.columns[[0,1]],axis=1,inplace=True) 
     # fixture_data.drop(fixture_data.columns[[0,1]],axis=1,inplace=True) # Access Columns dynamically
+    if brandExitArtifact is not None:
+        print("We have brandExitArtifact in preoptimize!")    
+        adjSpace=brandExit(fixture_data,brandExitArtifact,Stores,Categories)
+    else:
+        print("We don't have brandExitArtifact in preoptimize")
+
     bfc = fixture_data[[ *np.arange(len(fixture_data.columns))[0::1] ]].convert_objects(convert_numeric=True)
     sales = data[[ *np.arange(len(data.columns))[0::9] ]].convert_objects(convert_numeric=True)
     boh = data[[ *np.arange(len(data.columns))[1::9] ]].convert_objects(convert_numeric=True)
@@ -158,9 +165,12 @@ def preoptimize(Stores,Categories,spaceData,data,metricAdjustment,salesPenetrati
     receipts_units = data[[ *np.arange(len(data.columns))[5::9] ]].convert_objects(convert_numeric=True)
     profit = data[[ *np.arange(len(data.columns))[6::9] ]].convert_objects(convert_numeric=True)
     gm_perc = data[[ *np.arange(len(data.columns))[7::9] ]].convert_objects(convert_numeric=True)
-    
+    print(sales.head())
+
     if newSpace is None:
-        newSpace=pd.to_numeric(bfc).sum(axis=1)
+        # print(type(bfc))
+        # print(type(pd.to_numeric(bfc)))
+        newSpace=bfc.sum(axis=1)
         print("We don't have futureSpace in preoptimize.")
     else:
         print("We have futureSpace in preoptimize!")
@@ -168,11 +178,6 @@ def preoptimize(Stores,Categories,spaceData,data,metricAdjustment,salesPenetrati
         print("Result of Future Space Function")
         print(newSpace)
         
-    if brandExitArtifact is not None:
-        print("We have brandExitArtifact in preoptimize!")    
-        adjSpace=brandExit(fixture_data,brandExitArtifact,Stores,Categories)
-    else:
-        print("We don't have brandExitArtifact in preoptimize")
 
     salesPenetrationThreshold=float(salesPenetrationThreshold)
     adj_p = int(optimizedMetrics['spread'])*spreadCalc(sales,boh,receipt,getColumns(data),salesPenetrationThreshold) + int(optimizedMetrics['salesPenetration'])*spCalc(sales,getColumns(data)) + int(optimizedMetrics['salesPerSpaceUnit'])*metric_per_fixture(sales,bfc,salesPenetrationThreshold,getColumns(data),newSpace) + int(optimizedMetrics['grossMargin'])*spCalc(gm_perc,getColumns(data)) + int(optimizedMetrics['inventoryTurns'])*invTurn_Calc(sold_units,boh_units,receipts_units,getColumns(data))

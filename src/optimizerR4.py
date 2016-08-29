@@ -56,6 +56,7 @@ def createLong(Stores, Categories, Levels, st, Optimal, Penetration, Historical)
     return str(create_output_artifact_from_dataframe(lOutput))
 
 def createWide(Stores,Categories,Levels,st,Results,Optimal,Penetration,Historical):
+    bfc = Historical[[ *np.arange(len(Historical.columns))[0::1] ]].convert_objects(convert_numeric=True)
     storeDict=Historical[[0,1,2]].T.to_dict()
     Historical=Historical.drop(Historical.columns[[0,1]],axis=1)
     Optimal.columns = [str(col) + '_optimal' for col in Categories]
@@ -67,13 +68,14 @@ def createWide(Stores,Categories,Levels,st,Results,Optimal,Penetration,Historica
     # x: (pd.to_numeric(x,errors='coerce'))
     wOutput['VSG']=wOutput.Store.apply(lambda x: (storeDict[x]['VSG ']))
     wOutput['Climate']=wOutput.Store.apply(lambda x: (storeDict[x]['Climate']))
+    
     # print(Historical.iloc[0])
     # rowCount=0
     # for col2 in Historical.columns:
         # rowCount=rowCount + int(Historical[col2].iloc[1])
         # print(str(col2)+ ": " +str(rowCount))
-    wOutput['Current_Total']=Historical.sum(axis=1)
-    wOutput['Results_Total']=Results.sum(axis=1)
+    wOutput['Total_current']=bfc.sum(axis=1)
+    wOutput['Total_result']=Results.sum(axis=1)
     wOutput.set_index("Store")
 
     return str(create_output_artifact_from_dataframe(wOutput))
@@ -150,10 +152,10 @@ def optimize(job_id,preOpt,tierCounts,spaceBound,increment,spaceArtifact,brandEx
                 # print("Category")
                 # print(Category)
                 # print(brandExitArtifact[Category].loc[int(Store)])
-                if (brandExitArtifact[Category].loc[int(Store)] != 0):
+                if (brandExitArtifact[Category][Store] != 0):
                     # upper_bound[Category].loc[Store] = 0
                     # lower_bound[Category].loc[Store] = 0
-                    opt_amt[Categories].iloc[Store] = 0
+                    opt_amt[Category][Store] = 0
                     NewOptim += st[Store][Category][0.0] == 1
                     NewOptim += ct[Category][0.0] == 1
                     spaceBound[Category][0] = 0
