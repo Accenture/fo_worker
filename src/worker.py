@@ -37,7 +37,7 @@ def main():
     # my_test_file = fs.get(ObjectId("577eabb51d41c808371a6092")).read()
     
     connection = pika.BlockingConnection(pika.ConnectionParameters(
-        host=config.AMQP_URI))
+        host=config.RABBIT_URL))
     channel = connection.channel()
 
     channel.queue_declare(queue='task_queue', durable=True)
