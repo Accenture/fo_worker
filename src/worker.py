@@ -68,8 +68,6 @@ def main():
             }
         )
 
-                
-        # Hardik Code to parse out information
         def fetch_artifact(artifact_id):    
             file = fs.get(ObjectId(artifact_id))
             file = pd.read_csv(file,header=0)
@@ -77,27 +75,27 @@ def main():
             # print(file.head(2))
             # file=file.dropna()
             return file
-
         
+
+
         fixtureArtifact=fetch_artifact(msg["artifacts"]["spaceArtifactId"])
         transactionArtifact=fetch_artifact(msg["artifacts"]["salesArtifactId"])
         transactionArtifact=transactionArtifact.drop(transactionArtifact.index[[0]]).set_index("Store")
         fixtureArtifact=fixtureArtifact.drop(fixtureArtifact.index[[0]]).set_index("Store")
         Stores=fixtureArtifact.index.values.astype(int)
         Categories=fixtureArtifact.columns[2:].values
-        print("There are "+str(len(Stores)) + "and " + str(len(Categories)) + " Categories")
+        print("There are "+str(len(Stores)) + " and " + str(len(Categories)) + " Categories")
         try:
-            msg["artifacts"]["futureSpaceID"]
             futureSpace=fetch_artifact(msg["artifacts"]["futureSpaceId"]).set_index("Store")
             print("Future Space was Uploaded")
         except:
             futureSpace=None
             print("Future Space was not Uploaded")
         try:
-            msg["artifacts"]["brandExitArtifactId"]
             brandExitArtifact=fetch_artifact(msg["artifacts"]["brandExitArtifactId"])
-            brandExitArtifact=brandExitMung(brandExitArtifact,Stores,Categories)
             print("Brand Exit was Uploaded")
+            brandExitArtifact=brandExitMung(brandExitArtifact,Stores,Categories)
+            print("Brand Exit Munged")
         except:
             print("Brand Exit was not Uploaded")
             brandExitArtifact=None

@@ -104,11 +104,13 @@ def optimize(job_id,preOpt,tierCounts,spaceBound,increment,spaceArtifact,brandEx
     ##########################################################################################
     # opt_amt.index=opt_amt.index.values.astype(int)
     Stores = opt_amt.index.tolist()
-
+    print(type(spaceBound))
     # Setting up the Selected Tier Combinations -- Need to redo if not getting or creating data for all possible levels
     Categories = opt_amt.columns.values
-    minLevel = min(opt_amt.min())
-    maxLevel = max(opt_amt.max())
+    minLevel = min(min(spaceBound.values())) # min(opt_amt.min())
+    print(minLevel)
+    maxLevel = max(max(spaceBound.values()))  # max(opt_amt.max())
+    print(maxLevel)
     Levels = list(np.arange(minLevel, maxLevel + increment, increment))
     if 0.0 not in Levels:
         Levels.append(np.abs(0.0))
@@ -151,6 +153,7 @@ def optimize(job_id,preOpt,tierCounts,spaceBound,increment,spaceArtifact,brandEx
                 if (brandExitArtifact[Category].loc[int(Store)] != 0):
                     # upper_bound[Category].loc[Store] = 0
                     # lower_bound[Category].loc[Store] = 0
+                    opt_amt[Categories].iloc[Store] = 0
                     NewOptim += st[Store][Category][0.0] == 1
                     NewOptim += ct[Category][0.0] == 1
                     spaceBound[Category][0] = 0
@@ -177,7 +180,7 @@ def optimize(job_id,preOpt,tierCounts,spaceBound,increment,spaceArtifact,brandEx
 ###############################################################################################################
 #Makes is to that there is only one Selected tier for each Store/ Category Combination
     for (i,Store) in enumerate(Stores):
-    #Conditional for Balance Back regarding if in Fixtures || 2 Increment Min & Max instead
+#Conditional for Balance Back regarding if in Fixtures || 2 Increment Min & Max instead
         if TFC[Store] > increment * 5:
             NewOptim += lpSum([(st[Store][Category][Level]) * Level for (j, Category) in enumerate(Categories) for (k, Level) in
                                enumerate(Levels)]) <= TFC[Store] * (1 + bI)#, "Upper Bound for Fixtures per Store"
@@ -189,11 +192,12 @@ def optimize(job_id,preOpt,tierCounts,spaceBound,increment,spaceArtifact,brandEx
             NewOptim += lpSum([(st[Store][Category][Level]) * Level for (j, Category) in enumerate(Categories) for (k, Level) in
                                enumerate(Levels)]) >= TFC[Store] - (increment * 2)#, "Lower Bound for Fixtures per Store"
         
-#Makes sure that the number of fixtures, by store, does not go above or below some percentage of the total number of fixtures within the store 
+#One Space per Store Category
+    #Makes sure that the number of fixtures, by store, does not go above or below some percentage of the total number of fixtures within the store 
         for (j,Category) in enumerate(Categories):
             NewOptim += lpSum([st[Store][Category][Level] for (k,Level) in enumerate(Levels)]) == 1#, "One_Level_per_Store-Category_Combination"
     #Test Again to check if better performance when done on ct level
-    #Different Bounding Structures
+#Space Bounding 
             NewOptim += lpSum([st[Store][Category][Level] * Level for (k,Level) in enumerate(Levels)]) <= spaceBound[Category][1]         
             if brandExitArtifact is not None:
                 if brandExitArtifact[Category].iloc[int(i)] == 0:
@@ -207,26 +211,35 @@ def optimize(job_id,preOpt,tierCounts,spaceBound,increment,spaceArtifact,brandEx
         #NewOptim += lpSum([st[Store][Category][Level] * Level for (k,Level) in enumerate(Levels)] ) >= lower_bound[Category][Store]#,
         #NewOptim += lpSum([st[Store][Category][Level] * Level for (k,Level) in enumerate(Levels)] ) <= upper_bound[Category][Store]#,
 
+#Tier Counts Enhancement
     for (j,Category) in enumerate(Categories):
         NewOptim += lpSum([ct[Category][Level] for (k,Level) in enumerate(Levels)]) >= tierCounts[Category][0] #, "Number_of_Tiers_per_Category"
         NewOptim += lpSum([ct[Category][Level] for (k,Level) in enumerate(Levels)]) <= tierCounts[Category][1]
+#Relationship between Selected Tiers & Created Tiers
     #Verify that we still cannot use a constraint if not using a sum - Look to improve efficiency   
         for (k,Level) in enumerate(Levels):
             NewOptim += lpSum([st[Store][Category][Level] for (i,Store) in enumerate(Stores)])/len(Stores) <= ct[Category][Level]#, "Relationship between ct & st"
 
 
-#NewOptim += lpSum([ct[Category][Level] for (j,Category) in enumerate(Categories) for (k,Level) in enumerate(Levels)]) <= len(Categories)*sum(tier_count["Upper_Bound"].values())
+    #NewOptim += lpSum([ct[Category][Level] for (j,Category) in enumerate(Categories) for (k,Level) in enumerate(Levels)]) <= len(Categories)*sum(tier_count["Upper_Bound"].values())
 
-#Makes sure that the number of fixtures globally does not go above or below some percentage of the total number of fixtures within  
+#Global Balance Back  
     NewOptim += lpSum(
         [st[Store][Category][Level] * Level for (i, Store) in enumerate(Stores) for (j, Category) in enumerate(Categories) for
          (k, Level) in enumerate(Levels)]) >= W * (1 - b)
     NewOptim += lpSum(
         [st[Store][Category][Level] * Level for (i, Store) in enumerate(Stores) for (j, Category) in enumerate(Categories) for
          (k, Level) in enumerate(Levels)]) <= W * (1 + b)
-
     # NewOptim.writeLP("Fixture_Optimization.lp")
-    NewOptim.solve()
+    # LpSolverDefault.msg = 1
+    print("The problem has been formulated")
+
+#Solving the Problem
+    NewOptim.msg=1
+    NewOptim.solve(pulp.PULP_CBC_CMD(msg=1))    
+    
+#Debugging
+    # NewOptim.solve(pulp.COIN_CMD(msg=1))
     print("#####################################################################")
     print(LpStatus[NewOptim.status])
     print("#####################################################################")
