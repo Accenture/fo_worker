@@ -53,30 +53,39 @@ def createLong(Stores, Categories, Levels, st, Optimal, Penetration, Historical)
     lOutput['VSG']=lOutput.Store.apply(lambda x: (storeDict[x]['VSG ']))
     lOutput['Climate']=lOutput.Store.apply(lambda x: (storeDict[x]['Climate']))
     lOutput.set_index("Store")
-    return str(create_output_artifact_from_dataframe(lOutput))
+    return (str(create_output_artifact_from_dataframe(lOutput)),lOutput)
 
 def createWide(Stores,Categories,Levels,st,Results,Optimal,Penetration,Historical):
-    storeDict=Historical[[0,1,2]].T.to_dict()
+    bfc = Historical[[ *np.arange(len(Historical.columns))[0::1] ]].convert_objects(convert_numeric=True)
+    storeDict=Historical[[0,1]]#.T.to_dict()
+    # storeDict["Store"]=storeDict.index
     Historical=Historical.drop(Historical.columns[[0,1]],axis=1)
     Optimal.columns = [str(col) + '_optimal' for col in Categories]
     Penetration.columns = [str(col) + '_penetration' for col in Categories]
     Results.columns = [str(col) + '_result' for col in Categories]
     Historical.columns = [str(col) + '_current' for col in Historical.columns]
-    wOutput=pd.concat([Results,Optimal,Penetration,Historical],axis=1) #Results.append([Optimal,Penetration,Historical])
-    wOutput["Store"]=wOutput.index
-    # x: (pd.to_numeric(x,errors='coerce'))
-    wOutput['VSG']=wOutput.Store.apply(lambda x: (storeDict[x]['VSG ']))
-    wOutput['Climate']=wOutput.Store.apply(lambda x: (storeDict[x]['Climate']))
-    # print(Historical.iloc[0])
-    # rowCount=0
-    # for col2 in Historical.columns:
-        # rowCount=rowCount + int(Historical[col2].iloc[1])
-        # print(str(col2)+ ": " +str(rowCount))
-    wOutput['Current_Total']=Historical.sum(axis=1)
-    wOutput['Results_Total']=Results.sum(axis=1)
-    wOutput.set_index("Store")
-
+    sumOutput=pd.DataFrame(index=Stores,columns=['Total_result','Total_current'])
+    sumOutput['Total_result']=Results.sum(axis=1)
+    sumOutput['Total_current']=bfc.sum(axis=1)
+    wOutput=pd.concat([storeDict,Results,Historical,Optimal,sumOutput,Penetration],axis=1) #Results.append([Optimal,Penetration,Historical])
+    # wOutput["Store"]=wOutput.index
+    # wOutput['VSG']=wOutput.Store.apply(lambda x: (storeDict[x]['VSG ']))
+    # wOutput['Climate']=wOutput.Store.apply(lambda x: (storeDict[x]['Climate']))    
+    # wOutput.set_index("Store")
+    # end=len(wOutput.columns)-3
+    # wOutput=wOutput.columns[[-3,-1,-2]]
+    # wOutput=wOutput.drop(wOutput.columns[[-5]],axis=1)
     return str(create_output_artifact_from_dataframe(wOutput))
+
+def createTieredSummary(longTable) :
+    #pivot the long table to create a data frame providing the store count for each Category-ResultSpace by Climate along with the total for all climates
+    tieredSummaryPivot = pd.pivot_table(longTable, index=['Category', 'Result Space'], columns='Climate', values='Store', aggfunc=len, margins=True)
+    #rename the total for all climates column
+    tieredSummaryPivot.rename(columns = {'All':'Total Store Count'}, inplace = True)
+    #delete the last row of the pivot, as it is a sum of all the values in the column and has no business value in this context
+    tieredSummaryPivot = tieredSummaryPivot.ix[:-1]
+    return str(create_output_artifact_from_dataframe(tieredSummaryPivot))
+
 
 def optimize(job_id,preOpt,tierCounts,spaceBound,increment,spaceArtifact,brandExitArtifact=None):
     """
@@ -104,11 +113,13 @@ def optimize(job_id,preOpt,tierCounts,spaceBound,increment,spaceArtifact,brandEx
     ##########################################################################################
     # opt_amt.index=opt_amt.index.values.astype(int)
     Stores = opt_amt.index.tolist()
-
+    print(type(spaceBound))
     # Setting up the Selected Tier Combinations -- Need to redo if not getting or creating data for all possible levels
     Categories = opt_amt.columns.values
-    minLevel = min(opt_amt.min())
-    maxLevel = max(opt_amt.max())
+    minLevel = min(min(spaceBound.values())) # min(opt_amt.min())
+    print(minLevel)
+    maxLevel = max(max(spaceBound.values()))  # max(opt_amt.max())
+    print(maxLevel)
     Levels = list(np.arange(minLevel, maxLevel + increment, increment))
     if 0.0 not in Levels:
         Levels.append(np.abs(0.0))
@@ -148,9 +159,10 @@ def optimize(job_id,preOpt,tierCounts,spaceBound,increment,spaceArtifact,brandEx
                 # print("Category")
                 # print(Category)
                 # print(brandExitArtifact[Category].loc[int(Store)])
-                if (brandExitArtifact[Category].loc[int(Store)] != 0):
+                if (brandExitArtifact[Category][Store] != 0):
                     # upper_bound[Category].loc[Store] = 0
                     # lower_bound[Category].loc[Store] = 0
+                    opt_amt[Category][Store] = 0
                     NewOptim += st[Store][Category][0.0] == 1
                     NewOptim += ct[Category][0.0] == 1
                     spaceBound[Category][0] = 0
@@ -177,7 +189,7 @@ def optimize(job_id,preOpt,tierCounts,spaceBound,increment,spaceArtifact,brandEx
 ###############################################################################################################
 #Makes is to that there is only one Selected tier for each Store/ Category Combination
     for (i,Store) in enumerate(Stores):
-    #Conditional for Balance Back regarding if in Fixtures || 2 Increment Min & Max instead
+#Conditional for Balance Back regarding if in Fixtures || 2 Increment Min & Max instead
         if TFC[Store] > increment * 5:
             NewOptim += lpSum([(st[Store][Category][Level]) * Level for (j, Category) in enumerate(Categories) for (k, Level) in
                                enumerate(Levels)]) <= TFC[Store] * (1 + bI)#, "Upper Bound for Fixtures per Store"
@@ -189,11 +201,11 @@ def optimize(job_id,preOpt,tierCounts,spaceBound,increment,spaceArtifact,brandEx
             NewOptim += lpSum([(st[Store][Category][Level]) * Level for (j, Category) in enumerate(Categories) for (k, Level) in
                                enumerate(Levels)]) >= TFC[Store] - (increment * 2)#, "Lower Bound for Fixtures per Store"
         
-#Makes sure that the number of fixtures, by store, does not go above or below some percentage of the total number of fixtures within the store 
+#One Space per Store Category
+    #Makes sure that the number of fixtures, by store, does not go above or below some percentage of the total number of fixtures within the store 
         for (j,Category) in enumerate(Categories):
             NewOptim += lpSum([st[Store][Category][Level] for (k,Level) in enumerate(Levels)]) == 1#, "One_Level_per_Store-Category_Combination"
-    #Test Again to check if better performance when done on ct level
-    #Different Bounding Structures
+        # Test Again to check if better performance when done on ct level
             NewOptim += lpSum([st[Store][Category][Level] * Level for (k,Level) in enumerate(Levels)]) <= spaceBound[Category][1]         
             if brandExitArtifact is not None:
                 if brandExitArtifact[Category].iloc[int(i)] == 0:
@@ -207,26 +219,36 @@ def optimize(job_id,preOpt,tierCounts,spaceBound,increment,spaceArtifact,brandEx
         #NewOptim += lpSum([st[Store][Category][Level] * Level for (k,Level) in enumerate(Levels)] ) >= lower_bound[Category][Store]#,
         #NewOptim += lpSum([st[Store][Category][Level] * Level for (k,Level) in enumerate(Levels)] ) <= upper_bound[Category][Store]#,
 
+#Tier Counts Enhancement
     for (j,Category) in enumerate(Categories):
         NewOptim += lpSum([ct[Category][Level] for (k,Level) in enumerate(Levels)]) >= tierCounts[Category][0] #, "Number_of_Tiers_per_Category"
         NewOptim += lpSum([ct[Category][Level] for (k,Level) in enumerate(Levels)]) <= tierCounts[Category][1]
+#Relationship between Selected Tiers & Created Tiers
     #Verify that we still cannot use a constraint if not using a sum - Look to improve efficiency   
         for (k,Level) in enumerate(Levels):
             NewOptim += lpSum([st[Store][Category][Level] for (i,Store) in enumerate(Stores)])/len(Stores) <= ct[Category][Level]#, "Relationship between ct & st"
 
 
-#NewOptim += lpSum([ct[Category][Level] for (j,Category) in enumerate(Categories) for (k,Level) in enumerate(Levels)]) <= len(Categories)*sum(tier_count["Upper_Bound"].values())
+    #NewOptim += lpSum([ct[Category][Level] for (j,Category) in enumerate(Categories) for (k,Level) in enumerate(Levels)]) <= len(Categories)*sum(tier_count["Upper_Bound"].values())
 
-#Makes sure that the number of fixtures globally does not go above or below some percentage of the total number of fixtures within  
+#Global Balance Back  
     NewOptim += lpSum(
         [st[Store][Category][Level] * Level for (i, Store) in enumerate(Stores) for (j, Category) in enumerate(Categories) for
          (k, Level) in enumerate(Levels)]) >= W * (1 - b)
     NewOptim += lpSum(
         [st[Store][Category][Level] * Level for (i, Store) in enumerate(Stores) for (j, Category) in enumerate(Categories) for
          (k, Level) in enumerate(Levels)]) <= W * (1 + b)
-
     # NewOptim.writeLP("Fixture_Optimization.lp")
-    NewOptim.solve()
+    # LpSolverDefault.msg = 1
+    print("The problem has been formulated")
+
+#Solving the Problem
+    # NewOptim.msg=1
+    NewOptim.solve(pulp.PULP_CBC_CMD(msg=1))
+    # NewOptim.solve()    
+    # NewOptim.solve(pulp.COIN_CMD(msg=1))
+    
+#Debugging
     print("#####################################################################")
     print(LpStatus[NewOptim.status])
     print("#####################################################################")
@@ -295,8 +317,12 @@ def optimize(job_id,preOpt,tierCounts,spaceBound,increment,spaceArtifact,brandEx
     # fs.put(createLong(Stores,Categories,Levels,st,preOpt[1],preOpt[0],spaceArtifact))
     # fs.put(createWide(preopt[1],preOpt[0],Results,spaceArtifact))
     # TODO: use jobid in long and wide filenames(filename key word argument)
-    long_id = createLong(Stores,Categories,Levels,st,preOpt[1],preOpt[0],spaceArtifact)
+
+#Create Outputs
+    longOutput= createLong(Stores,Categories,Levels,st,preOpt[1],preOpt[0],spaceArtifact)
+    long_id = longOutput[0]
     wide_id = createWide(Stores,Categories,Levels,st,Results,preOpt[1],preOpt[0],spaceArtifact)
+    summary_id = createTieredSummary(longOutput[1])
 
     db.jobs.find_one_and_update(
         {'_id': job_id},
@@ -334,7 +360,7 @@ def optimize(job_id,preOpt,tierCounts,spaceBound,increment,spaceArtifact,brandEx
 #     optimize()
 # Should optimize after completion here call preop instead of in worker?
 
-
+    return LpStatus[NewOptim.status]
 if __name__ == '__main__':
     df = pd.DataFrame(np.random.randn(10, 5), columns=['a', 'b', 'c', 'd', 'e'])
     create_output_artifact_from_dataframe(df, filename='hello.csv')

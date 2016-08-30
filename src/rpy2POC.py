@@ -1,4 +1,17 @@
+        
+import rpy2
 import rpy2.robjects as robjects
+import rpy2.robjects.vectors import DataFrame
+from rpy2.objects import pandas2ri
+pandas2ri.activate()
+import os
+
+import rpy2.robjects as robjects
+
+def fetchRDF(artifact_id):
+    file = fs.get(ObjectId(artifact_id))
+    file = DataFrame.from_csvfile(file,header=False)
+    return file
 
 ### These are currently imported directly in the R code, but could be used here in the future ###
 
@@ -76,7 +89,7 @@ try:
     PCT_Space_Change_Limit = 0.5
 
     #Select Optimization type Regular or Drill Down
-    type = "Drill_Down"
+    optType = "Drill_Down"
 
     r_source('Curve Fitting and Bound Setting v8.0.R')
 
@@ -87,7 +100,7 @@ try:
     r_curvefitting_boundsetting = robjects.globalenv['curvefitting_boundsetting']
 
     # # Call the r function with the dataframes
-    r_curvefitting_boundsetting(big_master_data_Input_for_Curve_Fitting,Bound_Parameters,strcount_filter,avgsales_flter,bucket_width,curve_split,sales_weight,profit_weight,units_weight,PCT_Space_Change_Limit,type)
+    r_curvefitting_boundsetting(big_master_data_Input_for_Curve_Fitting,Bound_Parameters,strcount_filter,avgsales_flter,bucket_width,curve_split,sales_weight,profit_weight,units_weight,PCT_Space_Change_Limit,optType)
 except:
     print("Curve fitting failed")
 
