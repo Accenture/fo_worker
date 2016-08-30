@@ -21,38 +21,39 @@ r_source = robjects.r['source']
 
 
 
-
+def rpy2_data_merging()
 ############## Data Merging ##############
-try:
-    # Read the csv files into R DataFrames
-    # Going forward, these will likely not be read in from csv files, but instead
-    # are generated from earlier code in worker
-    Brand_Exit = DataFrame.from_csvfile('Brand_Exit.csv',header=False,sep=',')
-    Hist_perf = DataFrame.from_csvfile('Hist_perf.csv',header=False,sep=',')
-    Hist_space_climate_info = DataFrame.from_csvfile('Hist_space_climate_info.csv',header=False,sep=',')
-    Future_Space_Entry_Data = DataFrame.from_csvfile('Future_Space_Entry_Data.csv',header=True,sep=",")
+    try:
+        # Read the csv files into R DataFrames
+        # Going forward, these will likely not be read in from csv files, but instead
+        # are generated from earlier code in worker
+        
+        # Brand_Exit = DataFrame.from_csvfile('Brand_Exit.csv',header=False,sep=',')
+        # Hist_perf = DataFrame.from_csvfile('Hist_perf.csv',header=False,sep=',')
+        # Hist_space_climate_info = DataFrame.from_csvfile('Hist_space_climate_info.csv',header=False,sep=',')
+        # Future_Space_Entry_Data = DataFrame.from_csvfile('Future_Space_Entry_Data.csv',header=True,sep=",")
 
-    # Parameter variable that used to be defined in the R code
-    type = "Regular"
+        # Parameter variable that used to be defined in the R code
+        type = "Regular"
 
-    # Source the R file into memory so it can be used
-    r_source('Data_Merging_function_8_10_v3.R')
+        # Source the R file into memory so it can be used
+        r_source('Data_Merging_function_8_10_v3.R')
 
-    # robjects.globalenv gives access to any global variable and functions from all sourced R scripts
-    # The main function in the data merging code is called 'Data_merge', so we grab that function and store it into
-    # a local python variable.  The variable can then be used to call the R function
-    r_data_merge = robjects.globalenv['Data_merge']
+        # robjects.globalenv gives access to any global variable and functions from all sourced R scripts
+        # The main function in the data merging code is called 'Data_merge', so we grab that function and store it into
+        # a local python variable.  The variable can then be used to call the R function
+        r_data_merge = robjects.globalenv['Data_merge']
 
-    # Call the R function (that's stored as a python variable).  Since there is only one object returned, it can be returned as normal and stored into a python variable
-    # Here, the resulting return is in the form of an R DataFrame
-    r_big_master_data = r_data_merge(Hist_perf,Hist_space_climate_info,Future_Space_Entry_Data,Brand_Exit,type)
-# end Spencer's work
-    # Convert the R DataFrame to a pandas dataframes
-    p_big_master_data = 
- 
-except:
-    print("Data merging failed :(")
+        # Call the R function (that's stored as a python variable).  Since there is only one object returned, it can be returned as normal and stored into a python variable
+        # Here, the resulting return is in the form of an R DataFrame
+        r_big_master_data = r_data_merge(Hist_perf,Hist_space_climate_info,Future_Space_Entry_Data,Brand_Exit,type)
+    # end Spencer's work
+        # Convert the R DataFrame to a pandas dataframes
+        p_big_master_data = 
 
+    except:
+        print("Data merging failed :(")
+    return stuff
 
 
 
@@ -105,3 +106,109 @@ try:
     r_forecast(Fcst)
 except:
     print("Forecasting failed")
+    
+    
+    
+    
+    
+#################
+# Begin KB tested functions/code, based on the above code
+#################
+
+import rpy2
+import pandas as pd
+import numpy as np
+#import rpy2POC
+
+import rpy2.robjects as robjects
+from rpy2.robjects.vectors import DataFrame
+from rpy2.robjects import pandas2ri
+
+pandas2ri.activate()
+
+############## Data Merging ##############
+
+#R_Hist_perf = DataFrame.from_csvfile('transactions_data.csv',header=False,sep=',')
+#R_Hist_space_climate_info = DataFrame.from_csvfile('fixture_data.csv',header=False,sep=',')
+#R_Future_Space_Entry_Data = DataFrame.from_csvfile('Entry.Future Space.csv',header=True,sep=",")
+#R_Brand_Exit = DataFrame.from_csvfile('exit_data.csv',header=False,sep=',')
+#optimizationType = "Regular"
+
+# Takes in 4 R data frames and a string, outputs Python data frame
+def rpy2_data_merging(R_Hist_perf,R_Hist_space_climate_info,R_Future_Space_Entry_Data,R_Brand_Exit,optimizationType):
+
+    try:
+        
+        
+        # Update: reading in original R objects, so we don't have to convert pi2ri
+        # KB Convert python fed dataframes with 2 rows header into R dataframes with 2 rows header    
+        #R_Hist_perf = pandas2ri.py2ri(P_Hist_perf)
+        #R_Hist_space_climate_info = pandas2ri.py2ri(P_Hist_space_climate_info) 
+        #R_Future_Space_Entry_Data = pandas2ri.py2ri(P_Future_Space_Entry_Data) 
+        #R_Brand_Exit = pandas2ri.py2ri(P_Brand_Exit)
+        
+        # Parameter variable that used to be defined in the R code
+        optimType = optimizationType
+
+        # Source the R file into memory so it can be used
+        r_source('Data_Merging_function_8_10_v4.R')
+
+        # robjects.globalenv gives access to any global variable and functions from all sourced R scripts
+        # The main function in the data merging code is called 'Data_merge', so we grab that function and store it into
+        # a local python variable.  The variable can then be used to call the R function
+        r_data_merge = rpy2.robjects.globalenv['Data_merge']
+        
+        # Call the R function (that's stored as a python variable).  Since there is only one object returned
+        # it can be returned as normal and stored into a python variable
+        # Here, the resulting return is in the form of an R DataFrame
+        r_big_master_data = r_data_merge(R_Hist_perf,R_Hist_space_climate_info,R_Future_Space_Entry_Data,R_Brand_Exit,optimType)
+        
+        # KB Convert resulting R Dataframe back to pandas dataframe
+        p_big_master_data=pandas2ri.ri2py(r_big_master_data)
+        return p_big_master_data
+    except:
+        print("Data merging failed :(")
+    return
+
+# Sample function call, returns python data frame
+#a=rpy2_data_merging(R_Hist_perf,R_Hist_space_climate_info,R_Future_Space_Entry_Data,R_Brand_Exit,"Regular")
+
+
+############## Curve fitting and bound setting ##############
+# Mismatch in curve fitting bound setting code, unable to confirm and test at the moment???
+
+# Ex: R function is expecting multiple parameters, but the parameters file only supplies 4. What to do with missing values? How are they input? Are only certain ones populated? Once these rules are defined, this function can be finished. 
+def rpy2_curve_fitting_bound_setting():
+
+
+    # Source the R code
+    r_source = robjects.r['source']
+    r_source('Curve Fitting and Bound Setting.R')
+
+    # Extract the main function from the R code
+    r_main_function = robjects.globalenv['main_function']
+
+    # Call the r function with the dataframes
+    r_main_function(big_master_data, parameters)
+
+    # Pull the results of the R code from the global variables
+    Analytics_Reference_Data = robjects.globalenv['g_analytics_reference_data']
+    Output_Data = robjects.globalenv['g_output_data']
+    return
+
+############## Forecasting ##############
+
+#R_Forecast_Input = DataFrame.from_csvfile("Forecast_Input.csv", header = True, sep = ",")
+
+def rpy2_forecasting(Fcst):
+    # Source R code
+    r_source('Forecast_function_8_10.R')
+    # Get R function name in environment
+    r_forecast = robjects.globalenv['forecast']
+    # Run function with R data frame input    
+    r_output=r_forecast(Fcst)
+    # Convert function output back to Python
+    p_output = pandas2ri.ri2py(r_output)
+    return(p_output)
+# Sample function call, returns python data frame
+#f=rpy2_forecasting(R_Forecast_Input)
