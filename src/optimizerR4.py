@@ -179,10 +179,7 @@ def optimize(job_id,preOpt,tierCounts,spaceBound,increment,spaceArtifact,brandEx
                 BA[i][j][k] = opt_amt[Category].iloc[i]
                 error[i][j][k] = np.absolute(BA[i][j][k] - Level)
 
-    NewOptim += lpSum(
-        [(st[Store][Category][Level] * error[i][j][k]) for (i, Store) in
-         enumerate(Stores) for (j, Category) in enumerate(Categories) for (k, Level)
-         in enumerate(Levels)]), ""
+    NewOptim += lpSum([(st[Store][Category][Level] * error[i][j][k]) for (i, Store) in enumerate(Stores) for (j, Category) in enumerate(Categories) for (k, Level) in enumerate(Levels)]), ""
 
 ###############################################################################################################
 ############################################### Constraints
@@ -220,7 +217,9 @@ def optimize(job_id,preOpt,tierCounts,spaceBound,increment,spaceArtifact,brandEx
         #NewOptim += lpSum([st[Store][Category][Level] * Level for (k,Level) in enumerate(Levels)] ) <= upper_bound[Category][Store]#,
 
 #Tier Counts Enhancement
+    totalTiers=0
     for (j,Category) in enumerate(Categories):
+        totalTiers=totalTiers+tierCounts[Category][1]
         NewOptim += lpSum([ct[Category][Level] for (k,Level) in enumerate(Levels)]) >= tierCounts[Category][0] #, "Number_of_Tiers_per_Category"
         NewOptim += lpSum([ct[Category][Level] for (k,Level) in enumerate(Levels)]) <= tierCounts[Category][1]
 #Relationship between Selected Tiers & Created Tiers
@@ -228,8 +227,9 @@ def optimize(job_id,preOpt,tierCounts,spaceBound,increment,spaceArtifact,brandEx
         for (k,Level) in enumerate(Levels):
             NewOptim += lpSum([st[Store][Category][Level] for (i,Store) in enumerate(Stores)])/len(Stores) <= ct[Category][Level]#, "Relationship between ct & st"
 
-
-    #NewOptim += lpSum([ct[Category][Level] for (j,Category) in enumerate(Categories) for (k,Level) in enumerate(Levels)]) <= len(Categories)*sum(tier_count["Upper_Bound"].values())
+    print("totalTiers")
+    print(totalTiers)
+    NewOptim += lpSum([ct[Category][Level] for (j,Category) in enumerate(Categories) for (k,Level) in enumerate(Levels)]) <= totalTiers #len(Categories)*sum(tier_count[Category][1].values())
 
 #Global Balance Back  
     NewOptim += lpSum(
