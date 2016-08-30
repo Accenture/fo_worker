@@ -206,12 +206,7 @@ def preoptimize(Stores,Categories,spaceData,data,metricAdjustment,salesPenetrati
     # adj_p[np.isnan(adj_p)] = 0
         
     #Create Code to make adjustments to adj_p
-    print("Head of newSpace")
-    print(newSpace.head())
-    print("head of adj_p")
-    print(adj_p.head())
     opt_amt = roundDF(adj_p.multiply(newSpace,axis='index'),increment)
-    print(opt_amt)
     return (adj_p,opt_amt)
 
 '''

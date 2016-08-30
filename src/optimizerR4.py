@@ -16,6 +16,7 @@ import json
 import pymongo as pm
 import gridfs
 import config
+import datetime as dt
 
 db = pm.MongoClient(config.MONGO_CON)['app']
 fs = gridfs.GridFS(db)
@@ -99,7 +100,7 @@ def optimize(job_id,preOpt,tierCounts,spaceBound,increment,spaceArtifact,brandEx
     Synopsis:
         I just wrapped the script from Ken in a callable - DCE
     """
-
+    start_time = dt.datetime.today().hour*60*60+ dt.datetime.today().minute*60 + dt.datetime.today().second
     penetration=preOpt[0]
     opt_amt=preOpt[1]
 
@@ -113,18 +114,13 @@ def optimize(job_id,preOpt,tierCounts,spaceBound,increment,spaceArtifact,brandEx
     ##########################################################################################
     # opt_amt.index=opt_amt.index.values.astype(int)
     Stores = opt_amt.index.tolist()
-    print(type(spaceBound))
     # Setting up the Selected Tier Combinations -- Need to redo if not getting or creating data for all possible levels
     Categories = opt_amt.columns.values
     minLevel = min(min(spaceBound.values())) # min(opt_amt.min())
-    print(minLevel)
     maxLevel = max(max(spaceBound.values()))  # max(opt_amt.max())
-    print(maxLevel)
     Levels = list(np.arange(minLevel, maxLevel + increment, increment))
     if 0.0 not in Levels:
         Levels.append(np.abs(0.0))
-    print("Levels: ")
-    print(Levels)
     b = .05
     bI = .1
 
@@ -143,22 +139,8 @@ def optimize(job_id,preOpt,tierCounts,spaceBound,increment,spaceArtifact,brandEx
     if brandExitArtifact is None:
         print("No Brand Exit in the Optimization")
     else:
-        # print("Stores")
-        # print(Stores)
-        # print("Index")
-        # print(brandExitArtifact.index)
-        # print("Columns")
-        # print(brandExitArtifact.columns)
-        # print(brandExitArtifact.head())
         for (i, Store) in enumerate(Stores):
             for (j, Category) in enumerate(Categories):
-                # if (upper_bound[Category][Store] == 0):
-                    # brandExitArtifact[Category][Store] == 1
-                # print("Store")
-                # print(Store)
-                # print("Category")
-                # print(Category)
-                # print(brandExitArtifact[Category].loc[int(Store)])
                 if (brandExitArtifact[Category][Store] != 0):
                     # upper_bound[Category].loc[Store] = 0
                     # lower_bound[Category].loc[Store] = 0
@@ -324,10 +306,18 @@ def optimize(job_id,preOpt,tierCounts,spaceBound,increment,spaceArtifact,brandEx
     wide_id = createWide(Stores,Categories,Levels,st,Results,preOpt[1],preOpt[0],spaceArtifact)
     summary_id = createTieredSummary(longOutput[1])
 
+    end_time = dt.datetime.today().hour*60*60 + dt.datetime.today().minute*60 + dt.datetime.today().second 
+    total_time= end_time - start_time
+    print("Total time taken is:")
+    print(total_time)
+
     db.jobs.find_one_and_update(
         {'_id': job_id},
         {
             "$set": {
+                'optimzation_total_time': total_time,
+                'optimization_start_time': start_time,
+                'optimization_end_time': end_time, 
                 "artifactResults": {
                     'long_table':long_id,
                     'wide_table':wide_id,
