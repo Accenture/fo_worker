@@ -12,6 +12,7 @@ import pandas as pd
 from brandExitConversion import brandExitMung
 from preoptimizerR4 import preoptimize
 from optimizerR4 import optimize
+from rpy2POC import dataMerging
 from pulp import *
 import config
 # from TierKey import tierKeyCreate
@@ -77,7 +78,7 @@ def main():
             return file
         
 
-
+        dataMerging()
         fixtureArtifact=fetch_artifact(msg["artifacts"]["spaceArtifactId"])
         transactionArtifact=fetch_artifact(msg["artifacts"]["salesArtifactId"])
         transactionArtifact=transactionArtifact.drop(transactionArtifact.index[[0]]).set_index("Store")

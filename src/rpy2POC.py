@@ -1,17 +1,33 @@
         
 import rpy2
 import rpy2.robjects as robjects
-import rpy2.robjects.vectors import DataFrame
 from rpy2.objects import pandas2ri
 pandas2ri.activate()
 import os
 
 import rpy2.robjects as robjects
 
-def fetchRDF(artifact_id):
-    file = fs.get(ObjectId(artifact_id))
-    file = DataFrame.from_csvfile(file,header=False)
-    return file
+
+def createDataMerging():
+    def fetchRdf(artifact_id):
+        file = fs.get(ObjectId(artifact_id))
+        file = DataFrame.from_csvfile(file,header=False)
+        return file
+
+    Hist_space_climate_info=fetchRdf(msg["artifacts"]["spaceArtifactId"])
+    Hist_perf=fetchRdf(msg["artifacts"]["salesArtifactId"])
+    try:
+        Future_Space_Entry_Data=fetchRdf(msg["artifacts"]["futureSpaceId"])
+        print("For R Future Space was Uploaded")
+    except:
+        Future_Space_Entry_Data=None
+        print("For R Future Space was not Uploaded")
+    try:
+        Brand_Exit=fetchRdf(msg["artifacts"]["brandExitArtifactId"])
+        print("For R Brand Exit was Uploaded")
+    except:
+        print("For R Brand Exit was not Uploaded")
+        Brand_Exit=None
 
 ### These are currently imported directly in the R code, but could be used here in the future ###
 
@@ -31,23 +47,41 @@ r_source = robjects.r['source']
 
 # NOTE: for future use with pandas: http://pandas.pydata.org/pandas-docs/stable/r_interface.html
 
+def create_output_artifact_from_dataframe(dataframe, *args, **kwargs):
+    """
+    Returns the bson.objectid.ObjectId of the resulting GridFS artifact
 
+    """
+    return fs.put(dataframe.to_csv().encode(), **kwargs)
 
-
-def rpy2_data_merging()
+def dataMerging():
 ############## Data Merging ##############
+    def fetchRdf(artifact_id):
+            file = fs.get(ObjectId(artifact_id))
+            file = DataFrame.from_csvfile(file,header=False)
+            return file
     try:
+        Hist_space_climate_info=fetchRdf(msg["artifacts"]["spaceArtifactId"])
+        Hist_perf=fetchRdf(msg["artifacts"]["salesArtifactId"])
+        try:
+            Future_Space_Entry_Data=fetchRdf(msg["artifacts"]["futureSpaceId"])
+            print("For R Future Space was Uploaded")
+        except:
+            Future_Space_Entry_Data=None
+            print("For R Future Space was not Uploaded")
+        try:
+            Brand_Exit=fetchRdf(msg["artifacts"]["brandExitArtifactId"])
+            print("For R Brand Exit was Uploaded")
+        except:
+            print("For R Brand Exit was not Uploaded")
+            Brand_Exit=None
+
         # Read the csv files into R DataFrames
         # Going forward, these will likely not be read in from csv files, but instead
         # are generated from earlier code in worker
-        
-        # Brand_Exit = DataFrame.from_csvfile('Brand_Exit.csv',header=False,sep=',')
-        # Hist_perf = DataFrame.from_csvfile('Hist_perf.csv',header=False,sep=',')
-        # Hist_space_climate_info = DataFrame.from_csvfile('Hist_space_climate_info.csv',header=False,sep=',')
-        # Future_Space_Entry_Data = DataFrame.from_csvfile('Future_Space_Entry_Data.csv',header=True,sep=",")
 
         # Parameter variable that used to be defined in the R code
-        type = "Regular"
+        optimType = "Regular"
 
         # Source the R file into memory so it can be used
         r_source('Data_Merging_function_8_10_v3.R')
@@ -59,13 +93,13 @@ def rpy2_data_merging()
 
         # Call the R function (that's stored as a python variable).  Since there is only one object returned, it can be returned as normal and stored into a python variable
         # Here, the resulting return is in the form of an R DataFrame
-        r_big_master_data = r_data_merge(Hist_perf,Hist_space_climate_info,Future_Space_Entry_Data,Brand_Exit,type)
+        r_big_master_data = r_data_merge(Hist_perf,Hist_space_climate_info,Future_Space_Entry_Data,Brand_Exit,optimType)
     # end Spencer's work
         # Convert the R DataFrame to a pandas dataframes
-        p_big_master_data = 
-
+        p_big_master_data =  pandas2ri.ri2py(r_big_master_data)
+        create_output_artifact_from_dataframe(p_big_master_data)
     except:
-        print("Data merging failed :(")
+        print("Data merging failed :")
     return stuff
 
 
