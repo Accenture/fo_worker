@@ -140,6 +140,7 @@ def main():
 
     channel.basic_qos(prefetch_count=1)
     channel.basic_consume(callback,
+                          no_ack=True,
                           queue='task_queue')
 
     try:
