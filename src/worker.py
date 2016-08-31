@@ -64,7 +64,7 @@ def main():
             {'_id': job['_id']},
             {
                 "$set": {
-                    "status": "Running"
+                    "status": "running"
                 }
             }
         )
