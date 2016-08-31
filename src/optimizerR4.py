@@ -310,14 +310,13 @@ def optimize(job_id,preOpt,tierCounts,spaceBound,increment,spaceArtifact,brandEx
     total_time= end_time - start_time
     print("Total time taken is:")
     print(total_time)
-
+    end_time = dt.datetime.today()
     db.jobs.find_one_and_update(
         {'_id': job_id},
         {
             "$set": {
-                'optimzation_total_time': total_time,
-                'optimization_start_time': start_time,
-                'optimization_end_time': end_time, 
+                'optimization_end_time': end_time,
+                'optimzation_total_time': total_time, 
                 "artifactResults": {
                     'long_table':long_id,
                     'wide_table':wide_id,
