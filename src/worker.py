@@ -12,7 +12,8 @@ import pandas as pd
 from brandExitConversion import brandExitMung
 from preoptimizerR4 import preoptimize
 from optimizerR4 import optimize
-# from rpy2POC import dataMerging
+from CurveFitting import curveFittingBS
+from DataMerging import dataMerging
 from pulp import *
 import config
 # from TierKey import tierKeyCreate
@@ -76,9 +77,20 @@ def main():
             # print(file.head(2))
             # file=file.dropna()
             return file
-        
 
-        # dataMerging()
+        def create_output_artifact_from_dataframe(dataframe, *args, **kwargs):
+            return fs.put(dataframe.to_csv().encode(), **kwargs)
+
+        masterData=dataMerging(msg["jobType"])
+        try:
+            msg["optimizedMetrics"]['sales']
+            cfbs=curveFittingBS(masterData,spaceBounds,increment,100,0,0,msg['storeCategoryBounds'],msg['optimizationType'])
+        except:
+            cfbs=curveFittingBS(masterData,spaceBounds,increment,optimizedMetrics['sales'],optimizedMetrics['profits'],optimizedMetrics['units'],msg['storeCategoryBounds'],msg['optimizationType'])
+        
+        create_output_artifact_from_dataframe(cfbs[0])
+        create_output_artifact_from_dataframe(cfbs[1])        
+
         fixtureArtifact=fetch_artifact(msg["artifacts"]["spaceArtifactId"])
         transactionArtifact=fetch_artifact(msg["artifacts"]["salesArtifactId"])
         transactionArtifact=transactionArtifact.drop(transactionArtifact.index[[0]]).set_index("Store")
