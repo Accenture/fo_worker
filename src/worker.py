@@ -12,8 +12,8 @@ import pandas as pd
 from brandExitConversion import brandExitMung
 from preoptimizerR4 import preoptimize
 from optimizerR4 import optimize
-from CurveFitting import curveFittingBS
-from DataMerging import dataMerging
+# from CurveFitting import curveFittingBS
+# from DataMerging import dataMerging
 from pulp import *
 import config
 # from TierKey import tierKeyCreate
@@ -73,23 +73,19 @@ def main():
         def fetch_artifact(artifact_id):    
             file = fs.get(ObjectId(artifact_id))
             file = pd.read_csv(file,header=0)
-            # file.drop([1],axis=1)
-            # print(file.head(2))
-            # file=file.dropna()
             return file
 
         def create_output_artifact_from_dataframe(dataframe, *args, **kwargs):
             return fs.put(dataframe.to_csv().encode(), **kwargs)
 
-        masterData=dataMerging(msg["jobType"])
-        try:
-            msg["optimizedMetrics"]['sales']
-            cfbs=curveFittingBS(masterData,spaceBounds,increment,100,0,0,msg['storeCategoryBounds'],msg['optimizationType'])
-        except:
-            cfbs=curveFittingBS(masterData,spaceBounds,increment,optimizedMetrics['sales'],optimizedMetrics['profits'],optimizedMetrics['units'],msg['storeCategoryBounds'],msg['optimizationType'])
-        
-        create_output_artifact_from_dataframe(cfbs[0])
-        create_output_artifact_from_dataframe(cfbs[1])        
+        # masterData=dataMerging(msg["jobType"])
+        # try:
+            # msg["optimizedMetrics"]['sales']
+            # cfbs=curveFittingBS(masterData,spaceBounds,increment,100,0,0,msg['storeCategoryBounds'],msg['optimizationType'])
+        # except:
+            # cfbs=curveFittingBS(masterData,spaceBounds,increment,optimizedMetrics['sales'],optimizedMetrics['profits'],optimizedMetrics['units'],msg['storeCategoryBounds'],msg['optimizationType'])
+        # create_output_artifact_from_dataframe(cfbs[0])
+        # create_output_artifact_from_dataframe(cfbs[1])        
 
         fixtureArtifact=fetch_artifact(msg["artifacts"]["spaceArtifactId"])
         transactionArtifact=fetch_artifact(msg["artifacts"]["salesArtifactId"])
@@ -113,13 +109,8 @@ def main():
             print("Brand Exit was not Uploaded")
             brandExitArtifact=None
         if (str(msg["optimizationType"]) == 'traditional'):
-            # try:
             preOpt = preoptimize(Stores=Stores,Categories=Categories,spaceData=fixtureArtifact,data=transactionArtifact,metricAdjustment=float(msg["metricAdjustment"]),salesPenetrationThreshold=float(msg["salesPenetrationThreshold"]),optimizedMetrics=msg["optimizedMetrics"],increment=msg["increment"],brandExitArtifact=brandExitArtifact,newSpace=futureSpace)
-            optimize(job_id,preOpt,msg["tierCounts"],msg["spaceBounds"],msg["increment"],fixtureArtifact,brandExitArtifact)
-            # except:
-                # print(TypeError)
-                # print("Traditional Optimization has Failed")
-        
+            optimizationStatus=optimize(job_id,preOpt,msg["tierCounts"],msg["spaceBounds"],msg["increment"],fixtureArtifact,brandExitArtifact)
         if (msg["optimizationType"] == 'enhanced'):
             print("Ken hasn't finished development for that yet")
             # set status to done
