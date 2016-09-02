@@ -77,7 +77,7 @@ def main():
 
         def create_output_artifact_from_dataframe(dataframe, *args, **kwargs):
             return fs.put(dataframe.to_csv().encode(), **kwargs)
-
+        '''
         # masterData=dataMerging(msg["jobType"])
         # try:
             # msg["optimizedMetrics"]['sales']
@@ -86,7 +86,7 @@ def main():
             # cfbs=curveFittingBS(masterData,spaceBounds,increment,optimizedMetrics['sales'],optimizedMetrics['profits'],optimizedMetrics['units'],msg['storeCategoryBounds'],msg['optimizationType'])
         # create_output_artifact_from_dataframe(cfbs[0])
         # create_output_artifact_from_dataframe(cfbs[1])        
-
+        '''
         fixtureArtifact=fetch_artifact(msg["artifacts"]["spaceArtifactId"])
         transactionArtifact=fetch_artifact(msg["artifacts"]["salesArtifactId"])
         transactionArtifact=transactionArtifact.drop(transactionArtifact.index[[0]]).set_index("Store")
@@ -94,6 +94,7 @@ def main():
         Stores=fixtureArtifact.index.values.astype(int)
         Categories=fixtureArtifact.columns[2:].values
         print("There are "+str(len(Stores)) + " and " + str(len(Categories)) + " Categories")
+        print(msg['optimizationType'])
         try:
             futureSpace=fetch_artifact(msg["artifacts"]["futureSpaceId"]).set_index("Store")
             print("Future Space was Uploaded")
@@ -108,6 +109,7 @@ def main():
         except:
             print("Brand Exit was not Uploaded")
             brandExitArtifact=None
+        msg["optimizationType"]='traditional'
         if (str(msg["optimizationType"]) == 'traditional'):
             preOpt = preoptimize(Stores=Stores,Categories=Categories,spaceData=fixtureArtifact,data=transactionArtifact,metricAdjustment=float(msg["metricAdjustment"]),salesPenetrationThreshold=float(msg["salesPenetrationThreshold"]),optimizedMetrics=msg["optimizedMetrics"],increment=msg["increment"],brandExitArtifact=brandExitArtifact,newSpace=futureSpace)
             optimizationStatus=optimize(job_id,preOpt,msg["tierCounts"],msg["spaceBounds"],msg["increment"],fixtureArtifact,brandExitArtifact)
