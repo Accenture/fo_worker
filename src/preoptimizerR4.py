@@ -34,7 +34,7 @@ def getColumns(df):
 #     metric.columns = master_columns
 #     return metric.div(metric.sum(axis=1),axis='index')
 
-def spreadCalc(sales,boh,receipt,master_columns,salesPenetrationThreshold):
+def spreadCalc(sales,boh,receipt,master_columns,mAdjustment):
      # storing input sales and inventory data in separate 2D arrays
 	 # finding sales penetration, GAFS and spread for each brand in given stores
 	 # calculate adjusted penetration
@@ -42,7 +42,7 @@ def spreadCalc(sales,boh,receipt,master_columns,salesPenetrationThreshold):
      boh.columns = master_columns
      receipt.columns = master_columns
      inv=boh + receipt
-     return calcPen(sales) + ((calcPen(sales) - calcPen(inv)) * float(salesPenetrationThreshold))
+     return calcPen(sales) + ((calcPen(sales) - calcPen(inv)) * float(mAdjustment))
 
 def spCalc(metric,master_columns):
     # storing input sales data in an array
@@ -51,22 +51,22 @@ def spCalc(metric,master_columns):
     metric.columns = master_columns
     return calcPen(metric)
 
-def metric_per_fixture(metric1,metric2,salesPenetrationThreshold,master_columns,newSpace):
+def metric_per_fixture(metric1,metric2,mAdjustment,master_columns,newSpace):
     # storing input sales data in an array
 		# finding penetration for each brand in given stores
 		# calculate adjusted penetration
     metric1.columns = master_columns
     # metric2.columns = master_columns
     spacePen = metric2.div(newSpace,axis='index')
-    return calcPen(metric1) + ((calcPen(metric1) - spacePen) * float(salesPenetrationThreshold))
+    return calcPen(metric1) + ((calcPen(metric1) - spacePen) * float(mAdjustment))
 
-def metric_per_metric(metric1,metric2,salesPenetrationThreshold,master_columns):
+def metric_per_metric(metric1,metric2,mAdjustment,master_columns):
     # storing input sales data in an array
 		# finding penetration for each brand in given stores
 		# calculate adjusted penetration
     metric1.columns = master_columns
     metric2.columns = master_columns
-    return calcPen(metric1) + ((calcPen(metric1) - calcPen(metric2)) * float(salesPenetrationThreshold))
+    return calcPen(metric1) + ((calcPen(metric1) - calcPen(metric2)) * float(mAdjustment))
 
 def invTurn_Calc(sold_units,boh_units,receipts_units,master_columns):
     sold_units.columns = master_columns
@@ -128,7 +128,7 @@ def brandExitTransac(Transactions,brandExit,Stores,Categories):
                 Transactions[Category].loc[Store]=0
     return Transactions
 
-def preoptimize(Stores,Categories,spaceData,data,metricAdjustment,salesPenetrationThreshold,optimizedMetrics,increment,newSpace=None,brandExitArtifact=None):
+def preoptimize(Stores,Categories,spaceData,data,salesPenThreshold,mAdjustment,optimizedMetrics,increment,newSpace=None,brandExitArtifact=None):
     fixture_data=spaceData.drop(spaceData.columns[[0,1]],axis=1)
     # spaceData.drop(spaceData.columns[[0,1]],axis=1,inplace=True) 
     # fixture_data.drop(fixture_data.columns[[0,1]],axis=1,inplace=True) # Access Columns dynamically
@@ -163,16 +163,16 @@ def preoptimize(Stores,Categories,spaceData,data,metricAdjustment,salesPenetrati
         newSpace=futureSpace(bfc,newSpace,Stores)
         print("Result of Future Space Function")     
 
-    salesPenetrationThreshold=float(salesPenetrationThreshold)
-    adj_p = int(optimizedMetrics['spread'])*spreadCalc(sales,boh,receipt,getColumns(data),salesPenetrationThreshold) + int(optimizedMetrics['salesPenetration'])*spCalc(sales,getColumns(data)) + int(optimizedMetrics['salesPerSpaceUnit'])*metric_per_fixture(sales,bfc,salesPenetrationThreshold,getColumns(data),newSpace) + int(optimizedMetrics['grossMargin'])*spCalc(gm_perc,getColumns(data)) + int(optimizedMetrics['inventoryTurns'])*invTurn_Calc(sold_units,boh_units,receipts_units,getColumns(data))
+    mAdjustment=float(mAdjustment)
+    adj_p = int(optimizedMetrics['spread'])*spreadCalc(sales,boh,receipt,getColumns(data),mAdjustment) + int(optimizedMetrics['salesPenetration'])*spCalc(sales,getColumns(data)) + int(optimizedMetrics['salesPerSpaceUnit'])*metric_per_fixture(sales,bfc,mAdjustment,getColumns(data),newSpace) + int(optimizedMetrics['grossMargin'])*spCalc(gm_perc,getColumns(data)) + int(optimizedMetrics['inventoryTurns'])*invTurn_Calc(sold_units,boh_units,receipts_units,getColumns(data))
     
 
     # adj_p.fillna(np.float(0))
     # adj_p[np.isnan(adj_p)] = 0
-    # adj_p.where(adj_p < metricAdjustment, 0, inplace=True)
+    # adj_p.where(adj_p < salesPenThreshold, 0, inplace=True)
     for i in adj_p.index:
         for j in adj_p.columns:
-            if adj_p[j].loc[i] < metricAdjustment:
+            if adj_p[j].loc[i] < salesPenThreshold:
                 adj_p[j].loc[i] = 0
     adj_p=calcPen(adj_p)
     adj_p.fillna(0)    
@@ -184,11 +184,11 @@ def preoptimize(Stores,Categories,spaceData,data,metricAdjustment,salesPenetrati
 
 '''
 #For Testing 
-metricAdjustment=0
-salesPenetrationThreshold=0
+salesPenThreshold=0
+mAdjustment=0
 metric=6
 increment=.25
-adj_p = metric_creation(transaction_data, bfc,metricAdjustment,salesPenetrationThreshold,metric,increment)
+adj_p = metric_creation(transaction_data, bfc,salesPenThreshold,mAdjustment,metric,increment)
 adj_p.head()
 '''
 #opt_amt=adj_p.multiply(bfc.sum(axis=1),axis='index').as_matrix()
