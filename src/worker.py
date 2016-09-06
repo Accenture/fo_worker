@@ -12,8 +12,6 @@ import pandas as pd
 from brandExitConversion import brandExitMung
 from preoptimizerR4 import preoptimize
 from optimizerR4 import optimize
-# from CurveFitting import curveFittingBS
-# from DataMerging import dataMerging
 from pulp import *
 import config
 # from TierKey import tierKeyCreate
