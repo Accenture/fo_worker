@@ -12,8 +12,9 @@ import pandas as pd
 from brandExitConversion import brandExitMung
 from preoptimizerR4 import preoptimize
 from optimizerR4 import optimize
-# from CurveFitting import curveFittingBS
-# from DataMerging import dataMerging
+from CurveFitting import curveFittingBS
+from DataMerging import dataMerging
+from Forecasting import forecastFunction
 from pulp import *
 import config
 # from TierKey import tierKeyCreate
@@ -77,16 +78,6 @@ def main():
 
         def create_output_artifact_from_dataframe(dataframe, *args, **kwargs):
             return fs.put(dataframe.to_csv().encode(), **kwargs)
-        '''
-        # masterData=dataMerging(msg["jobType"])
-        # try:
-            # msg["optimizedMetrics"]['sales']
-            # cfbs=curveFittingBS(masterData,spaceBounds,increment,100,0,0,msg['storeCategoryBounds'],msg['optimizationType'])
-        # except:
-            # cfbs=curveFittingBS(masterData,spaceBounds,increment,optimizedMetrics['sales'],optimizedMetrics['profits'],optimizedMetrics['units'],msg['storeCategoryBounds'],msg['optimizationType'])
-        # create_output_artifact_from_dataframe(cfbs[0])
-        # create_output_artifact_from_dataframe(cfbs[1])        
-        '''
         fixtureArtifact=fetch_artifact(msg["artifacts"]["spaceArtifactId"])
         transactionArtifact=fetch_artifact(msg["artifacts"]["salesArtifactId"])
         transactionArtifact=transactionArtifact.drop(transactionArtifact.index[[0]]).set_index("Store")
@@ -111,10 +102,26 @@ def main():
             brandExitArtifact=None
         msg["optimizationType"]='traditional'
         if (str(msg["optimizationType"]) == 'traditional'):
-            preOpt = preoptimize(Stores=Stores,Categories=Categories,spaceData=fixtureArtifact,data=transactionArtifact,mAdjustment=float(msg["metricAdjustment"]),salesPenThreshold=float(msg["salesPenetrationThreshold"]),optimizedMetrics=msg["optimizedMetrics"],increment=msg["increment"],brandExitArtifact=brandExitArtifact,newSpace=futureSpace)
-            optimizationStatus=optimize(job_id,preOpt,msg["tierCounts"],msg["spaceBounds"],msg["increment"],fixtureArtifact,brandExitArtifact)
+            try:
+                masterData=dataMerging(msg)
+                cfbsArtifact=curveFittingBS(masterData,spaceBounds,increment,100,0,0,msg['storeCategoryBounds'],msg['optimizationType'])
+            except:
+                cfbsArtifact=None
+            preOpt = preoptimize(Stores=Stores,Categories=Categories,spaceData=fixtureArtifact,data=transactionArtifact,metricAdjustment=float(msg["metricAdjustment"]),salesPenetrationThreshold=float(msg["salesPenetrationThreshold"]),optimizedMetrics=msg["optimizedMetrics"],increment=msg["increment"],brandExitArtifact=brandExitArtifact,newSpace=futureSpace)
+            optimize(job_id,preOpt,msg["tierCounts"],msg["spaceBounds"],msg["increment"],fixtureArtifact,brandExitArtifact,cfbsArtifact)
+            # except:
+                # print(TypeError)
+                # print("Traditional Optimization has Failed")
         if (msg["optimizationType"] == 'enhanced'):
-            print("Ken hasn't finished development for that yet")
+            try:
+                masterData=dataMerging(msg)
+                cfbsArtifact=curveFittingBS(masterData,spaceBounds,increment,optimizedMetrics['sales'],optimizedMetrics['profits'],optimizedMetrics['units'],msg['storeCategoryBounds'],msg['optimizationType'])                        
+                cfbsDict=cfbsArtifact.set_index(["Store","Product"])
+                preOpt = preoptimize(Stores=Stores,Categories=Categories,spaceData=fixtureArtifact,data=transactionArtifact,metricAdjustment=float(msg["metricAdjustment"]),salesPenetrationThreshold=float(msg["salesPenetrationThreshold"]),optimizedMetrics=msg["optimizedMetrics"],increment=msg
+                optimize(job_id,preOpt,msg["tierCounts"],msg["increment"],cfbsArtifact)            
+            except:
+                print("Ken hasn't finished development for that yet")
+
             # set status to done
         db.jobs.update_one(
             {'_id': job['_id']},
