@@ -38,4 +38,4 @@ def forecastFunction(p_fcst,spaceCol):
     p_fcst_out.set_index(["Store","Product","Space"])
     return(p_fcst_out)
 
-# a=forecastFunction(p_f,'Recommended_Space')
+spaceCol='Recommended_Space'
