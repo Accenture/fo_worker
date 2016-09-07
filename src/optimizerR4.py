@@ -324,6 +324,9 @@ def optimize(job_id,preOpt,tierCounts,spaceBound,increment,spaceArtifact,brandEx
             }
         }
     )
+
+    return 'Success!'
+
     return #(longOutput)#,wideOutput)
     # testing=pd.read_csv("solvedout.csv").drop
 

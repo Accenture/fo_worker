@@ -2,9 +2,8 @@
 # -*- coding: utf-8 -*-
 
 
+import logging
 import json
-import pika
-import time
 import datetime as dt
 from pymongo import MongoClient
 import gridfs
@@ -13,47 +12,96 @@ import pandas as pd
 from brandExitConversion import brandExitMung
 from preoptimizerR4 import preoptimize
 from optimizerR4 import optimize
-from pulp import *
-import config
-# from TierKey import tierKeyCreate
-# from TierOptim import tierDef
+from os import environ as env
+from amqpclient import MQClient
+import traceback
+
+LOG_FORMAT = ('%(levelname) -10s %(asctime)s %(name) -30s %(funcName) '
+              '-35s %(lineno) -5d: %(message)s')
+LOGGER = logging.getLogger(__name__)
 
 JOB_STATUS = {
-    'QUEUED':'QUEUED',
-    'RUNNING':'RUNNING',
-    'DONE':'DONE'
+    'QUEUED': 'QUEUED',
+    'RUNNING': 'RUNNING',
+    'DONE': 'DONE'
 }
 
-def main():
-    def make_serializable(db_object):
-        if '_id' in db_object:
-            db_object['_id'] = str(db_object['_id'])
-        if 'uploadDate' in db_object:
-            db_object['uploadDate'] = db_object['uploadDate'].isoformat()
-        return db_object
 
-    db = MongoClient(config.MONGO_CON)['app']
-    fs = gridfs.GridFS(db)
+class Worker(object):
+    """
+    Container for common worker setup processes
 
-    # my_test_file = fs.get(ObjectId("577eabb51d41c808371a6092")).read()
-    
-    connection = pika.BlockingConnection(pika.ConnectionParameters(
-        host=config.RABBIT_URL))
-    channel = connection.channel()
+    TODO:
+        [x] Move MongoClient bits entirely into callback to avoid UserWarnings
+        [ ] Why does ^ still occur?
+    """
 
-    channel.queue_declare(queue='task_queue', durable=True)
-    channel.queue_declare(queue='notify_queue', durable=False)
-    print(' [*] Waiting for messages. To exit press CTRL+C')
+    EXCHANGE = env.get('EXCHANGE', '')
+    EXCHANGE_TYPE = env.get('EXCHANGE_TYPE', 'topic')
+    QUEUE = env.get('TASK_QUEUE', 'task_queue')
+    MQ_HOST = env.get('RABBIT_URL', 'localhost')
+    MQ_SLEEP_INTERVAL = 30
 
-    def callback(ch, method, properties, body):
-        # print(" [x] Received %r" % body)
+    def __init__(self):
+        self._mq = None
+
+    @property
+    def mq(self):
+        return self._mq
+
+    def connect(self):
+        self._connect_mq()
+
+    def _connect_mq(self):
+        self._mq = MQClient()
+        self._mq.connect()
+        LOGGER.info('Connected to AMQP %s', self.__class__.MQ_HOST)
+
+    @staticmethod
+    def wrapper(func):
+        """
+        Decorates a callable with partial application to include "catch-all"
+         exception handling and to pipe resultant to a multiprocessing.Queue
+        :param callable func: Function that takes 1 arg (:param bytes body:)
+        :return:
+        """
+        def inner(body, q):
+            try:
+                result = func(body)
+            except Exception:
+                result = traceback.format_exc()
+            q.put(result)
+        return inner
+
+    def run(self):
+        raise NotImplementedError
+
+
+if __name__ == '__main__':
+
+    logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
+
+    worker = Worker()
+    worker.connect()
+
+    def callback(body):
+
+        db_conn = env.get('MONGO_CONN', 'mongodb://localhost:27017')
+        db_name = env.get('MONGO_DB', 'app')
+        db = MongoClient(db_conn)[db_name]
+        fs = gridfs.GridFS(db)
+
+        def fetch_artifact(artifact_id):
+            file = fs.get(ObjectId(artifact_id))
+            file = pd.read_csv(file, header=0)
+            return file
 
         msg = json.loads(body.decode('utf-8'))
         # Find job to check status of job
         job = db.jobs.find_one({'_id': ObjectId(msg['_id'])})
         try:
             job_id = job['_id']
-        except TypeError as e:
+        except TypeError:
             print('Job Not Found')
             return False
 
@@ -70,50 +118,48 @@ def main():
             }
         )
 
-        def fetch_artifact(artifact_id):    
-            file = fs.get(ObjectId(artifact_id))
-            file = pd.read_csv(file,header=0)
-            return file
-
-        def create_output_artifact_from_dataframe(dataframe, *args, **kwargs):
-            return fs.put(dataframe.to_csv().encode(), **kwargs)
-        '''
-        # masterData=dataMerging(msg["jobType"])
-        # try:
-            # msg["optimizedMetrics"]['sales']
-            # cfbs=curveFittingBS(masterData,spaceBounds,increment,100,0,0,msg['storeCategoryBounds'],msg['optimizationType'])
-        # except:
-            # cfbs=curveFittingBS(masterData,spaceBounds,increment,optimizedMetrics['sales'],optimizedMetrics['profits'],optimizedMetrics['units'],msg['storeCategoryBounds'],msg['optimizationType'])
-        # create_output_artifact_from_dataframe(cfbs[0])
-        # create_output_artifact_from_dataframe(cfbs[1])        
-        '''
-        fixtureArtifact=fetch_artifact(msg["artifacts"]["spaceArtifactId"])
-        transactionArtifact=fetch_artifact(msg["artifacts"]["salesArtifactId"])
-        transactionArtifact=transactionArtifact.drop(transactionArtifact.index[[0]]).set_index("Store")
-        fixtureArtifact=fixtureArtifact.drop(fixtureArtifact.index[[0]]).set_index("Store")
-        Stores=fixtureArtifact.index.values.astype(int)
-        Categories=fixtureArtifact.columns[2:].values
-        print("There are "+str(len(Stores)) + " and " + str(len(Categories)) + " Categories")
+        fixture_artifact = fetch_artifact(msg["artifacts"]["spaceArtifactId"])
+        transaction_artifact = fetch_artifact(msg["artifacts"]["salesArtifactId"])
+        transaction_artifact = transaction_artifact.drop(transaction_artifact.index[[0]]).set_index("Store")
+        fixture_artifact = fixture_artifact.drop(fixture_artifact.index[[0]]).set_index("Store")
+        stores = fixture_artifact.index.values.astype(int)
+        categories = fixture_artifact.columns[2:].values
+        print("There are "+str(len(stores)) + " and " + str(len(categories)) + " Categories")
         print(msg['optimizationType'])
         try:
-            futureSpace=fetch_artifact(msg["artifacts"]["futureSpaceId"]).set_index("Store")
+            future_space = fetch_artifact(msg["artifacts"]["futureSpaceId"]).set_index("Store")
             print("Future Space was Uploaded")
         except:
-            futureSpace=None
+            future_space = None
             print("Future Space was not Uploaded")
         try:
-            brandExitArtifact=fetch_artifact(msg["artifacts"]["brandExitArtifactId"])
+            brand_exit_artifact = fetch_artifact(msg["artifacts"]["brandExitArtifactId"])
             print("Brand Exit was Uploaded")
-            brandExitArtifact=brandExitMung(brandExitArtifact,Stores,Categories)
+            brand_exit_artifact = brandExitMung(brand_exit_artifact,stores,categories)
             print("Brand Exit Munged")
         except:
             print("Brand Exit was not Uploaded")
-            brandExitArtifact=None
-        msg["optimizationType"]='traditional'
-        if (str(msg["optimizationType"]) == 'traditional'):
-            preOpt = preoptimize(Stores=Stores,Categories=Categories,spaceData=fixtureArtifact,data=transactionArtifact,mAdjustment=float(msg["metricAdjustment"]),salesPenThreshold=float(msg["salesPenetrationThreshold"]),optimizedMetrics=msg["optimizedMetrics"],increment=msg["increment"],brandExitArtifact=brandExitArtifact,newSpace=futureSpace)
-            optimizationStatus=optimize(job_id,preOpt,msg["tierCounts"],msg["spaceBounds"],msg["increment"],fixtureArtifact,brandExitArtifact)
-        if (msg["optimizationType"] == 'enhanced'):
+            brand_exit_artifact = None
+        msg["optimizationType"] = 'traditional'
+        if str(msg["optimizationType"]) == 'traditional':
+            pre_opt = preoptimize(Stores=stores,
+                                  Categories=categories,
+                                  spaceData=fixture_artifact,
+                                  data=transaction_artifact,
+                                  mAdjustment=float(msg["metricAdjustment"]),
+                                  salesPenThreshold=float(msg["salesPenetrationThreshold"]),
+                                  optimizedMetrics=msg["optimizedMetrics"],
+                                  increment=msg["increment"],
+                                  brandExitArtifact=brand_exit_artifact,
+                                  newSpace=future_space)
+            optimizationStatus = optimize(job_id,
+                                          pre_opt,
+                                          msg["tierCounts"],
+                                          msg["spaceBounds"],
+                                          msg["increment"],
+                                          fixture_artifact,
+                                          brand_exit_artifact)
+        if msg["optimizationType"] == 'enhanced':
             print("Ken hasn't finished development for that yet")
             # set status to done
         db.jobs.update_one(
@@ -131,28 +177,14 @@ def main():
             outcome='Success'
         )
 
-        # send notification
-        ch.basic_ack(delivery_tag=method.delivery_tag)
-        channel.basic_publish(exchange='',
-                              routing_key='notify_queue',
-                              # body='Job: 123 requested by userId: 456 is done!',
-                              body=json.dumps(res),
-                              properties=pika.BasicProperties(
-                                  # delivery_mode=2,  # make message persistent
-                              ))
+        db.client.close()
 
-        print(" [x] Done")
+        return json.dumps(res)
 
-    channel.basic_qos(prefetch_count=1)
-    channel.basic_consume(callback,
-                          queue='task_queue')
+    worker.mq.set_on_message_callback(worker.wrapper(callback))
 
     try:
-        channel.start_consuming()
+        worker.mq.start_consuming()
     except KeyboardInterrupt:
-        connection.close()
-
-
-if __name__ == '__main__':
-    
-    main()
+        worker.mq.stop_consuming()
+    worker.mq.close()
