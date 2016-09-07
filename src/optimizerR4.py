@@ -208,9 +208,7 @@ def optimize(job_id,preOpt,tierCounts,spaceBound,increment,spaceArtifact,brandEx
     #Verify that we still cannot use a constraint if not using a sum - Look to improve efficiency   
         for (k,Level) in enumerate(Levels):
             NewOptim += lpSum([st[Store][Category][Level] for (i,Store) in enumerate(Stores)])/len(Stores) <= ct[Category][Level]#, "Relationship between ct & st"
-
-    print("totalTiers")
-    print(totalTiers)
+   
     NewOptim += lpSum([ct[Category][Level] for (j,Category) in enumerate(Categories) for (k,Level) in enumerate(Levels)]) <= totalTiers #len(Categories)*sum(tier_count[Category][1].values())
 
 #Global Balance Back  
@@ -228,8 +226,8 @@ def optimize(job_id,preOpt,tierCounts,spaceBound,increment,spaceArtifact,brandEx
     # NewOptim.writeLP("Fixture_Optimization.lp")
     # NewOptim.writeMPS("Fixture_Optimization.mps")
     # NewOptim.msg=1
-    NewOptim.solve(pulp.PULP_CBC_CMD(msg=1))
-    # NewOptim.solve()    
+    # NewOptim.solve(pulp.PULP_CBC_CMD(msg=1))
+    NewOptim.solve()    
     # NewOptim.solve(pulp.COIN_CMD(msg=1))
     
 #Debugging
