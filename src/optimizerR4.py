@@ -225,6 +225,8 @@ def optimize(job_id,preOpt,tierCounts,spaceBound,increment,spaceArtifact,brandEx
     print("The problem has been formulated")
 
 #Solving the Problem
+    # NewOptim.writeLP("Fixture_Optimization.lp")
+    # NewOptim.writeMPS("Fixture_Optimization.mps")
     # NewOptim.msg=1
     NewOptim.solve(pulp.PULP_CBC_CMD(msg=1))
     # NewOptim.solve()    
@@ -325,25 +327,7 @@ def optimize(job_id,preOpt,tierCounts,spaceBound,increment,spaceArtifact,brandEx
             }
         }
     )
-    '''
-    # solvedout, result_id = fs.open_upload_stream("test_file",chunk_size_bytes=4,metadata={"contentType": "text/csv"}) 
-    #open("solvedout.csv", 'w')
-    with fs.new_file(filename="spaceResults.csv",content_type="type/csv") as solvedout:
-        solvedout.write("Store,".encode("UTF-8"))
-        for (j, Category) in enumerate(Categories):
-            solvedout.write(opt_amt.columns.values[j].encode("UTF-8") + ",".encode("UTF-8"))
-        for (i, Store) in enumerate(Stores):
-            solvedout.write(str("\n"+str(Store)).encode("UTF-8"))
-            for (j, Category) in enumerate(Categories):
-                solvedout.write(",".encode("UTF-8"))
-                for (k, Level) in enumerate(Levels):
-                    if value(st[Store][Category][Level]) == 1:
-                        solvedout.write(str(Level).encode("UTF-8"))
-        solvedout.close()
-    # print(LpStatus[LpStatus])
-    '''
     return #(longOutput)#,wideOutput)
-
     # testing=pd.read_csv("solvedout.csv").drop
 
 # if __name__ == '__main__':
@@ -351,6 +335,7 @@ def optimize(job_id,preOpt,tierCounts,spaceBound,increment,spaceArtifact,brandEx
 # Should optimize after completion here call preop instead of in worker?
 
     return LpStatus[NewOptim.status]
+
 if __name__ == '__main__':
     df = pd.DataFrame(np.random.randn(10, 5), columns=['a', 'b', 'c', 'd', 'e'])
     create_output_artifact_from_dataframe(df, filename='hello.csv')

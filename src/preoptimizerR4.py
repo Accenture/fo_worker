@@ -31,7 +31,7 @@ def getColumns(df):
     return df[[ *np.arange(len(df.columns))[0::9] ]].drop(df.index[[0]]).convert_objects(convert_numeric=True).columns
 
 # def calcPen(metric,master_columns):
-#     metric.columns = master_columns
+    # metric.columns = master_columns    
 #     return metric.div(metric.sum(axis=1),axis='index')
 
 def spreadCalc(sales,boh,receipt,master_columns,mAdjustment):
@@ -72,9 +72,10 @@ def invTurn_Calc(sold_units,boh_units,receipts_units,master_columns):
     sold_units.columns = master_columns
     boh_units.columns = master_columns
     receipts_units.columns = master_columns
-    calcPen(sold_units)
-    calcPen(boh_units+receipts_units)
-    inv_turn = calcPen(sold_units).div(calcPen(boh_units+receipts_units),axis='index')
+    soldPen=calcPen(sold_units)
+    gafsPen=calcPen(boh_units+receipts_units)
+    inv_turn = soldPen/gafsPen
+    # inv_turn = calcPen(sold_units).div((calcPen(boh_units+receipts_units).sum(axis=1)),axis='index')
     inv_turn[np.isnan(inv_turn)] = 0
     inv_turn[np.isinf(inv_turn)] = 0
     return calcPen(inv_turn)
@@ -133,6 +134,7 @@ def preoptimize(Stores,Categories,spaceData,data,salesPenThreshold,mAdjustment,o
     # spaceData.drop(spaceData.columns[[0,1]],axis=1,inplace=True) 
     # fixture_data.drop(fixture_data.columns[[0,1]],axis=1,inplace=True) # Access Columns dynamically
     bfc = fixture_data[[ *np.arange(len(fixture_data.columns))[0::1] ]].convert_objects(convert_numeric=True)
+    mAdjustment=mAdjustment/100
     if brandExitArtifact is not None:
         print("We have brandExitArtifact in preoptimize!")    
         fixture_data=brandExitSpace(fixture_data,brandExitArtifact,Stores,Categories)
