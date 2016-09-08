@@ -58,12 +58,13 @@ def main():
 
         # current_user = job['userId']
         # job_status = job['status']
-
+        worker_start_time = dt.datetime.today()
         db.jobs.update_one(
             {'_id': job['_id']},
             {
                 "$set": {
-                    "status": "running"
+                    "status": "running",
+                    'worker_start_time': worker_start_time
                 }
             }
         )
