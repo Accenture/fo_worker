@@ -120,7 +120,8 @@ def optimize(job_id,preOpt,tierCounts,spaceBound,increment,spaceArtifact,brandEx
     maxLevel = max(max(spaceBound.values()))  # max(opt_amt.max())
     Levels = list(np.arange(minLevel, maxLevel + increment, increment))
     if 0.0 not in Levels:
-        Levels.append(np.abs(0.0))
+        Levels.insert(0,0.0)
+    print(Levels)
     b = .05
     bI = .1
 
@@ -128,10 +129,8 @@ def optimize(job_id,preOpt,tierCounts,spaceBound,increment,spaceArtifact,brandEx
     # Calculate Total fixtures(TotFixt) per store by summing up the individual fixture counts
     W = opt_amt.sum(axis=1).sum(axis=0)
     TFC = opt_amt.sum(axis=1)
-    ct = LpVariable.dicts('CT', (Categories, Levels), 0, upBound=1,
-                          cat='Binary')
-    st = LpVariable.dicts('ST', (Stores, Categories, Levels), 0,
-                          upBound=1, cat='Binary')
+    ct = LpVariable.dicts('CT', (Categories, Levels), 0, upBound=1,cat='Binary')
+    st = LpVariable.dicts('ST', (Stores, Categories, Levels), 0,upBound=1, cat='Binary')
 
     NewOptim = LpProblem("FixtureOptim", LpMinimize)  # Define Optimization Problem/
 
