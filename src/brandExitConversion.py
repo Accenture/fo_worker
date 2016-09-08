@@ -9,25 +9,6 @@ import pandas as pd
 from pandas import DataFrame
 import numpy as np
 
-#Stores = np.unique([var for var in df.values.flatten() if var])
-#Categories = df.columns.values
-# def brandExitMung(df,Stores,Categories):
-#     print("I'm in brandExitMung'")
-#     print("Old Brand Exit")
-#     print(df)
-#     # brand_exit = pd.DataFrame(index=np.unique([var for var in df.values.flatten() if var]),columns=df.columns.values)
-#     brand_exit = pd.DataFrame(index=Stores,columns=Categories)    
-#     for k in range(len(df)):
-#         for (j,Category) in enumerate(Categories):
-#             for (i,Store) in enumerate(Stores):
-#                 if (df[Category][k] == Store):
-#                     brand_exit[Category].loc[Store] = 1
-#                 else:
-#                     brand_exit[Category].loc[Store] = 0
-#     print("newBrandExit")
-#     print(brand_exit)
-#     return brand_exit
-
 def brandExitMung(df,Stores,Categories):
     df=df.drop(df.index[0])
     df=df.reset_index(drop=True)

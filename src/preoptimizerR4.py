@@ -181,7 +181,8 @@ def preoptimize(Stores,Categories,spaceData,data,salesPenThreshold,mAdjustment,o
     # adj_p[np.isnan(adj_p)] = 0
         
     #Create Code to make adjustments to adj_p
-    opt_amt = roundDF(adj_p.multiply(newSpace,axis='index'),increment)
+    # opt_amt = roundDF(adj_p.multiply(newSpace,axis='index'),increment)
+    opt_amt = adj_p.multiply(newSpace,axis='index')   
     return (adj_p,opt_amt)
 
 '''
