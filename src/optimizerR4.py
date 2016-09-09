@@ -146,7 +146,7 @@ def optimize(job_id,preOpt,tierCounts,spaceBound,increment,spaceArtifact,brandEx
                     opt_amt[Category][Store] = 0
                     NewOptim += st[Store][Category][0.0] == 1
                     NewOptim += ct[Category][0.0] == 1
-                    spaceBound[Category][0] = 0
+                    spaceBound[Category][0] = 0.0
 
         # for (j, Category) in enumerate(Categories):
         #     if (sum(brandExitArtifact[Category].values()) > 0):
@@ -185,13 +185,13 @@ def optimize(job_id,preOpt,tierCounts,spaceBound,increment,spaceArtifact,brandEx
             NewOptim += lpSum([st[Store][Category][Level] for (k,Level) in enumerate(Levels)]) == 1#, "One_Level_per_Store-Category_Combination"
         # Test Again to check if better performance when done on ct level
             NewOptim += lpSum([st[Store][Category][Level] * Level for (k,Level) in enumerate(Levels)]) <= spaceBound[Category][1]         
-            if brandExitArtifact is not None:
-                if brandExitArtifact[Category].iloc[int(i)] == 0:
-                    NewOptim += lpSum([st[Store][Category][Level] * Level for (k,Level) in enumerate(Levels)]) >= spaceBound[Category][0] + increment
-                else:
-                    NewOptim += lpSum([st[Store][Category][Level] * Level for (k,Level) in enumerate(Levels)]) >= spaceBound[Category][0]
-            else:
-                NewOptim += lpSum([st[Store][Category][Level] * Level for (k,Level) in enumerate(Levels)]) >= spaceBound[Category][0]
+            # if brandExitArtifact is not None:
+                # if brandExitArtifact[Category].iloc[int(i)] == 0:
+                    # NewOptim += lpSum([st[Store][Category][Level] * Level for (k,Level) in enumerate(Levels)]) >= spaceBound[Category][0] + increment
+                # else:
+                    # NewOptim += lpSum([st[Store][Category][Level] * Level for (k,Level) in enumerate(Levels)]) >= spaceBound[Category][0]
+            # else:
+            NewOptim += lpSum([st[Store][Category][Level] * Level for (k,Level) in enumerate(Levels)]) >= spaceBound[Category][0]
             
 #Store Category Level Bounding
         #NewOptim += lpSum([st[Store][Category][Level] * Level for (k,Level) in enumerate(Levels)] ) >= lower_bound[Category][Store]#,

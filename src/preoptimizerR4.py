@@ -137,7 +137,7 @@ def preoptimize(Stores,Categories,spaceData,data,salesPenThreshold,mAdjustment,o
     bfc = fixture_data[[ *np.arange(len(fixture_data.columns))[0::1] ]].convert_objects(convert_numeric=True)
     if brandExitArtifact is not None:
         print("We have brandExitArtifact in preoptimize!")    
-        fixture_data=brandExitSpace(fixture_data,brandExitArtifact,Stores,Categories)
+        fixture_data = brandExitSpace(fixture_data,brandExitArtifact,Stores,Categories)
         sales = brandExitTransac(data[[ *np.arange(len(data.columns))[0::9] ]].convert_objects(convert_numeric=True),brandExitArtifact,Stores,Categories)
         boh = brandExitTransac(data[[ *np.arange(len(data.columns))[1::9] ]].convert_objects(convert_numeric=True),brandExitArtifact,Stores,Categories)
         receipt = brandExitTransac(data[[ *np.arange(len(data.columns))[2::9] ]].convert_objects(convert_numeric=True),brandExitArtifact,Stores,Categories)
@@ -163,7 +163,8 @@ def preoptimize(Stores,Categories,spaceData,data,salesPenThreshold,mAdjustment,o
     else:
         print("We have futureSpace in preoptimize!")
         newSpace=futureSpace(newSpace,bfc,Stores)
-        print("Result of Future Space Function")
+        # print("Result of Future Space Function")
+        # print(newSpace)
 
     mAdjustment=float(mAdjustment)
     adj_p = int(optimizedMetrics['spread'])*spreadCalc(sales,boh,receipt,getColumns(data),mAdjustment) + int(optimizedMetrics['salesPenetration'])*spCalc(sales,getColumns(data)) + int(optimizedMetrics['salesPerSpaceUnit'])*metric_per_fixture(sales,bfc,mAdjustment,getColumns(data),newSpace) + int(optimizedMetrics['grossMargin'])*spCalc(gm_perc,getColumns(data)) + int(optimizedMetrics['inventoryTurns'])*invTurn_Calc(sold_units,boh_units,receipts_units,getColumns(data))
