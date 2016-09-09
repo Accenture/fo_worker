@@ -26,6 +26,7 @@ class MQClient(object):
         self._channel = None
         self._results = Queue()
         self._message_callback = None
+        self._p = None
 
     def connect(self):
         """
@@ -39,13 +40,17 @@ class MQClient(object):
         self._channel = self._connection.channel()
         self._declare_queues(self.__class__.QUEUE)
 
+    def kill_process(self):
+        if self._p:
+            self._p.close()
+
     def _on_message(self, ch, method, properties, body):
 
         LOGGER.info('Received message # %s from %s: %s',
                     method.delivery_tag, properties.app_id, body)
-        p = Process(target=self._message_callback, args=(body, self._results))
-        p.daemon = True
-        p.start()
+        self._p = Process(target=self._message_callback, args=(body, self._results))
+        self._p.daemon = True
+        self._p.start()
 
         result = self.await_response()
 

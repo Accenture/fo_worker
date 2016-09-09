@@ -49,6 +49,9 @@ class Worker(object):
     def mq(self):
         return self._mq
 
+    def kill_process(self):
+        self._mq.kill_process()
+
     def connect(self):
         self._connect_mq()
 
@@ -186,5 +189,6 @@ if __name__ == '__main__':
     try:
         worker.mq.start_consuming()
     except KeyboardInterrupt:
+        worker.kill_process()
         worker.mq.stop_consuming()
     worker.mq.close()
