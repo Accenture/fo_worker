@@ -310,7 +310,7 @@ def optimize(job_id,preOpt,tierCounts,spaceBound,increment,spaceArtifact,brandEx
     total_time= end_time - start_time
     print("Total time taken is:")
     print(total_time)
-    end_time = dt.datetime.today()
+    end_time = dt.datetime.utcnow()
     db.jobs.find_one_and_update(
         {'_id': job_id},
         {
