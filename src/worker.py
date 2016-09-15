@@ -15,7 +15,7 @@ from runner import run
 # ENV VARS
 #
 
-RMQ_HOST = env.get('RMQ_HOST', '127.0.0.1')
+RMQ_HOST = env.get('RABBIT_URL', '127.0.0.1')
 RMQ_PORT = env.get('RMQ_PORT', 5672)
 MONGO_HOST = env.get('MONGO_HOST', '127.0.0.1')
 MONGO_PORT = env.get('MONGO_PORT', 27017)
