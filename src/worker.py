@@ -66,7 +66,7 @@ def main():
             else:
                 raise ProcessError
 
-    def reconcile_db(db, id: str):
+    def reconcile_db(db, id):
         db.jobs.update_one(
             {'_id': ObjectId(id)},
             {
