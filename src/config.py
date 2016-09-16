@@ -9,7 +9,7 @@ Loads from ENV vars or defaults to sane values for development purposes.
 
 from os import environ as env
 
-RMQ_HOST = env.get('RABBIT_URL', '127.0.0.1')
+RMQ_HOST = env.get('RMQ_HOST', '127.0.0.1')
 RMQ_PORT = env.get('RMQ_PORT', '5672')
 
 #
@@ -21,4 +21,4 @@ MONGO_NAME = env.get('MONGO_NAME', 'app')
 MONGO_USERNAME = env.get('MONGO_USERNAME', '')
 MONGO_PASSWORD = env.get('MONGO_PASSWORD', '')
 
-WORKER_NUM_PROCESSES = env.get('FO_WORKER_NUM_PROCESSES', 3)
+WORKER_NUM_PROCESSES = int(env.get('FO_WORKER_NUM_PROCESSES', '3'))
