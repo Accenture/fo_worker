@@ -5,21 +5,22 @@ import json
 import logging
 from multiprocessing import Pool, ProcessError
 from time import time
-from os import environ as env, getpid
+from os import getpid
 from bson.objectid import ObjectId
 from pymongo import MongoClient
 from pika import BlockingConnection, ConnectionParameters
 from runner import run
+import config as env
 
 #
 # ENV VARS
 #
 
-RMQ_HOST = env.get('RABBIT_URL', '127.0.0.1')
-RMQ_PORT = env.get('RMQ_PORT', 5672)
-MONGO_HOST = env.get('MONGO_HOST', '127.0.0.1')
-MONGO_PORT = env.get('MONGO_PORT', 27017)
-MONGO_NAME = env.get('MONGO_NAME', 'app')
+RMQ_HOST = env.RMQ_HOST
+RMQ_PORT = env.RMQ_PORT
+MONGO_HOST = env.MONGO_HOST
+MONGO_PORT = env.MONGO_PORT
+MONGO_NAME = env.MONGO_NAME
 
 #
 # MODULE CONSTANTS
