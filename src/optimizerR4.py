@@ -11,14 +11,14 @@ from pulp import *
 # from pulp import LpVariable, LpInteger, LpProblem, LpMinimize, lpSum, LpStatus,PULP_CBC_CMD, pulpTestAll, value, LpBinary
 import numpy as np
 import pandas as pd
-import os
-import json
 import pymongo as pm
 import gridfs
 import config
 import datetime as dt
+from config import MONGO_HOST, MONGO_PORT, MONGO_NAME
 
-db = pm.MongoClient(config.MONGO_CON)['app']
+db_conn = pm.MongoClient(host=MONGO_HOST, port=MONGO_PORT)
+db = db_conn[MONGO_NAME]
 fs = gridfs.GridFS(db)
 
 
