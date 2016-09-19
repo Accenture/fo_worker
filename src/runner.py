@@ -4,7 +4,6 @@
 import logging
 from pymongo import MongoClient
 import gridfs
-from os import environ as env
 from bson.objectid import ObjectId
 import pandas as pd
 import json
@@ -12,13 +11,15 @@ import datetime as dt
 from brandExitConversion import brandExitMung
 from preoptimizerR4 import preoptimize
 from optimizerR4 import optimize
+import config as env
 
 #
 # ENV VARS
 #
 
-MONGO_HOST = env.get('MONGO_CONN', 'mongodb://localhost:27017')
-MONGO_DB = env.get('MONGO_DB', 'app')
+MONGO_HOST = env.MONGO_HOST
+MONGO_PORT = env.MONGO_PORT
+MONGO_NAME = env.MONGO_NAME
 
 #
 # LOGGING
@@ -32,7 +33,8 @@ LOGGER = logging.getLogger(__name__)
 
 def run(body):
 
-    db = MongoClient(MONGO_HOST)[MONGO_DB]
+    db = MongoClient(host=MONGO_HOST,
+                     port=MONGO_PORT)[MONGO_NAME]
     fs = gridfs.GridFS(db)
 
     def fetch_artifact(artifact_id):

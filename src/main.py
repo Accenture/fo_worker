@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from doer import main as start_worker
 from multiprocessing import Process
-from os import environ as env
 import logging
+import config as env
+from worker import main as start_worker
 
 #
 # python src/main.py --log-level info --num-processes 3
@@ -63,6 +63,6 @@ if __name__ == '__main__':
                         format=LOG_FORMAT)
 
     if not args.num_processes:
-        args.num_processes = env.get('FO_WORKER_NUM_PROCESSES', 3)
+        args.num_processes = env.WORKER_NUM_PROCESSES
 
     main(args.num_processes)
