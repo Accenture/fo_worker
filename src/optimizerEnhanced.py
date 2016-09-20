@@ -146,6 +146,7 @@ def optimize(job_id,preOpt,tierCounts,increment,cfbsArtifact):
 #Conditional for Balance Back regarding if in Fixtures || 2 Increment Min & Max instead
         if TFC[Store] > increment * 5:
             NewOptim += lpSum([(st[Store][Category][Level]) * Level for (j, Category) in enumerate(Categories) for (k, Level) in
+<<<<<<< Updated upstream
                                enumerate(Levels)]) <= TFC[Store] * (1 + bI)#, "Upper Bound for Fixtures per Store"
             NewOptim += lpSum([(st[Store][Category][Level]) * Level for (j, Category) in enumerate(Categories) for (k, Level) in
                                enumerate(Levels)]) >= TFC[Store] * (1 - bI)#, "Lower Bound for Fixtures per Store"
@@ -154,21 +155,43 @@ def optimize(job_id,preOpt,tierCounts,increment,cfbsArtifact):
                                enumerate(Levels)]) <= TFC[Store] + (increment * 2)#, "Upper Bound for Fixtures per Store"
             NewOptim += lpSum([(st[Store][Category][Level]) * Level for (j, Category) in enumerate(Categories) for (k, Level) in
                                enumerate(Levels)]) >= TFC[Store] - (increment * 2)#, "Lower Bound for Fixtures per Store"
+=======
+                               enumerate(Levels)]) <= TFC[Store] * (1 + bI), "Balance Back by Store"
+            NewOptim += lpSum([(st[Store][Category][Level]) * Level for (j, Category) in enumerate(Categories) for (k, Level) in
+                               enumerate(Levels)]) >= TFC[Store] * (1 - bI), "Balance Back by Store"
+        else:
+            NewOptim += lpSum([(st[Store][Category][Level]) * Level for (j, Category) in enumerate(Categories) for (k, Level) in
+                               enumerate(Levels)]) <= TFC[Store] + (increment * 2), "Balance Back by Store"
+            NewOptim += lpSum([(st[Store][Category][Level]) * Level for (j, Category) in enumerate(Categories) for (k, Level) in
+                               enumerate(Levels)]) >= TFC[Store] - (increment * 2), "Balance Back by Store"
+>>>>>>> Stashed changes
         
 #One Space per Store Category
     #Makes sure that the number of fixtures, by store, does not go above or below some percentage of the total number of fixtures within the store 
         for (j,Category) in enumerate(Categories):
+<<<<<<< Updated upstream
             NewOptim += lpSum([st[Store][Category][Level] for (k,Level) in enumerate(Levels)]) == 1#, "One_Level_per_Store-Category_Combination"
         # Test Again to check if better performance when done on ct level
             NewOptim += lpSum([st[Store][Category][Level] * Level for (k,Level) in enumerate(Levels)]) <= cfbsDict['Upper_Limit'][(Store,Category)]         
             NewOptim += lpSum([st[Store][Category][Level] * Level for (k,Level) in enumerate(Levels)]) >= cfbsDict['Lower_Limit'][(Store,Category)]
+=======
+            NewOptim += lpSum([st[Store][Category][Level] for (k,Level) in enumerate(Levels)]) == 1, "One Space Level per Store-Category Combination"
+        # Test Again to check if better performance when done on ct level
+            NewOptim += lpSum([st[Store][Category][Level] * Level for (k,Level) in enumerate(Levels)]) <= cfbsDict['Upper_Limit'][(Store,Category)], "Upper Bound by Store-Category"         
+            NewOptim += lpSum([st[Store][Category][Level] * Level for (k,Level) in enumerate(Levels)]) >= cfbsDict['Lower_Limit'][(Store,Category)], "Lower Bound by Store-Category"
+>>>>>>> Stashed changes
 
 #Tier Counts Enhancement
     totalTiers=0
     for (j,Category) in enumerate(Categories):
         totalTiers=totalTiers+tierCounts[Category][1]
+<<<<<<< Updated upstream
         NewOptim += lpSum([ct[Category][Level] for (k,Level) in enumerate(Levels)]) >= tierCounts[Category][0] #, "Number_of_Tiers_per_Category"
         NewOptim += lpSum([ct[Category][Level] for (k,Level) in enumerate(Levels)]) <= tierCounts[Category][1]
+=======
+        NewOptim += lpSum([ct[Category][Level] for (k,Level) in enumerate(Levels)]) >= tierCounts[Category][0], "Tier Count Upper Bound"
+        NewOptim += lpSum([ct[Category][Level] for (k,Level) in enumerate(Levels)]) <= tierCounts[Category][1], "Tier Count Upper Bound"
+>>>>>>> Stashed changes
 #Relationship between Selected Tiers & Created Tiers
     #Verify that we still cannot use a constraint if not using a sum - Look to improve efficiency   
         for (k,Level) in enumerate(Levels):

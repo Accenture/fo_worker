@@ -11,7 +11,7 @@ from bson.objectid import ObjectId
 import pandas as pd
 from brandExitConversion import brandExitMung
 from preoptimizerR4 import preoptimize
-from optimizerR4 import optimize
+from optimizerEnhanced import optimize
 from CurveFitting import curveFittingBS
 from DataMerging import dataMerging
 from Forecasting import forecastFunction
@@ -73,12 +73,12 @@ def main():
 
         def fetch_artifact(artifact_id):    
             file = fs.get(ObjectId(artifact_id))
+            file.seek(0)            
             file = pd.read_csv(file,header=0)
             return file
 
         def create_output_artifact_from_dataframe(dataframe, *args, **kwargs):
             return fs.put(dataframe.to_csv().encode(), **kwargs)
-
         fixtureArtifact=fetch_artifact(msg["artifacts"]["spaceArtifactId"])
         transactionArtifact=fetch_artifact(msg["artifacts"]["salesArtifactId"])
         transactionArtifact=transactionArtifact.drop(transactionArtifact.index[[0]]).set_index("Store")
@@ -87,7 +87,6 @@ def main():
         Categories=fixtureArtifact.columns[2:].values
         print("There are "+str(len(Stores)) + " and " + str(len(Categories)) + " Categories")
         print(msg['optimizationType'])
-
         try:
             futureSpace=fetch_artifact(msg["artifacts"]["futureSpaceId"]).set_index("Store")
             print("Future Space was Uploaded")
@@ -102,39 +101,30 @@ def main():
         except:
             print("Brand Exit was not Uploaded")
             brandExitArtifact=None
-
         msg["optimizationType"]='traditional'
         if (str(msg["optimizationType"]) == 'traditional'):
-            # try:
-            # masterData=dataMerging(msg)
-            # cfbsArtifact=curveFittingBS(masterData,spaceBounds,increment,100,0,0,msg['storeCategoryBounds'],msg['optimizationType'])
-            # except:
-            #     cfbsArtifact=None
+            masterData=dataMerging(msg)
+            try:
+                cfbsArtifact=curveFittingBS(masterData,spaceBounds,increment,100,0,0,msg['storeCategoryBounds'],msg['optimizationType'])
+                cfbsArtifact=forecastFunction(cfbsArtifact,'Space')
+            except:
+                cfbsArtifact=None
             preOpt = preoptimize(Stores=Stores,Categories=Categories,spaceData=fixtureArtifact,data=transactionArtifact,mAdjustment=float(msg["metricAdjustment"]),salesPenThreshold=float(msg["salesPenetrationThreshold"]),optimizedMetrics=msg["optimizedMetrics"],increment=msg["increment"],brandExitArtifact=brandExitArtifact,newSpace=futureSpace)
-            optimRes = optimize(job_id,msg['meta']['name'],preOpt,msg["tierCounts"],msg["spaceBounds"],msg["increment"],fixtureArtifact,brandExitArtifact)
+            optimizationStatus=optimize(job_id=job_id,preOpt=preOpt,tierCounts=msg["tierCounts"],increment=msg["increment"],cfbsArtifact=cfbsArtifact)
             # except:
                 # print(TypeError)
                 # print("Traditional Optimization has Failed")
         if (msg["optimizationType"] == 'enhanced'):
-        #     try:
-            #     masterData=dataMerging(msg)
-                # cfbsArtifact=curveFittingBS(masterData,spaceBounds,increment,optimizedMetrics['sales'],optimizedMetrics['profits'],optimizedMetrics['units'],msg['storeCategoryBounds'],msg['optimizationType'])
-                # cfbsDict=cfbsArtifact.set_index(["Store","Product"])
-                # preOpt = preoptimize(Stores=Stores,Categories=Categories,spaceData=fixtureArtifact,data=transactionArtifact,metricAdjustment=float(msg["metricAdjustment"]),salesPenetrationThreshold=float(msg["salesPenetrationThreshold"]),optimizedMetrics=msg["optimizedMetrics"],increment=msg
-                # optimize(job_id,preOpt,msg["tierCounts"],msg["increment"],cfbsArtifact)
-            # except:
-            print("Ken hasn't finished development for that yet")
-
-        # Call functions to create output information
-        # longOutput = createLong(mergedPreOptCFReturned, optimResult)
-        # wideOutput = createWide(Stores, Categories, optimResult, optReturned, penReturned, fixtureArtifact)
-
-        # if optimType == "Tiered":
-        #     summaryReturned = createTieredSummary(longReturned)
-        # else:  # since type == "Drill Down"
-        #     summaryReturned = createDrillDownSummary(longReturned)
-
-
+            try:
+                masterData=dataMerging(msg)
+                cfbsArtifact=curveFittingBS(masterData,spaceBounds,increment,optimizedMetrics['sales'],optimizedMetrics['profits'],optimizedMetrics['units'],msg['storeCategoryBounds'],msg['optimizationType'])                        
+                cfbsArtifact=forecastFunction(cfbsArtifact,'Space')
+                cfbsDict=cfbsArtifact.set_index(["Store","Product"])
+                preOpt = preoptimize(Stores=Stores,Categories=Categories,spaceData=fixtureArtifact,data=transactionArtifact,mAdjustment=float(msg["metricAdjustment"]),salesPenThreshold=float(msg["salesPenetrationThreshold"]),optimizedMetrics=msg["optimizedMetrics"],increment=msg["increment"],brandExitArtifact=brandExitArtifact,newSpace=futureSpace)
+                optimizationStatus=optimize(job_id=job_id,preOpt=preOpt,tierCounts=msg["tierCounts"],increment=msg["increment"],cfbsArtifact=cfbsArtifact)
+                            
+            except:
+                print("Ken hasn't finished development for that yet")
 
             # set status to done
         db.jobs.update_one(

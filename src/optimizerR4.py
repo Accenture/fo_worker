@@ -88,7 +88,7 @@ def createTieredSummary(longTable) :
     return str(create_output_artifact_from_dataframe(tieredSummaryPivot))
 
 
-def optimize(job_id,preOpt,tierCounts,spaceBound,increment,spaceArtifact,brandExitArtifact=None):
+def optimize(job_id,jobName,preOpt,tierCounts,spaceBound,increment,spaceArtifact,brandExitArtifact=None):
     """
     Run an LP-based optimization
 
@@ -101,6 +101,7 @@ def optimize(job_id,preOpt,tierCounts,spaceBound,increment,spaceArtifact,brandEx
         I just wrapped the script from Ken in a callable - DCE
     """
     start_time = dt.datetime.today().hour*60*60+ dt.datetime.today().minute*60 + dt.datetime.today().second
+    print(preOpt)
     penetration=preOpt[0]
     opt_amt=preOpt[1]
 
@@ -133,7 +134,7 @@ def optimize(job_id,preOpt,tierCounts,spaceBound,increment,spaceArtifact,brandEx
     st = LpVariable.dicts('ST', (Stores, Categories, Levels), 0,
                           upBound=1, cat='Binary')
 
-    NewOptim = LpProblem("FixtureOptim", LpMinimize)  # Define Optimization Problem/
+    NewOptim = LpProblem(jobName, LpMinimize)  # Define Optimization Problem/
 
     # Brand Exit Enhancement
     if brandExitArtifact is None:
@@ -226,8 +227,12 @@ def optimize(job_id,preOpt,tierCounts,spaceBound,increment,spaceArtifact,brandEx
 
 #Solving the Problem
     # NewOptim.msg=1
-    NewOptim.solve(pulp.PULP_CBC_CMD(msg=1))
-    # NewOptim.solve()    
+    # NewOptim.solve(pulp.PULP_CBC_CMD(msg=1))
+    # solver = CBC_CMD()
+    # solver = PULP_CBC_CMD()
+    solver = GUROBI_CMD(mip=True,msg=1)
+    solver.tmpdir = '\tmp'
+    NewOptim.solve(solver)
     # NewOptim.solve(pulp.COIN_CMD(msg=1))
     
 #Debugging

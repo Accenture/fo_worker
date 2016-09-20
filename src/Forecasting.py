@@ -5,8 +5,6 @@ import json
 import pika
 import time
 
-# p_f = pd.read_csv('/Users/kenneth.l.sylvain/Sites/kohls/fo_worker/rpy2_POC/Forecasting/Forecast_Input.csv',header=0)
-
 # a=forecast_function(p_f)
 
 def forecastFunction(p_fcst,spaceCol):
@@ -38,4 +36,4 @@ def forecastFunction(p_fcst,spaceCol):
     p_fcst_out.set_index(["Store","Product","Space"])
     return(p_fcst_out)
 
-spaceCol='Recommended_Space'
+# spaceCol='Recommended_Space'

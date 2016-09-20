@@ -106,7 +106,7 @@ def dataMerging():
         create_output_artifact_from_dataframe(p_big_master_data)
     except:
         print("Data merging failed :")
-    return stuff
+    return p_big_master_data
 
 
 

@@ -25,7 +25,7 @@ library(reshape2)
 # optimType ="Tiered"
 
 # function assumes dataframe is coming in with 2 header rows. Function will deal with those two rows appropriately
-Data_merge<-function(Hist_perf,HSCI,Future_Space_Entry_Data,Brand_Exit,optimType){
+Data_Merge<-function(Hist_perf,HSCI,Future_Space_Entry_Data,Brand_Exit,optimType){
 
 colnames(Hist_perf)=as.character(unlist(Hist_perf[2,])) #Assigning columns names
 
