@@ -1,179 +1,124 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-
 import json
-import pika
-import time
-from pymongo import MongoClient
-import gridfs
+import logging
+from multiprocessing import Pool, ProcessError
+from time import time
+from os import getpid
 from bson.objectid import ObjectId
-import pandas as pd
-from brandExitConversion import brandExitMung
-from preoptimizerR4 import preoptimize
-from optimizerR4 import optimize
-from CurveFitting import curveFittingBS
-from DataMerging import dataMerging
-from Forecasting import forecastFunction
-from pulp import *
-import config
-# from TierKey import tierKeyCreate
-# from TierOptim import tierDef
+from pymongo import MongoClient
+from pika import BlockingConnection, ConnectionParameters
+from runner import run
+import config as env
 
-JOB_STATUS = {
-    'QUEUED':'QUEUED',
-    'RUNNING':'RUNNING',
-    'DONE':'DONE'
-}
+#
+# ENV VARS
+#
+
+RMQ_HOST = env.RMQ_HOST
+RMQ_PORT = env.RMQ_PORT
+MONGO_HOST = env.MONGO_HOST
+MONGO_PORT = env.MONGO_PORT
+MONGO_NAME = env.MONGO_NAME
+
+#
+# MODULE CONSTANTS
+#
+
+RMQ_QUEUE_SOURCE = 'task_queue'
+RMQ_QUEUE_SINK = 'notify_queue'
+RMQ_SLEEP = 10
+TASK_TIMEOUT = 3600 * 24
+
+#
+# LOGGING
+#
+
+LOG_FORMAT = ('%(levelname) -10s %(asctime)s %(name) -30s %(funcName) '
+              '-35s %(lineno) -5d: %(message)s')
+LOG_FILE = None
+LOGGER = logging.getLogger(__name__)
 
 def main():
-    def make_serializable(db_object):
-        if '_id' in db_object:
-            db_object['_id'] = str(db_object['_id'])
-        if 'uploadDate' in db_object:
-            db_object['uploadDate'] = db_object['uploadDate'].isoformat()
-        return db_object
 
-    db = MongoClient(config.MONGO_CON)['app']
-    fs = gridfs.GridFS(db)
+    def process_job(func, *args):
+        pool = Pool(processes=1, maxtasksperchild=1)
+        result = pool.apply_async(func, args=args)
+        deadline = time() + TASK_TIMEOUT
+        while True:  # Need this sleep loop since pika is not thread safe
 
-    # my_test_file = fs.get(ObjectId("577eabb51d41c808371a6092")).read()
-    
-    connection = pika.BlockingConnection(pika.ConnectionParameters(
-        host=config.RABBIT_URL))
-    channel = connection.channel()
+            if deadline - time() <= 0:
+                pool.terminate()
+                pool.join()
+                raise TimeoutError
 
-    channel.queue_declare(queue='task_queue', durable=True)
-    channel.queue_declare(queue='notify_queue', durable=False)
-    print(' [*] Waiting for messages. To exit press CTRL+C')
+            if not result.ready():
+                LOGGER.info('Sleeping...')
+                mq_conn.sleep(RMQ_SLEEP)
+                continue
 
-    def callback(ch, method, properties, body):
-        # print(" [x] Received %r" % body)
+            pool.terminate()
+            pool.join()
 
-        msg = json.loads(body.decode('utf-8'))
-        # Find job to check status of job
-        job = db.jobs.find_one({'_id': ObjectId(msg['_id'])})
-        try:
-            job_id = job['_id']
-        except TypeError as e:
-            print('Job Not Found')
-            return False
+            if result.successful():
+                break
+            else:
+                raise ProcessError
 
-        # current_user = job['userId']
-        # job_status = job['status']
-
+    def reconcile_db(db, id):
         db.jobs.update_one(
-            {'_id': job['_id']},
+            {'_id': ObjectId(id)},
             {
                 "$set": {
-                    "status": "running"
+                    "status": "failed"
                 }
             }
         )
+        print('RECONCILE DB')
 
-        def fetch_artifact(artifact_id):    
-            file = fs.get(ObjectId(artifact_id))
-            file = pd.read_csv(file,header=0)
-            return file
+    def send_fail_notification(ch, id):
+        res = dict(job_id=id, user_id=id, outcome='Failure')
+        ch.basic_publish(exchange='',
+                         routing_key=RMQ_QUEUE_SINK,
+                         body=json.dumps(res))
 
-        def create_output_artifact_from_dataframe(dataframe, *args, **kwargs):
-            return fs.put(dataframe.to_csv().encode(), **kwargs)
+    logging.basicConfig(level=logging.INFO,
+                        format=LOG_FORMAT,
+                        filename=LOG_FILE)
 
-        fixtureArtifact=fetch_artifact(msg["artifacts"]["spaceArtifactId"])
-        transactionArtifact=fetch_artifact(msg["artifacts"]["salesArtifactId"])
-        transactionArtifact=transactionArtifact.drop(transactionArtifact.index[[0]]).set_index("Store")
-        fixtureArtifact=fixtureArtifact.drop(fixtureArtifact.index[[0]]).set_index("Store")
-        Stores=fixtureArtifact.index.values.astype(int)
-        Categories=fixtureArtifact.columns[2:].values
-        print("There are "+str(len(Stores)) + " and " + str(len(Categories)) + " Categories")
-        print(msg['optimizationType'])
+    LOGGER.info('main thread pid: %s', getpid())
 
-        try:
-            futureSpace=fetch_artifact(msg["artifacts"]["futureSpaceId"]).set_index("Store")
-            print("Future Space was Uploaded")
-        except:
-            futureSpace=None
-            print("Future Space was not Uploaded")
-        try:
-            brandExitArtifact=fetch_artifact(msg["artifacts"]["brandExitArtifactId"])
-            print("Brand Exit was Uploaded")
-            brandExitArtifact=brandExitMung(brandExitArtifact,Stores,Categories)
-            print("Brand Exit Munged")
-        except:
-            print("Brand Exit was not Uploaded")
-            brandExitArtifact=None
+    db_conn = MongoClient(host=MONGO_HOST, port=MONGO_PORT)
+    db = db_conn[MONGO_NAME]
+    mq_conn = BlockingConnection(ConnectionParameters(host=RMQ_HOST,
+                                                      port=RMQ_PORT))
+    ch = mq_conn.channel()
+    ch.queue_declare(queue=RMQ_QUEUE_SOURCE, durable=True)
+    ch.queue_declare(queue=RMQ_QUEUE_SINK)
+    ch.basic_qos(prefetch_count=1)
 
-        msg["optimizationType"]='traditional'
-        if (str(msg["optimizationType"]) == 'traditional'):
-            # try:
-            # masterData=dataMerging(msg)
-            # cfbsArtifact=curveFittingBS(masterData,spaceBounds,increment,100,0,0,msg['storeCategoryBounds'],msg['optimizationType'])
-            # except:
-            #     cfbsArtifact=None
-            preOpt = preoptimize(Stores=Stores,Categories=Categories,spaceData=fixtureArtifact,data=transactionArtifact,mAdjustment=float(msg["metricAdjustment"]),salesPenThreshold=float(msg["salesPenetrationThreshold"]),optimizedMetrics=msg["optimizedMetrics"],increment=msg["increment"],brandExitArtifact=brandExitArtifact,newSpace=futureSpace)
-            optimRes = optimize(job_id,msg['meta']['name'],preOpt,msg["tierCounts"],msg["spaceBounds"],msg["increment"],fixtureArtifact,brandExitArtifact)
-            # except:
-                # print(TypeError)
-                # print("Traditional Optimization has Failed")
-        if (msg["optimizationType"] == 'enhanced'):
-        #     try:
-            #     masterData=dataMerging(msg)
-                # cfbsArtifact=curveFittingBS(masterData,spaceBounds,increment,optimizedMetrics['sales'],optimizedMetrics['profits'],optimizedMetrics['units'],msg['storeCategoryBounds'],msg['optimizationType'])
-                # cfbsDict=cfbsArtifact.set_index(["Store","Product"])
-                # preOpt = preoptimize(Stores=Stores,Categories=Categories,spaceData=fixtureArtifact,data=transactionArtifact,metricAdjustment=float(msg["metricAdjustment"]),salesPenetrationThreshold=float(msg["salesPenetrationThreshold"]),optimizedMetrics=msg["optimizedMetrics"],increment=msg
-                # optimize(job_id,preOpt,msg["tierCounts"],msg["increment"],cfbsArtifact)
-            # except:
-            print("Ken hasn't finished development for that yet")
-
-        # Call functions to create output information
-        # longOutput = createLong(mergedPreOptCFReturned, optimResult)
-        # wideOutput = createWide(Stores, Categories, optimResult, optReturned, penReturned, fixtureArtifact)
-
-        # if optimType == "Tiered":
-        #     summaryReturned = createTieredSummary(longReturned)
-        # else:  # since type == "Drill Down"
-        #     summaryReturned = createDrillDownSummary(longReturned)
-
-
-
-            # set status to done
-        db.jobs.update_one(
-            {'_id': job['_id']},
-            {
-                "$set": {
-                    "status": "done"
-                }
-            }
-        )
-
-        res = dict(
-            job_id=msg['_id'],
-            user_id=msg['userId'],
-            outcome='Success'
-        )
-
-        # send notification
-        ch.basic_ack(delivery_tag=method.delivery_tag)
-        channel.basic_publish(exchange='',
-                              routing_key='notify_queue',
-                              # body='Job: 123 requested by userId: 456 is done!',
-                              body=json.dumps(res),
-                              properties=pika.BasicProperties(
-                                  # delivery_mode=2,  # make message persistent
-                              ))
-
-        print(" [x] Done")
-
-    channel.basic_qos(prefetch_count=1)
-    channel.basic_consume(callback,
-                          queue='task_queue')
+    messages = ch.consume(queue=RMQ_QUEUE_SOURCE)
 
     try:
-        channel.start_consuming()
+        for method, properties, body in messages:
+            try:
+                process_job(run, body)
+            except (TimeoutError, ProcessError):
+                LOGGER.error('Proecess exited unexpectedly')
+                ch.basic_reject(delivery_tag=method.delivery_tag,
+                                requeue=False)
+                _id = json.loads(body.decode('utf-8'))['_id']
+                reconcile_db(db, _id)
+                send_fail_notification(ch, _id)
+            else:
+                ch.basic_ack(delivery_tag=method.delivery_tag)
     except KeyboardInterrupt:
-        connection.close()
+        ch.cancel()
+        ch.close()
 
+    mq_conn.close()
+    db_conn.close()
 
 if __name__ == '__main__':
-    
     main()

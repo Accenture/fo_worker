@@ -19,6 +19,10 @@ def getColumns(df):
     # print(df[[ *np.arange(len(df.columns))[0::9] ]].drop(df.index[[0]]).convert_objects(convert_numeric=True).columns)
     return df[[ *np.arange(len(df.columns))[0::9] ]].drop(df.index[[0]]).convert_objects(convert_numeric=True).columns
 
+# def calcPen(metric,master_columns):
+    # metric.columns = master_columns    
+#     return metric.div(metric.sum(axis=1),axis='index')
+
 def spreadCalc(sales,boh,receipt,master_columns,mAdjustment):
      # storing input sales and inventory data in separate 2D arrays
 	 # finding sales penetration, GAFS and spread for each brand in given stores
@@ -57,9 +61,10 @@ def invTurn_Calc(sold_units,boh_units,receipts_units,master_columns):
     sold_units.columns = master_columns
     boh_units.columns = master_columns
     receipts_units.columns = master_columns
-    calcPen(sold_units)
-    calcPen(boh_units+receipts_units)
-    inv_turn = calcPen(sold_units).div(calcPen(boh_units+receipts_units),axis='index')
+    soldPen = calcPen(sold_units)
+    gafsPen = calcPen(boh_units+receipts_units)
+    inv_turn = soldPen/gafsPen
+    # inv_turn = calcPen(sold_units).div((calcPen(boh_units+receipts_units).sum(axis=1)),axis='index')
     inv_turn[np.isnan(inv_turn)] = 0
     inv_turn[np.isinf(inv_turn)] = 0
     return calcPen(inv_turn)
@@ -84,13 +89,14 @@ def roundDF(array,increment):
                 rounded[j].loc[i] = np.around(array[j].loc[i], 3) - np.mod(np.around(array[j].loc[i], 3), increment)
     return rounded
 
-def futureSpace(bfc,futureFixt,Stores):
+def futureSpace(futureFixt,bfc,Stores):
     futureFixt=futureFixt.drop(futureFixt.index[[0]])
     futureFixt=futureFixt.drop(futureFixt.columns[[0,1]],axis=1)
     futureSpace=pd.Series(0,futureFixt.index)
     for (i,Store) in enumerate(Stores):
-        if pd.to_numeric(futureFixt['Future Space'].iloc[i]) == 0 or pd.isnull(pd.to_numeric(futureFixt['Future Space'].iloc[i])):
+        if pd.isnull(futureFixt['Future Space'].iloc[i]): #pd.to_numeric(futureFixt['Future Space'].iloc[i]) == 0 or 
             futureFixt['Future Space'].iloc[i] = bfc.sum(axis=1).iloc[i]
+    futureFixt['Entry Space']=pd.to_numeric(futureFixt['Entry Space']).fillna(0)
     futureSpace=pd.to_numeric(futureFixt['Future Space'])-pd.to_numeric(futureFixt['Entry Space'])
     return futureSpace
     # return futureFixt['New_Space']
@@ -120,7 +126,7 @@ def preoptimize(Stores,Categories,spaceData,data,salesPenThreshold,mAdjustment,o
     bfc = fixture_data[[ *np.arange(len(fixture_data.columns))[0::1] ]].convert_objects(convert_numeric=True)
     if brandExitArtifact is not None:
         print("We have brandExitArtifact in preoptimize!")    
-        fixture_data=brandExitSpace(fixture_data,brandExitArtifact,Stores,Categories)
+        fixture_data = brandExitSpace(fixture_data,brandExitArtifact,Stores,Categories)
         sales = brandExitTransac(data[[ *np.arange(len(data.columns))[0::9] ]].convert_objects(convert_numeric=True),brandExitArtifact,Stores,Categories)
         boh = brandExitTransac(data[[ *np.arange(len(data.columns))[1::9] ]].convert_objects(convert_numeric=True),brandExitArtifact,Stores,Categories)
         receipt = brandExitTransac(data[[ *np.arange(len(data.columns))[2::9] ]].convert_objects(convert_numeric=True),brandExitArtifact,Stores,Categories)
@@ -145,8 +151,9 @@ def preoptimize(Stores,Categories,spaceData,data,salesPenThreshold,mAdjustment,o
         print("We don't have futureSpace in preoptimize.")
     else:
         print("We have futureSpace in preoptimize!")
-        newSpace=futureSpace(bfc,newSpace,Stores)
-        print("Result of Future Space Function")     
+        newSpace=futureSpace(newSpace,bfc,Stores)
+        # print("Result of Future Space Function")
+        # print(newSpace)
 
     mAdjustment=float(mAdjustment)
     adj_p = int(optimizedMetrics['spread'])*spreadCalc(sales,boh,receipt,getColumns(data),mAdjustment) + int(optimizedMetrics['salesPenetration'])*spCalc(sales,getColumns(data)) + int(optimizedMetrics['salesPerSpaceUnit'])*metric_per_fixture(sales,bfc,mAdjustment,getColumns(data),newSpace) + int(optimizedMetrics['grossMargin'])*spCalc(gm_perc,getColumns(data)) + int(optimizedMetrics['inventoryTurns'])*invTurn_Calc(sold_units,boh_units,receipts_units,getColumns(data))
@@ -164,7 +171,8 @@ def preoptimize(Stores,Categories,spaceData,data,salesPenThreshold,mAdjustment,o
     # adj_p[np.isnan(adj_p)] = 0
         
     #Create Code to make adjustments to adj_p
-    opt_amt = roundDF(adj_p.multiply(newSpace,axis='index'),increment)
+    # opt_amt = roundDF(adj_p.multiply(newSpace,axis='index'),increment)
+    opt_amt = adj_p.multiply(newSpace,axis='index')   
     return (adj_p,opt_amt)
 
 '''
