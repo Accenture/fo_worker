@@ -11,24 +11,6 @@
   #Library to call optimization package that runs the curve fitting
   library(nloptr)
   
-  #initial parameter setting for curve fitting
-  Increment_Size=0.5
-  
-  #Productivity parameters
-  sales_weight<-0.7
-  profit_weight<-0.2
-  units_weight<-0.1
-  
-  #Bound parameters
-  PCT_Space_Change_Limit<-0.5
-  
-  #Select Optimization type Tiered or Drill_Down
-  type<-"Tiered"
-  
-  #big_master_data$Trgt_BA_Space_Less_Brnd_Entry<-as.numeric(as.character(big_master_data$Future_Space))-big_master_data$Entry_Space
-  big_master_data<-read.csv("output.csv",header=TRUE,sep=",")
-  bound_input<-read.csv("Bound_Input1.csv",header=TRUE,sep=",")
-  
   #Curve Fitting and Bound Setting Function design
 curvefitting_boundsetting<-function(big_master_data,bound_input,Increment_Size,sales_weight,profit_weight,units_weight,PCT_Space_Change_Limit,type){
     strcount_filter=100
@@ -44,8 +26,8 @@ curvefitting_boundsetting<-function(big_master_data,bound_input,Increment_Size,s
   #create "Climate_Group" variable
     big_master_data$Climate_Group<-big_master_data$Climate
     big_master_data$Climate_Group<-as.character(big_master_data$Climate_Group)
-    if(type=="Drill_Down"){
-    for(j in 1:nrow(big_master_data)){
+    if(jobType=="Drill_Down"){
+    for(j in 1:nrow(big_master_dta)){
       big_master_data$Climate_Group[j]<-ifelse((big_master_data$Climate_Group[j]=="HOT" || big_master_data$Climate_Group[j]=="SUPER HOT"),"HOT & SH",big_master_data$Climate_Group[j])
     }
     } else {
@@ -326,7 +308,7 @@ curvefitting_boundsetting<-function(big_master_data,bound_input,Increment_Size,s
   filtered_final$Exit_Flag<-"TRUE"
   
   for(i in 1:nrow(filtered_final)){
-  if(type=="Drill_Down"){
+  if(jobType=="Drill_Down"){
   if(length(master_Product_Summary[which(master_Product_Summary$Product==filtered_final$Product[i] & master_Product_Summary$Store_Group==filtered_final$Store_Group[i]),]$Unscaled_Alpha_Sales)==0){
   filtered_final$Scaled_Alpha_Sales[i]<-0
   filtered_final$Scaled_Shift_Sales[i]<-0

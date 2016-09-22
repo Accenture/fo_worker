@@ -1,7 +1,14 @@
 import pandas as pd
 
+def primaryMung(df):
+    df.columns = df.iloc[0].values
+    df.drop(df.index[[0, 1]], axis=0, inplace=True)
+    df.set_index(df.Store.values.astype(int), inplace=True)
+    return df
+
 def brandExitMung(df,Stores,Categories):
-    df=df.drop(df.index[0])
+    df.columns = df.iloc[0].values
+    df.drop(df.index[[0, 1]], axis=0, inplace=True)
     df=df.reset_index(drop=True)
     brand_exit = pd.DataFrame(index=Stores,columns=Categories)
     for (i,Store) in enumerate(Stores):
@@ -27,3 +34,4 @@ def mergePreOptCF(cfOutput,preOpt):
         opt_long = pd.DataFrame(opt_amt.unstack()).swaplevel()
         opt_long.rename(columns = {opt_long.columns[-1]:"Optimal Space"},inplace = True)
         mergedPreOptCF = pd.concat([cfOutput,pen_long,opt_long],axis=1)
+    return mergedPreOptCF

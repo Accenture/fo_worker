@@ -22,7 +22,7 @@ def curveFittingBS(big_master_data,bound_input,increment_size,sales_weight,profi
     try:
         #Source the R code
         r_source = robjects.r['source']
-        r_source('rCurveFitting.r')
+        r_source('src/rCurveFitting.r')
 
         # # Extract the main function from the R code
         r_curvefitting_boundsetting = robjects.globalenv['curvefitting_boundsetting']

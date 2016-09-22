@@ -85,8 +85,9 @@ def roundDF(array,increment):
     return rounded
 
 def futureSpace(bfc,futureFixt,Stores):
-    futureFixt=futureFixt.drop(futureFixt.index[[0]])
-    futureFixt=futureFixt.drop(futureFixt.columns[[0,1]],axis=1)
+    # print(futureFixt.index)
+    # futureFixt=futureFixt.drop(futureFixt.index[[0]])
+    # futureFixt=futureFixt.drop(futureFixt.columns[[0,1]],axis=1)
     futureSpace=pd.Series(0,futureFixt.index)
     for (i,Store) in enumerate(Stores):
         if pd.to_numeric(futureFixt['Future Space'].iloc[i]) == 0 or pd.isnull(pd.to_numeric(futureFixt['Future Space'].iloc[i])):
@@ -114,10 +115,11 @@ def brandExitTransac(Transactions,brandExit,Stores,Categories):
     return Transactions
 
 def preoptimize(Stores,Categories,spaceData,data,salesPenThreshold,mAdjustment,optimizedMetrics,increment,newSpace=None,brandExitArtifact=None):
+    print(brandExitArtifact)
     fixture_data=spaceData.drop(spaceData.columns[[0,1]],axis=1)
-    # spaceData.drop(spaceData.columns[[0,1]],axis=1,inplace=True)
+    # spaceData.drop(spaceData.columns[[0,1]],axis=1,inplace=True) 
     # fixture_data.drop(fixture_data.columns[[0,1]],axis=1,inplace=True) # Access Columns dynamically
-    #TODO Verify that this works correctly after changes in what is commented anch
+    #TODO Verify that this works correctly after changes in what is commented and changing the order
     # Was previously not commented, see other changes
     # bfc = fixture_data[[ *np.arange(len(fixture_data.columns))[0::1] ]].convert_objects(convert_numeric=True)
     if brandExitArtifact is None:
@@ -160,6 +162,9 @@ def preoptimize(Stores,Categories,spaceData,data,salesPenThreshold,mAdjustment,o
         newSpace=bfc.sum(axis=1)
         print("We don't have futureSpace in preoptimize.")
     else:
+        print(Stores)
+        print(bfc.index)
+        print(newSpace.index)
         print("We have futureSpace in preoptimize!")
         newSpace=futureSpace(bfc,newSpace,Stores)
         print("Result of Future Space Function")     

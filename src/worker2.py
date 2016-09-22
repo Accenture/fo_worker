@@ -10,7 +10,7 @@ import gridfs
 from bson.objectid import ObjectId
 import pandas as pd
 from brandExitConversion import brandExitMung
-from preoptimizerR4 import preoptimize
+from preoptimizer2 import preoptimize
 from optimizerR4 import optimize
 from CurveFitting import curveFittingBS
 from DataMerging import dataMerging
@@ -73,44 +73,46 @@ def main():
 
         def fetch_artifact(artifact_id):    
             file = fs.get(ObjectId(artifact_id))
-            file = pd.read_csv(file,header=0)
+            file = pd.read_csv(file,header=None)
             return file
 
-        def create_output_artifact_from_dataframe(dataframe, *args, **kwargs):
-            return fs.put(dataframe.to_csv().encode(), **kwargs)
+        def primaryMung(df):
+            df.columns = df.iloc[0].values
+            df.drop(df.index[[0, 1]], axis=0, inplace=True)
+            df.Store.astype(int)
+            df.set_index('Store',drop=True,inplace=True)
+            # df.set_index(df.Store.values.astype(int),drop=True,inplace=True)
+            return df
 
         fixtureArtifact=fetch_artifact(msg["artifacts"]["spaceArtifactId"])
         transactionArtifact=fetch_artifact(msg["artifacts"]["salesArtifactId"])
-        transactionArtifact=transactionArtifact.drop(transactionArtifact.index[[0]]).set_index("Store")
-        fixtureArtifact=fixtureArtifact.drop(fixtureArtifact.index[[0]]).set_index("Store")
-        Stores=fixtureArtifact.index.values.astype(int)
+        Stores=fixtureArtifact[0].reindex(fixtureArtifact.index.drop([0,1])).reset_index(drop=True).rename('Stores').astype(int).values
         print(Stores)
-        Categories=fixtureArtifact.columns[2:].values
-        print("There are "+str(len(Stores)) + " and " + str(len(Categories)) + " Categories")
-        print(msg['optimizationType'])
+        Categories=fixtureArtifact.loc[0][3::,].reset_index(drop=True).rename('Categories')
 
         try:
-            futureSpace=fetch_artifact(msg["artifacts"]["futureSpaceId"]).set_index("Store")
+            futureSpace=primaryMung(fetch_artifact(msg["artifacts"]["futureSpaceId"]))
             print("Future Space was Uploaded")
         except:
             futureSpace=None
             print("Future Space was not Uploaded")
         try:
-            brandExitArtifact=fetch_artifact(msg["artifacts"]["brandExitArtifactId"])
+            brandExitArtifact=(fetch_artifact(msg["artifacts"]["brandExitArtifactId"]))
             print("Brand Exit was Uploaded")
             brandExitArtifact=brandExitMung(brandExitArtifact,Stores,Categories)
             print("Brand Exit Munged")
         except:
             print("Brand Exit was not Uploaded")
             brandExitArtifact=None
+        masterData = dataMerging(transactionArtifact, fixtureArtifact, futureSpace, brandExitArtifact, msg["jobType"])
+        transactionArtifact = primaryMung(transactionArtifact)
+        fixtureArtifact = primaryMung(fixtureArtifact)
+        # print(fixtureArtifact.head())
+        # print(transactionArtifact.head())
 
         msg["optimizationType"]='traditional'
         if (str(msg["optimizationType"]) == 'traditional'):
-            # try:
-            # masterData=dataMerging(msg)
             # cfbsArtifact=curveFittingBS(masterData,spaceBounds,increment,100,0,0,msg['storeCategoryBounds'],msg['optimizationType'])
-            # except:
-            #     cfbsArtifact=None
             preOpt = preoptimize(Stores=Stores,Categories=Categories,spaceData=fixtureArtifact,data=transactionArtifact,mAdjustment=float(msg["metricAdjustment"]),salesPenThreshold=float(msg["salesPenetrationThreshold"]),optimizedMetrics=msg["optimizedMetrics"],increment=msg["increment"],brandExitArtifact=brandExitArtifact,newSpace=futureSpace)
             optimRes = optimize(job_id,msg['meta']['name'],Stores,Categories,preOpt,msg["tierCounts"],msg["spaceBounds"],msg["increment"],fixtureArtifact,brandExitArtifact)
             # except:
