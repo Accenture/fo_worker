@@ -38,18 +38,18 @@ def createLong(mergedPreOptCF, Results):
     return lOutput
 
 # Create wide table for user download
-def createWide(long, ty, me):
+def createWide(long, jobType, optimizationType):
 
     # Set up for pivot by renaming metrics and converting blanks to 0's for Enhanced in long table
     adjusted_long = long.rename(
         columns={'Historical Space': 'current', "Optimal Space": "optimal", "Result Space": "result",
                  "Penetration": "penetration"})
-    if me == "Enhanced":
+    if optimizationType == "Enhanced":
         adjusted_long["optimal"] = 0
         adjusted_long["penetration"] = 0
 
     # Pivot to convert long table to wide, including Time in index for drill downs
-    if ty == "Tiered":
+    if jobType == "Tiered":
         wide = pd.pivot_table(adjusted_long, values=["current", "optimal", "result", "penetration"],
                               index=["Store", "Climate", "VSG"], columns="Category", aggfunc=np.sum, margins=True,
                               margins_name="Total")
@@ -71,7 +71,7 @@ def createWide(long, ty, me):
     tot_col = {"C": num_categories, "O": 2 * num_categories + 1, "R": 3 * num_categories + 2}
 
     # Convert 0's back to blanks
-    if me == "Enhanced":
+    if optimizationType == "Enhanced":
         for i in range(tot_col["C"] + 1, tot_col["O"] + 1):
             wide[[i]] = ""
         for i in range(tot_col["R"] + 1, len(cols)):

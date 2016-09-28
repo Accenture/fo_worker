@@ -129,7 +129,8 @@ def preoptimize(Stores,Categories,spaceData,data,salesPenThreshold,mAdjustment,o
         #### bfc was previously not recreated for Brand Exit... should verify if this is an issue
         sales = data[[ *np.arange(len(data.columns))[0::9] ]].convert_objects(convert_numeric=True)
         boh = data[[ *np.arange(len(data.columns))[1::9] ]].convert_objects(convert_numeric=True)
-        receipt = data[[ *np.arange(len(data.columns))[2::9] ]].convert_objects(convert_numeric=True)
+        S\
+            = data[[ *np.arange(len(data.columns))[2::9] ]].convert_objects(convert_numeric=True)
         sold_units = data[[ *np.arange(len(data.columns))[3::9] ]].convert_objects(convert_numeric=True)
         boh_units = data[[ *np.arange(len(data.columns))[4::9] ]].convert_objects(convert_numeric=True)
         receipts_units = data[[ *np.arange(len(data.columns))[5::9] ]].convert_objects(convert_numeric=True)
@@ -162,9 +163,6 @@ def preoptimize(Stores,Categories,spaceData,data,salesPenThreshold,mAdjustment,o
         newSpace=bfc.sum(axis=1)
         print("We don't have futureSpace in preoptimize.")
     else:
-        print(Stores)
-        print(bfc.index)
-        print(newSpace.index)
         print("We have futureSpace in preoptimize!")
         newSpace=futureSpace(bfc,newSpace,Stores)
         print("Result of Future Space Function")     

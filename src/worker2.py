@@ -17,6 +17,7 @@ from DataMerging import dataMerging
 from Forecasting import forecastFunction
 from pulp import *
 import config
+from kbMerging import kbMerge
 # from TierKey import tierKeyCreate
 # from TierOptim import tierDef
 
@@ -104,7 +105,8 @@ def main():
         except:
             print("Brand Exit was not Uploaded")
             brandExitArtifact=None
-        masterData = dataMerging(transactionArtifact, fixtureArtifact, futureSpace, brandExitArtifact, msg["jobType"])
+        mData=kbMerge(msg['jobType'], transactionArtifact, fixtureArtifact, futureSpace, brandExitArtifact)
+        # masterData = dataMerging(msg["jobType"],transactionArtifact, fixtureArtifact, futureSpace, brandExitArtifact)
         transactionArtifact = primaryMung(transactionArtifact)
         fixtureArtifact = primaryMung(fixtureArtifact)
         # print(fixtureArtifact.head())
@@ -129,13 +131,13 @@ def main():
             print("Ken hasn't finished development for that yet")
 
         # Call functions to create output information
-        # longOutput = createLong(mergedPreOptCFReturned, optimResult)
-        # wideOutput = createWide(Stores, Categories, optimResult, optReturned, penReturned, fixtureArtifact)
+        longOutput = createLong(mergedPreOptCFReturned, optimResult)
+        wideOutput = createWide(Stores, Categories, optimResult, optReturned, penReturned, fixtureArtifact)
 
-        # if optimType == "Tiered":
-        #     summaryReturned = createTieredSummary(longReturned)
-        # else:  # since type == "Drill Down"
-        #     summaryReturned = createDrillDownSummary(longReturned)
+        if optimType == "Tiered":
+            summaryReturned = createTieredSummary(longReturned)
+        else:  # since type == "Drill Down"
+            summaryReturned = createDrillDownSummary(longReturned)
 
 
 
