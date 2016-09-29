@@ -21,6 +21,7 @@ print(cwd)
 def curveFittingBS(big_master_data,bound_input,increment_size,sales_weight,profit_weight,units_weight,PCT_Space_Change_Limit,salesPen,jobType,optimType):
     pandas2ri.activate()
     bound_input=pd.DataFrame.from_dict(bound_input).T.reset_index()
+    print(bound_input)
     bound_input.columns=['Categories','Space_Upper_Limit','Space_Lower_Limit','PCT_Space_Upper_Limit','PCT_Space_Lower_Limit']
     gdata = importr("gdata")
     dataTable = importr("pracma")

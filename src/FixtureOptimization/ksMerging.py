@@ -9,11 +9,22 @@ import sys
 
 def ksMerge(optimizationType,transactions,space,brandExit,futureSpace):
     if optimizationType == 'tiered':
-        Stores=space['Store'].astype(int)
+        def brandExitMung(df, Stores, Categories):
+            brand_exit = pd.DataFrame(index=Stores, columns=Categories)
+            for (i, Store) in enumerate(Stores):
+                for (j, Category) in enumerate(Categories):
+                    if int(Store) in df[Category].unique():
+                        brand_exit[Category].iloc[i] = 1
+                    else:
+                        brand_exit[Category].iloc[i] = 0
+            return brand_exit
+
+        Stores = space['Store']
         Metrics = transactions.loc[1, 1:9].reset_index(drop=True)
-        Categories = transactions[[*np.arange(len(transactions.columns))[1::9]]].loc[0].reset_index(
-            drop=True).values.astype(str)
+        Categories = transactions[[*np.arange(len(transactions.columns))[1::9]]].loc[0].reset_index(drop=True).values.astype(
+            str)
         spaceData = pd.melt(space, id_vars=['Store', 'Climate', 'VSG'], var_name='Category', value_name='Current Space')
+
 
         def longTransaction(df, storeList, categories):
             df.loc[0, :] = categories
@@ -23,53 +34,39 @@ def ksMerge(optimizationType,transactions,space,brandExit,futureSpace):
                              value_name=pd.unique(df.loc[1].dropna().values)[0])
             return lPiece
 
+
         masterData = spaceData
         for (m, Metric) in enumerate(Metrics):
-            masterData = pd.merge(left=masterData, right=longTransaction(transactions.loc[:, int(m + 1)::9],
-                                                                         pd.DataFrame(transactions[0]), Categories),
-                                  on=['Store', 'Category'], how='outer')
+            masterData = pd.merge(left=masterData,
+                                  right=longTransaction(transactions.loc[:, int(m + 1)::9], pd.DataFrame(transactions[0]),
+                                                        Categories), on=['Store', 'Category'], how='outer')
         storeTotal = pd.DataFrame(masterData.groupby('Store')['Current Space'].sum()).reset_index()
         storeTotal.columns = ['Store', 'Store Space']
-        masterData = pd.merge(masterData, storeTotal, on='Store')
-        masterData['Store']=pd.to_numeric(masterData['Store'])
-        # masterData['Future Space'] = 0
-        # print(masterData['Future Space'].loc[0])
-        brandExit=brandExit.fillna(float(0))
-        # futureSpace=futureSpace.fillna(float(0))
-        print('*****************************')
+        storeTotal = storeTotal.sort_values(by='Store').reset_index(drop=True)
+        futureSpace = futureSpace.sort_values(by='Store').reset_index(drop=True)
 
         if futureSpace is None:
-            masterData['Future Space'] = masterData['Store Space']
-            masterData['Entry Space'] = 0
-            masterData['New Space'] = masterData['Store Space']
+            storeTotal['Future Space']=storeTotal['Store Space']
+            storeTotal['Entry Space']=0
+            storeTotal['New Space'] = storeTotal['Store Space'] - storeTotal['Entry Space']
         else:
-            masterData = pd.merge(masterData, futureSpace, on=['Store','Climate','VSG'])
-            for i in range(0,len(masterData)):
-                # masterData['Future Space'].loc[i] = masterData['Store Space'].loc[i] if \
-                # masterData['Future Space'].loc[i] == 0.0 or \
-                # pd.isnull(masterData['Future Space'].loc[i]) is True else masterData['Future Space'].loc[i]
-                if pd.to_numeric(masterData['Future Space'].iloc[i]) == 0 or pd.isnull(
-                        pd.to_numeric(masterData['Future Space'].iloc[i])):         # Need to replace this with an apply
-                    masterData['Future Space'].iloc[i] = masterData['Store Space'].loc[i]
-            masterData['New Space'] = masterData['Future Space'] - masterData['Entry Space']
+            futureSpace=pd.merge(storeTotal,futureSpace,on=['Store'],how='inner')
+            for (i,Store) in enumerate(Stores):
+                futureSpace['Future Space'].loc[i] = storeTotal['Store Space'].loc[i] if pd.to_numeric(futureSpace['Future Space']).loc[i] == 0 or pd.isnull(pd.to_numeric(futureSpace['Future Space'])).loc[i] else futureSpace['Future Space'].loc[i]
+            futureSpace['New Space'] = futureSpace['Future Space'] - futureSpace['Entry Space']
+            masterData=pd.merge(masterData,futureSpace,on=['Store','VSG','Climate'])
+
         if brandExit is None:
-            print("No brand exit")
+            masterData['Exit Flag'] = 0
         else:
-            def brandExitMung(df, Stores, Categories):
-                brand_exit = pd.DataFrame(index=Stores, columns=Categories)
-                for (i, Store) in enumerate(Stores):
-                    for (j, Category) in enumerate(Categories):
-                        brand_exit[Category].iloc[i] = 1 if float(Store) in df[Category].unique() else 0
-                return brand_exit
-            brandExit = pd.melt(brandExitMung(brandExit, Stores, Categories).reset_index(), id_vars=['Store'],
-                                 var_name='Category', value_name='Exit Flag')
-            masterData = pd.merge(masterData, brandExit, on=['Store', 'Category'], how='outer')
-            print(type(masterData['Exit Flag'].loc[0]))
-            print(pd.unique(masterData['Exit Flag']))
-            for i in masterData.index:
-                if masterData['Exit Flag'].loc[i]: masterData.loc[i, 4::] = 0
-            print(masterData)
-            input('Checkpoint')
-    else:
-        print("Stop It")
+            brandExit=pd.melt(brandExitMung(brandExit,Stores,Categories).reset_index(),id_vars=['Store'],var_name='Category',value_name='Exit Flag')
+            masterData=masterData.sort_values(by=['Store','Category']).reset_index(drop=True)
+            brandExit=brandExit.sort_values(by=['Store','Category']).reset_index(drop=True)
+            for i in range(0,len(masterData)):
+                if brandExit['Exit Flag'].loc[i] == 1:
+                    masterData.loc[i,4::]=0
+            masterData=pd.merge(masterData,brandExit,on=['Store','Category'],how='inner')
+            print('There are ' + str(len(masterData[masterData['Exit Flag'] == 1])) + ' brand exits')
+            # masterData.to_csv('mergedData.csv',sep=',',index=False)
+            # input('Stop')
     return masterData

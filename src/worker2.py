@@ -72,8 +72,7 @@ def main():
                 }
             }
         )
-
-        def fetch_artifact(artifact_id):    
+        def fetch_artifact(artifact_id):
             file = fs.get(ObjectId(artifact_id))
             file = pd.read_csv(file,header=None)
             return file
@@ -92,8 +91,7 @@ def main():
             file = fs.get(ObjectId(artifact_id))
             file = pd.read_csv(file,header=0,skiprows=[1])
             return file
-
-        dataMerged=ksMerge(msg['jobType'],fetchTransactions(msg["artifacts"]["salesArtifactId"]),fetchSpace(msg["artifacts"]["spaceArtifactId"]),fetchSpace(msg["artifacts"]["brandExitArtifactId"]),fetchExit(msg["artifacts"]["futureSpaceId"]))
+        dataMerged=ksMerge(msg['jobType'],fetchTransactions(msg["artifacts"]["salesArtifactId"]),fetchSpace(msg["artifacts"]["spaceArtifactId"]),fetchExit(msg["artifacts"]["brandExitArtifactId"]),fetchSpace(msg["artifacts"]["futureSpaceId"]))
         # print(dataMerged.head())
         def primaryMung(df):
             df.columns = df.iloc[0].values
