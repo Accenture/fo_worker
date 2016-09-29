@@ -1,12 +1,18 @@
-        
+#Same import commands for all scripts
 import rpy2
+import pandas as pd
+import numpy as np
+#import rpy2POC
+
 import rpy2.robjects as robjects
-from rpy2.objects import pandas2ri
+from rpy2.robjects.vectors import DataFrame
+from rpy2.robjects import pandas2ri
+
 pandas2ri.activate()
-import os
 
-import rpy2.robjects as robjects
-
+import os 
+cwd = os.getcwd()
+print(cwd)
 
 def createDataMerging():
     def fetchRdf(artifact_id):
@@ -100,7 +106,7 @@ def dataMerging():
         create_output_artifact_from_dataframe(p_big_master_data)
     except:
         print("Data merging failed :")
-    return stuff
+    return p_big_master_data
 
 
 
@@ -226,7 +232,7 @@ def rpy2_data_merging(R_Hist_perf,R_Hist_space_climate_info,R_Future_Space_Entry
 
 # Ex: R function is expecting multiple parameters, but the parameters file only supplies 4. What to do with missing values? How are they input? Are only certain ones populated? Once these rules are defined, this function can be finished. 
 def rpy2_curve_fitting_bound_setting():
-
+    
 
     # Source the R code
     r_source = robjects.r['source']
@@ -259,3 +265,24 @@ def rpy2_forecasting(Fcst):
     return(p_output)
 # Sample function call, returns python data frame
 #f=rpy2_forecasting(R_Forecast_Input)
+
+def rpy2_curve_fitting_bound_setting(big_master_data,bound_input,increment_size,sales_weight,profit_weight,units_weight,PCT_Space_Change_Limit,optimType):
+    try:
+        #Source the R code
+        r_source = robjects.r['source']
+        r_source('Curve Fitting and Bound Setting KB_EDIT.r')
+
+        # # Extract the main function from the R code
+        r_curvefitting_boundsetting = robjects.globalenv['curvefitting_boundsetting']
+
+        # # Call the r function with the dataframes
+        r_list_output=r_curvefitting_boundsetting(big_master_data_Input_for_Curve_Fitting,bound_input,increment_size,sales_weight,profit_weight,units_weight,PCT_Space_Change_Limit,optimType)
+
+        # Convert R list output into 2 python data frames, put into python list for the return statement
+        p_output0=pandas2ri.ri2py(r_list_output[0])
+        p_output1=pandas2ri.ri2py(r_list_output[1])
+        p_list_output = [p_output0,p_output1]
+        
+        return p_list_output
+    except:
+        print("Error in curve fitting bound setting :'(")

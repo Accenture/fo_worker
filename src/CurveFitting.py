@@ -3,7 +3,11 @@ import rpy2
 import pandas as pd
 import numpy as np
 #import rpy2POC
-
+import json
+import pika
+import time
+from pymongo import MongoClient
+import gridfs
 import rpy2.robjects as robjects
 from rpy2.robjects.vectors import DataFrame
 from rpy2.robjects import pandas2ri
@@ -27,10 +31,11 @@ def curveFittingBS(big_master_data,bound_input,increment_size,sales_weight,profi
         r_list_output=r_curvefitting_boundsetting(big_master_data_Input_for_Curve_Fitting,bound_input,increment_size,sales_weight,profit_weight,units_weight,PCT_Space_Change_Limit,optimType)
 
         # Convert R list output into 2 python data frames, put into python list for the return statement
-        p_output0=pandas2ri.ri2py(r_list_output[0])
-        p_output1=pandas2ri.ri2py(r_list_output[1])
-        p_list_output = [p_output0,p_output1]
-        
-        return p_list_output
+        cfbsArtifact=pandas2ri.ri2py(r_list_output[0])
+        # p_output1=pandas2ri.ri2py(r_list_output[1])
+        # p_list_output = [p_output0,p_output1]
+        cfbs_id = create_output_artifact_from_dataframe(r_list_output[0])
+        analytics_id = create_output_artifact_from_dataframe(r_list_output[1]) 
+        return cfbsArtifact
     except:
         print("Error in curve fitting bound setting :'(")

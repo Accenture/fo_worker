@@ -403,8 +403,8 @@ curvefitting_boundsetting<-function(big_master_data,bound_input,Increment_Size,s
   }
 #   
   #Function calling
-  output<-curvefitting_boundsetting(big_master_data,bound_input,Increment_Size,sales_weight,profit_weight,units_weight,PCT_Space_Change_Limit,type)
+  #output<-curvefitting_boundsetting(big_master_data,bound_input,Increment_Size,sales_weight,profit_weight,units_weight,PCT_Space_Change_Limit,type)
   #Final output
-  write.csv(output[1], "Analytics_Reference_Data.csv",row.names=FALSE)
-  write.csv(output[2], "Output_Data.csv",row.names=FALSE)
+  #write.csv(output[1], "Analytics_Reference_Data.csv",row.names=FALSE)
+  #write.csv(output[2], "Output_Data.csv",row.names=FALSE)
   

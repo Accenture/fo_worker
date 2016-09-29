@@ -40,7 +40,6 @@ LOG_FORMAT = ('%(levelname) -10s %(asctime)s %(name) -30s %(funcName) '
 LOG_FILE = None
 LOGGER = logging.getLogger(__name__)
 
-
 def main():
 
     def process_job(func, *args):

@@ -11,18 +11,7 @@ import pandas as pd
 # Need to create a max & min for category level informaiton to be passed as bounds in a long table format // Matching format to Bounding Info that is added to job context
 
 # import os
-''''
-class SampleFile(object):
 
-    src_path = os.path.dirname(__file__)
-    test_files_path = os.path.join(os.path.dirname(src_path),
-                                   'test/test_optimizer_files')
-
-    @classmethod
-    def get(cls, filename):
-        return os.path.join(cls.test_files_path, filename)
-
-'''
 def calcPen(metric):
     return metric.div(metric.sum(axis=1),axis='index')
     
