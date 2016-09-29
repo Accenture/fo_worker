@@ -10,8 +10,6 @@ import sys
 def ksMerge(optimizationType,transactions,space,brandExit,futureSpace):
     if optimizationType == 'tiered':
         Stores=space['Store'].astype(int)
-        print(type(Stores[0]))
-        input('Press <ENTER> to continue')
         Metrics = transactions.loc[1, 1:9].reset_index(drop=True)
         Categories = transactions[[*np.arange(len(transactions.columns))[1::9]]].loc[0].reset_index(
             drop=True).values.astype(str)
@@ -34,40 +32,44 @@ def ksMerge(optimizationType,transactions,space,brandExit,futureSpace):
         storeTotal.columns = ['Store', 'Store Space']
         masterData = pd.merge(masterData, storeTotal, on='Store')
         masterData['Store']=pd.to_numeric(masterData['Store'])
-        print(type(masterData['Store'].loc[0]))
-        print(type(futureSpace['Store'].loc[0]))
         # masterData['Future Space'] = 0
         # print(masterData['Future Space'].loc[0])
         brandExit=brandExit.fillna(float(0))
-        futureSpace=futureSpace.fillna(float(0))
+        # futureSpace=futureSpace.fillna(float(0))
         print('*****************************')
+
         if futureSpace is None:
             masterData['Future Space'] = masterData['Store Space']
             masterData['Entry Space'] = 0
+            masterData['New Space'] = masterData['Store Space']
         else:
             masterData = pd.merge(masterData, futureSpace, on=['Store','Climate','VSG'])
-            # print(masterData.head())
-            for (i, Store) in enumerate(Stores):
-                masterData['Future Space'].loc[i] = masterData['Store Space'].loc[i] if \
-                masterData['Future Space'].loc[i] == 0 or \
-                pd.isnull(pd.to_numeric(masterData['Future Space'])).loc[i] else masterData['Future Space'].loc[i]
+            for i in range(0,len(masterData)):
+                # masterData['Future Space'].loc[i] = masterData['Store Space'].loc[i] if \
+                # masterData['Future Space'].loc[i] == 0.0 or \
+                # pd.isnull(masterData['Future Space'].loc[i]) is True else masterData['Future Space'].loc[i]
+                if pd.to_numeric(masterData['Future Space'].iloc[i]) == 0 or pd.isnull(
+                        pd.to_numeric(masterData['Future Space'].iloc[i])):         # Need to replace this with an apply
+                    masterData['Future Space'].iloc[i] = masterData['Store Space'].loc[i]
             masterData['New Space'] = masterData['Future Space'] - masterData['Entry Space']
-        masterData['Brand Exit'] = 0
         if brandExit is None:
             print("No brand exit")
         else:
-            masterData['Brand Exit']=0
-            masterData.set_index(['Store','Category'],inplace=True)
-        #     print(masterData.index)
-            for (i,Store) in enumerate(Stores):
-                for (j,Category) in enumerate(Categories):
-                    if str(Store) in pd.unique(brandExit[Category].values):
-                        masterData['Brand Exit'].loc[int(Store),Category] = 1
-                        masterData[4::]=0
-                    else:
-                        masterData['Brand Exit'].loc[int(Store),Category] = 0
-    masterData.reset_index()
-    pd.unique(masterData['Brand Exit'])
+            def brandExitMung(df, Stores, Categories):
+                brand_exit = pd.DataFrame(index=Stores, columns=Categories)
+                for (i, Store) in enumerate(Stores):
+                    for (j, Category) in enumerate(Categories):
+                        brand_exit[Category].iloc[i] = 1 if float(Store) in df[Category].unique() else 0
+                return brand_exit
+            brandExit = pd.melt(brandExitMung(brandExit, Stores, Categories).reset_index(), id_vars=['Store'],
+                                 var_name='Category', value_name='Exit Flag')
+            masterData = pd.merge(masterData, brandExit, on=['Store', 'Category'], how='outer')
+            print(type(masterData['Exit Flag'].loc[0]))
+            print(pd.unique(masterData['Exit Flag']))
+            for i in masterData.index:
+                if masterData['Exit Flag'].loc[i]: masterData.loc[i, 4::] = 0
+            print(masterData)
+            input('Checkpoint')
     else:
         print("Stop It")
     return masterData
