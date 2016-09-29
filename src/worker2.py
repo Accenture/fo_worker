@@ -17,6 +17,7 @@ from DataMerging import dataMerging
 from Forecasting import forecastFunction
 from pulp import *
 import config
+from FixtureOptimization.ksMerging import ksMerge
 from kbMerging import kbMerge
 # from TierKey import tierKeyCreate
 # from TierOptim import tierDef
@@ -77,6 +78,23 @@ def main():
             file = pd.read_csv(file,header=None)
             return file
 
+        def fetchTransactions(artifact_id):
+            file = fs.get(ObjectId(artifact_id))
+            file = pd.read_csv(file,header=None)
+            return file
+
+        def fetchSpace(artifact_id):
+            file = fs.get(ObjectId(artifact_id))
+            file = pd.read_csv(file,header=0,dtype={'Store': object},skiprows=[1])
+            return file
+
+        def fetchExit(artifact_id):
+            file = fs.get(ObjectId(artifact_id))
+            file = pd.read_csv(file,header=0,skiprows=[1])
+            return file
+
+        dataMerged=ksMerge(msg['jobType'],fetchTransactions(msg["artifacts"]["salesArtifactId"]),fetchSpace(msg["artifacts"]["spaceArtifactId"]),fetchSpace(msg["artifacts"]["brandExitArtifactId"]),fetchExit(msg["artifacts"]["futureSpaceId"]))
+        print(dataMerged.head())
         def primaryMung(df):
             df.columns = df.iloc[0].values
             df.drop(df.index[[0, 1]], axis=0, inplace=True)
@@ -105,16 +123,17 @@ def main():
         except:
             print("Brand Exit was not Uploaded")
             brandExitArtifact=None
-        mData=kbMerge(msg['jobType'], transactionArtifact, fixtureArtifact, futureSpace, brandExitArtifact)
+        # mData=kbMerge(msg['jobType'], transactionArtifact, fixtureArtifact, futureSpace, brandExitArtifact)
         # masterData = dataMerging(msg["jobType"],transactionArtifact, fixtureArtifact, futureSpace, brandExitArtifact)
         transactionArtifact = primaryMung(transactionArtifact)
         fixtureArtifact = primaryMung(fixtureArtifact)
         # print(fixtureArtifact.head())
         # print(transactionArtifact.head())
-
+        masterData=pd.read_csv('src/dmOutput.csv',header=0)
+        # bounds=pd.read_csv('src/bounds.csv',header=0)
         msg["optimizationType"]='traditional'
         if (str(msg["optimizationType"]) == 'traditional'):
-            # cfbsArtifact=curveFittingBS(masterData,spaceBounds,increment,100,0,0,msg['storeCategoryBounds'],msg['optimizationType'])
+            cfbsArtifact=curveFittingBS(masterData,msg['spaceBounds'],msg['increment'],100,0,0,msg['storeCategoryBounds'],float(msg["salesPenetrationThreshold"]),msg['jobType'],msg['optimizationType'])
             preOpt = preoptimize(Stores=Stores,Categories=Categories,spaceData=fixtureArtifact,data=transactionArtifact,mAdjustment=float(msg["metricAdjustment"]),salesPenThreshold=float(msg["salesPenetrationThreshold"]),optimizedMetrics=msg["optimizedMetrics"],increment=msg["increment"],brandExitArtifact=brandExitArtifact,newSpace=futureSpace)
             optimRes = optimize(job_id,msg['meta']['name'],Stores,Categories,preOpt,msg["tierCounts"],msg["spaceBounds"],msg["increment"],fixtureArtifact,brandExitArtifact)
             # except:

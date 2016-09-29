@@ -144,14 +144,15 @@ def kbMerge(optim_type, Hist_perf, HSCI, Future_Space_Entry_Data=None, Brand_Exi
     # 2. Incorporate optional code
     ##################################
 
-
-    if optim_type == "Tiered":
+    print(optim_type)
+    if optim_type == "tiered":
         # If user has FUTURE SPACE data, use it, else set future space = historical space
         if Future_Space_Entry_Data is None:
             # Future_Space_Entry_Data = big_master_data
 
             # Get the sum of the Space per Store
             f = big_master_data.groupby('Store')['Space'].sum()
+            print(f)
             FS = pd.DataFrame()
             FS['Future_Space'] = f  # Future Space
             FS['Store'] = list(f.index)  # Stores
@@ -236,8 +237,8 @@ def kbMerge(optim_type, Hist_perf, HSCI, Future_Space_Entry_Data=None, Brand_Exi
     ##################################
 
 
-    Brand_Exit[['Store']] = Brand_Exit[['Store']].apply(pd.to_numeric)
-
+    # Brand_Exit[['Store']] = Brand_Exit[['Store']].apply(pd.to_numeric)
+    print(Brand_Exit.index)
     big_master_data = pd.merge(big_master_data, Brand_Exit, on=['Store', 'Category'], how='left')
     print(type(big_master_data))
     print(big_master_data.head())

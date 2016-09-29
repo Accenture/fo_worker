@@ -1,8 +1,5 @@
   #Clear historical data from R server
-  rm(list=ls())
-  
-  # Set working directory
-  setwd("C:\\Users\\saurabh.a.trivedi\\Desktop\\Protyping Code\\Womens Athletic Input template updated\\")
+#  rm(list=ls())
 
   #install this package to run erf() function
   library(pracma)
@@ -11,25 +8,31 @@
   #Library to call optimization package that runs the curve fitting
   library(nloptr)
   library(gdata)
-  library(xlsx)
+#  library(xlsx)
 
   #initial parameter setting for curve fitting
-  Increment_Size=2.5
+#  Increment_Size=2.5
 
   #Bound parameters
-  PCT_Space_Change_Limit<-0.5
+#  PCT_Space_Change_Limit<-0.5
   #sales penetration threshold
-  sales_penetration_threshold<-0.01
+#  sales_penetration_threshold<-0.01
   #Select Optimization type Tiered or Drill_Down
-  type<-"Tiered"
+#  jobType<-"Tiered"
   #Optimization methodology parameter which can take on values of Traditional or Enhanced
-  methodology<-"Traditional"
+#  methodology<-"Traditional"
   #big_master_data$Trgt_BA_Space_Less_Brnd_Entry<-as.numeric(as.character(big_master_data$Future_Space))-big_master_data$Entry_Space
-  big_master_data<-read.csv("output.csv",header=TRUE,sep=",")
-  bound_input<-read.csv("Bound_Input1.csv",header=TRUE,sep=",")
+#  big_master_data<-read.csv("output.csv",header=TRUE,sep=",")
+#  bound_input<-read.csv("Bound_Input1.csv",header=TRUE,sep=",")
 
   #Curve Fitting and Bound Setting Function design
-curvefitting_boundsetting<-function(big_master_data,bound_input,Increment_Size,sales_weight,profit_weight,units_weight,PCT_Space_Change_Limit,type,methodology){
+curvefitting_boundsetting<-function(big_master_data,bound_input,Increment_Size,sales_weight,profit_weight,units_weight,PCT_Space_Change_Limit,sales_penetration_threshold,jobType,methodology){
+    library(pracma)
+    library(tidyr)
+    library(nloptr)
+    library(gdata)
+    print(bound_input)
+
     #Parameters for Filtering store-product combination where there is too little volume/store count to build a curve
     strcount_filter=100
     avgsales_filter=200
@@ -53,7 +56,7 @@ curvefitting_boundsetting<-function(big_master_data,bound_input,Increment_Size,s
   #create "Climate_Group" variable
     big_master_data$Climate_Group<-big_master_data$Climate
     big_master_data$Climate_Group<-as.character(big_master_data$Climate_Group)
-    if(type=="Drill_Down"){
+    if(jobType=="Drill_Down"){
     for(j in 1:nrow(big_master_data)){
       big_master_data$Climate_Group[j]<-ifelse((big_master_data$Climate_Group[j]=="HOT" || big_master_data$Climate_Group[j]=="SUPER HOT"),"HOT & SH",big_master_data$Climate_Group[j])
     }
@@ -307,7 +310,7 @@ curvefitting_boundsetting<-function(big_master_data,bound_input,Increment_Size,s
     if(length(which(final$flag==1))!=0){
       for(m in (1:nrow(final))){
         if(final$flag[m]==1){
-      if(type=="Drill_Down"){
+      if(jobType=="Drill_Down"){
       if(length(Product_Summary[which(Product_Summary$Category == final$Category[m] & Product_Summary[,paste0("Store_Group_",target)] == final[,paste0("Store_Group_",target)][m]),][,paste0("Unscaled_Alpha_",target)])==0){
       final[,paste0("Scaled_Alpha_",target)][m]<-0
       final[,paste0("Scaled_Shift_",target)][m]<-0
@@ -387,7 +390,7 @@ curvefitting_boundsetting<-function(big_master_data,bound_input,Increment_Size,s
     filtered_final$Scaled_BP_Profit<-0
     i=1
     for(i in 1:nrow(filtered_final)){
-      if(type=="Drill_Down" && nrow(big_master_data)!=0){
+      if(jobType=="Drill_Down" && nrow(big_master_data)!=0){
         if(length(master_Product_Summary[[5]][which(master_Product_Summary[[5]]$Category == filtered_final$Category[i] & master_Product_Summary[[5]]$Store_Group_Sales == filtered_final$Store_Group_Sales[i]),]$Unscaled_Alpha_Sales)==0){
           filtered_final$Scaled_Alpha_Sales[i]<-0
           filtered_final$Scaled_Shift_Sales[i]<-0
@@ -457,7 +460,7 @@ curvefitting_boundsetting<-function(big_master_data,bound_input,Increment_Size,s
             filtered_final$Exit_Flag[i]<-0
           }
         }
-        } else if(type=="Tiered") {
+        } else if(jobType=="Tiered") {
         filtered_final$Scaled_Alpha_Sales[i]<-0
         filtered_final$Scaled_Shift_Sales[i]<-0
         filtered_final$Scaled_Beta_Sales[i]<-1
@@ -490,10 +493,10 @@ curvefitting_boundsetting<-function(big_master_data,bound_input,Increment_Size,s
     }
   }
   #Final lower and upper limits variable generation
-  if(type=="Tiered"){
+  if(jobType=="Tiered"){
     final_master$PCT_Change_Lower_Limit<-floor(final_master$Space*(1-final_master$PCT_Space_Change_Limit)/Increment_Size)*Increment_Size
     final_master$PCT_Change_Upper_Limit<-ceiling(final_master$Space*(1+final_master$PCT_Space_Change_Limit)/Increment_Size)*Increment_Size
-  } else if(type=="Drill_Down" || is.null(PCT_Space_Change_Limit)==TRUE) {
+  } else if(jobType=="Drill_Down" || is.null(PCT_Space_Change_Limit)==TRUE) {
     final_master$PCT_Change_Lower_Limit<-0
     final_master$PCT_Change_Upper_Limit<-0
   }
@@ -522,14 +525,14 @@ curvefitting_boundsetting<-function(big_master_data,bound_input,Increment_Size,s
 }
 #
 #Function calling
-output<-curvefitting_boundsetting(big_master_data,bound_input,Increment_Size,sales_weight,profit_weight,units_weight,PCT_Space_Change_Limit,type,methodology)
+#output<-curvefitting_boundsetting(big_master_data,bound_input,Increment_Size,sales_weight,profit_weight,units_weight,PCT_Space_Change_Limit,jobType,methodology)
 #Final output
-write.xlsx(output[1][[1]], "Analytics_Reference_Data.xlsx", sheetName="Sales",
-           col.names=TRUE, row.names=FALSE, append=FALSE)
-write.xlsx(output[2][[1]], "Analytics_Reference_Data.xlsx", sheetName="Profit",
-           col.names=TRUE, row.names=FALSE, append=TRUE)
-write.xlsx(output[3][[1]], "Analytics_Reference_Data.xlsx", sheetName="Units",
-           col.names=TRUE, row.names=FALSE, append=TRUE)
+#write.xlsx(output[1][[1]], "Analytics_Reference_Data.xlsx", sheetName="Sales",
+#           col.names=TRUE, row.names=FALSE, append=FALSE)
+#write.xlsx(output[2][[1]], "Analytics_Reference_Data.xlsx", sheetName="Profit",
+#           col.names=TRUE, row.names=FALSE, append=TRUE)
+#write.xlsx(output[3][[1]], "Analytics_Reference_Data.xlsx", sheetName="Units",
+#           col.names=TRUE, row.names=FALSE, append=TRUE)
 
 #write.csv(output[1], "Analytics_Reference_Data.csv",row.names=FALSE)
-write.csv(output[4], "Output_Data.csv",row.names=FALSE)
+#write.csv(output[4], "Output_Data.csv",row.names=FALSE)
