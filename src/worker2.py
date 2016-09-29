@@ -94,7 +94,7 @@ def main():
             return file
 
         dataMerged=ksMerge(msg['jobType'],fetchTransactions(msg["artifacts"]["salesArtifactId"]),fetchSpace(msg["artifacts"]["spaceArtifactId"]),fetchSpace(msg["artifacts"]["brandExitArtifactId"]),fetchExit(msg["artifacts"]["futureSpaceId"]))
-        print(dataMerged.head())
+        # print(dataMerged.head())
         def primaryMung(df):
             df.columns = df.iloc[0].values
             df.drop(df.index[[0, 1]], axis=0, inplace=True)
@@ -106,7 +106,7 @@ def main():
         fixtureArtifact=fetch_artifact(msg["artifacts"]["spaceArtifactId"])
         transactionArtifact=fetch_artifact(msg["artifacts"]["salesArtifactId"])
         Stores=fixtureArtifact[0].reindex(fixtureArtifact.index.drop([0,1])).reset_index(drop=True).rename('Stores').astype(int).values
-        print(Stores)
+        print(type(Stores[0]))
         Categories=fixtureArtifact.loc[0][3::,].reset_index(drop=True).rename('Categories')
 
         try:

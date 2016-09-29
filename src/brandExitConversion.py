@@ -45,6 +45,7 @@ def brandExitMung(df,Stores,Categories):
     df.drop(df.index[[0, 1]], axis=0, inplace=True)
     df=df.reset_index(drop=True)
     brand_exit = pd.DataFrame(index=Stores,columns=Categories)
+    print(type(Stores[0]))
     for (i,Store) in enumerate(Stores):
         for (j,Category) in enumerate(Categories):
             if str(Store) in pd.unique(df[Category].values):

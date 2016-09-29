@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+import sys
 
 # transactions=pd.read_csv("transactions_data.csv",header=None)
 # space=pd.read_csv('fixture_data.csv',header=0,dtype={'Store': object},skiprows=[1])
@@ -9,6 +10,8 @@ import numpy as np
 def ksMerge(optimizationType,transactions,space,brandExit,futureSpace):
     if optimizationType == 'tiered':
         Stores=space['Store'].astype(int)
+        print(type(Stores[0]))
+        input('Press <ENTER> to continue')
         Metrics = transactions.loc[1, 1:9].reset_index(drop=True)
         Categories = transactions[[*np.arange(len(transactions.columns))[1::9]]].loc[0].reset_index(
             drop=True).values.astype(str)
@@ -50,7 +53,6 @@ def ksMerge(optimizationType,transactions,space,brandExit,futureSpace):
                 pd.isnull(pd.to_numeric(masterData['Future Space'])).loc[i] else masterData['Future Space'].loc[i]
             masterData['New Space'] = masterData['Future Space'] - masterData['Entry Space']
         masterData['Brand Exit'] = 0
-
         if brandExit is None:
             print("No brand exit")
         else:
@@ -59,12 +61,13 @@ def ksMerge(optimizationType,transactions,space,brandExit,futureSpace):
         #     print(masterData.index)
             for (i,Store) in enumerate(Stores):
                 for (j,Category) in enumerate(Categories):
-        #             print(Category)
                     if str(Store) in pd.unique(brandExit[Category].values):
                         masterData['Brand Exit'].loc[int(Store),Category] = 1
                         masterData[4::]=0
                     else:
                         masterData['Brand Exit'].loc[int(Store),Category] = 0
+    masterData.reset_index()
+    pd.unique(masterData['Brand Exit'])
     else:
         print("Stop It")
     return masterData
