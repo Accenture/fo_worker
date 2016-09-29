@@ -64,64 +64,101 @@ def run(body):
         }
     )
 
-    fixture_artifact = fetch_artifact(msg["artifacts"]["spaceArtifactId"])
-    transaction_artifact = fetch_artifact(msg["artifacts"]["salesArtifactId"])
-    transaction_artifact = transaction_artifact.drop(
-        transaction_artifact.index[[0]]).set_index("Store")
-    fixture_artifact = fixture_artifact.drop(
-        fixture_artifact.index[[0]]).set_index("Store")
-    stores = fixture_artifact.index.values.astype(int)
-    categories = fixture_artifact.columns[2:].values
-    print("There are " + str(len(stores)) + " and " + str(
-        len(categories)) + " Categories")
-    print(msg['optimizationType'])
+    def fetch_artifact(artifact_id):
+        file = fs.get(ObjectId(artifact_id))
+        file = pd.read_csv(file, header=None)
+        return file
+
+    def fetchTransactions(artifact_id):
+        file = fs.get(ObjectId(artifact_id))
+        file = pd.read_csv(file, header=None)
+        return file
+
+    def fetchSpace(artifact_id):
+        file = fs.get(ObjectId(artifact_id))
+        file = pd.read_csv(file, header=0, dtype={'Store': object}, skiprows=[1])
+        return file
+
+    def fetchExit(artifact_id):
+        file = fs.get(ObjectId(artifact_id))
+        file = pd.read_csv(file, header=0, skiprows=[1])
+        return file
+
+    dataMerged = ksMerge(msg['jobType'], fetchTransactions(msg["artifacts"]["salesArtifactId"]),
+                         fetchSpace(msg["artifacts"]["spaceArtifactId"]),
+                         fetchExit(msg["artifacts"]["brandExitArtifactId"]),
+                         fetchSpace(msg["artifacts"]["futureSpaceId"]))
+
+    # print(dataMerged.head())
+    def primaryMung(df):
+        df.columns = df.iloc[0].values
+        df.drop(df.index[[0, 1]], axis=0, inplace=True)
+        df.Store.astype(int)
+        df.set_index('Store', drop=True, inplace=True)
+        # df.set_index(df.Store.values.astype(int),drop=True,inplace=True)
+        return df
+
+    fixtureArtifact = fetch_artifact(msg["artifacts"]["spaceArtifactId"])
+    transactionArtifact = fetch_artifact(msg["artifacts"]["salesArtifactId"])
+    Stores = fixtureArtifact[0].reindex(fixtureArtifact.index.drop([0, 1])).reset_index(drop=True).rename(
+        'Stores').astype(int).values
+    print(type(Stores[0]))
+    Categories = fixtureArtifact.loc[0][3::, ].reset_index(drop=True).rename('Categories')
+
     try:
-        future_space = fetch_artifact(
-            msg["artifacts"]["futureSpaceId"]).set_index("Store")
+        futureSpace = primaryMung(fetch_artifact(msg["artifacts"]["futureSpaceId"]))
         print("Future Space was Uploaded")
     except:
-        future_space = None
+        futureSpace = None
         print("Future Space was not Uploaded")
     try:
-        brand_exit_artifact = fetch_artifact(
-            msg["artifacts"]["brandExitArtifactId"])
+        brandExitArtifact = (fetch_artifact(msg["artifacts"]["brandExitArtifactId"]))
         print("Brand Exit was Uploaded")
-        brand_exit_artifact = brandExitMung(brand_exit_artifact, stores,
-                                            categories)
+        brandExitArtifact = brandExitMung(brandExitArtifact, Stores, Categories)
         print("Brand Exit Munged")
     except:
         print("Brand Exit was not Uploaded")
-        brand_exit_artifact = None
+        brandExitArtifact = None
+    # mData=kbMerge(msg['jobType'], transactionArtifact, fixtureArtifact, futureSpace, brandExitArtifact)
+    # masterData = dataMerging(msg["jobType"],transactionArtifact, fixtureArtifact, futureSpace, brandExitArtifact)
+    transactionArtifact = primaryMung(transactionArtifact)
+    fixtureArtifact = primaryMung(fixtureArtifact)
+    # print(fixtureArtifact.head())
+    # print(transactionArtifact.head())
+    masterData = pd.read_csv('childrenOutput.csv', header=0)
+    # bounds=pd.read_csv('src/bounds.csv',header=0)
     msg["optimizationType"] = 'traditional'
-    if str(msg["optimizationType"]) == 'traditional':
-        masterData = dataMerging(msg)
-        try:
-            cfbsArtifact = curveFittingBS(masterData, spaceBounds, increment, 100, 0, 0, msg['storeCategoryBounds'],
-                                          msg['optimizationType'])
-            cfbsArtifact
-        except:
-            cfbsArtifact = None
-        pre_opt = preoptimize(Stores=stores,
-                              Categories=categories,
-                              spaceData=fixture_artifact,
-                              data=transaction_artifact,
-                              mAdjustment=float(msg["metricAdjustment"]),
-                              salesPenThreshold=float(
-                                  msg["salesPenetrationThreshold"]),
-                              optimizedMetrics=msg["optimizedMetrics"],
-                              increment=msg["increment"],
-                              brandExitArtifact=brand_exit_artifact,
-                              newSpace=future_space)
-        optimizationStatus = optimize(job_id,
-                                      msg['meta']['name'],
-                                      pre_opt,
-                                      msg["tierCounts"],
-                                      msg["spaceBounds"],
-                                      msg["increment"],
-                                      fixture_artifact,
-                                      brand_exit_artifact)
-    if msg["optimizationType"] == 'enhanced':
+    if (str(msg["optimizationType"]) == 'traditional'):
+        cfbsArtifact = curveFittingBS(masterData, msg['spaceBounds'], msg['increment'], msg['storeCategoryBounds'],
+                                      float(msg["salesPenetrationThreshold"]), msg['jobType'], msg['optimizationType'])
+        preOpt = preoptimize(Stores=Stores, Categories=Categories, spaceData=fixtureArtifact, data=transactionArtifact,
+                             mAdjustment=float(msg["metricAdjustment"]),
+                             salesPenThreshold=float(msg["salesPenetrationThreshold"]),
+                             optimizedMetrics=msg["optimizedMetrics"], increment=msg["increment"],
+                             brandExitArtifact=brandExitArtifact, newSpace=futureSpace)
+        optimRes = optimize(job_id, msg['meta']['name'], Stores, Categories, preOpt, msg["tierCounts"],
+                            msg["spaceBounds"], msg["increment"], fixtureArtifact, brandExitArtifact)
+        # except:
+        # print(TypeError)
+        # print("Traditional Optimization has Failed")
+    if (msg["optimizationType"] == 'enhanced'):
+        #     try:
+        #     masterData=dataMerging(msg)
+        # cfbsArtifact=curveFittingBS(masterData,spaceBounds,increment,optimizedMetrics['sales'],optimizedMetrics['profits'],optimizedMetrics['units'],msg['storeCategoryBounds'],msg['optimizationType'])
+        # cfbsDict=cfbsArtifact.set_index(["Store","Product"])
+        # preOpt = preoptimize(Stores=Stores,Categories=Categories,spaceData=fixtureArtifact,data=transactionArtifact,metricAdjustment=float(msg["metricAdjustment"]),salesPenetrationThreshold=float(msg["salesPenetrationThreshold"]),optimizedMetrics=msg["optimizedMetrics"],increment=msg
+        # optimize(job_id,preOpt,msg["tierCounts"],msg["increment"],cfbsArtifact)
+        # except:
         print("Ken hasn't finished development for that yet")
+
+    # Call functions to create output information
+    longOutput = createLong(mergedPreOptCFReturned, optimResult)
+    wideOutput = createWide(Stores, Categories, optimResult, optReturned, penReturned, fixtureArtifact)
+
+    if optimType == "Tiered":
+        summaryReturned = createTieredSummary(longReturned)
+    else:  # since type == "Drill Down"
+        summaryReturned = createDrillDownSummary(longReturned)
         # set status to done
     db.jobs.update_one(
         {'_id': job['_id']},

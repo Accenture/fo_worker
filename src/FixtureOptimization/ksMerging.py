@@ -62,11 +62,14 @@ def ksMerge(optimizationType,transactions,space,brandExit,futureSpace):
             brandExit=pd.melt(brandExitMung(brandExit,Stores,Categories).reset_index(),id_vars=['Store'],var_name='Category',value_name='Exit Flag')
             masterData=masterData.sort_values(by=['Store','Category']).reset_index(drop=True)
             brandExit=brandExit.sort_values(by=['Store','Category']).reset_index(drop=True)
-            for i in range(0,len(masterData)):
+            mergeTrad=masterData
+            for i in range(0,len(mergeTrad)):
                 if brandExit['Exit Flag'].loc[i] == 1:
-                    masterData.loc[i,4::]=0
+                    mergeTrad.loc[i,4::]=0
             masterData=pd.merge(masterData,brandExit,on=['Store','Category'],how='inner')
+            mergeTrad=pd.merge(mergeTrad,brandExit,on=['Store','Category'],how='inner')
             print('There are ' + str(len(masterData[masterData['Exit Flag'] == 1])) + ' brand exits')
             # masterData.to_csv('mergedData.csv',sep=',',index=False)
+            masterData['Store']=pd.to_numeric(masterData['Store'])
             # input('Stop')
-    return masterData
+    return (masterData,mergeTrad)
