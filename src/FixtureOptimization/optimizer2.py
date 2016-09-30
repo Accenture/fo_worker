@@ -11,14 +11,14 @@ from pulp import *
 # from pulp import LpVariable, LpInteger, LpProblem, LpMinimize, lpSum, LpStatus,PULP_CBC_CMD, pulpTestAll, value, LpBinary
 import numpy as np
 import pandas as pd
+import os
+import json
 import pymongo as pm
 import gridfs
 import config
 import datetime as dt
-from config import MONGO_HOST, MONGO_PORT, MONGO_NAME
 
-db_conn = pm.MongoClient(host=MONGO_HOST, port=MONGO_PORT)
-db = db_conn[MONGO_NAME]
+db = pm.MongoClient(config.MONGO_CON)['app']
 fs = gridfs.GridFS(db)
 
 
@@ -121,8 +121,7 @@ def optimize(job_id,jobName,Stores,Categories,preOpt,tierCounts,spaceBound,incre
     maxLevel = max(max(spaceBound.values()))  # max(opt_amt.max())
     Levels = list(np.arange(minLevel, maxLevel + increment, increment))
     if 0.0 not in Levels:
-        Levels.insert(0,0.0)
-    print(Levels)
+        Levels.append(np.abs(0.0))
     b = .05
     bI = .1
 
@@ -130,8 +129,10 @@ def optimize(job_id,jobName,Stores,Categories,preOpt,tierCounts,spaceBound,incre
     # Calculate Total fixtures(TotFixt) per store by summing up the individual fixture counts
     W = opt_amt.sum(axis=1).sum(axis=0)
     TFC = opt_amt.sum(axis=1)
-    ct = LpVariable.dicts('CT', (Categories, Levels), 0, upBound=1,cat='Binary')
-    st = LpVariable.dicts('ST', (Stores, Categories, Levels), 0,upBound=1, cat='Binary')
+    ct = LpVariable.dicts('CT', (Categories, Levels), 0, upBound=1,
+                          cat='Binary')
+    st = LpVariable.dicts('ST', (Stores, Categories, Levels), 0,
+                          upBound=1, cat='Binary')
 
     NewOptim = LpProblem(jobName, LpMinimize)  # Define Optimization Problem/
 
@@ -147,7 +148,7 @@ def optimize(job_id,jobName,Stores,Categories,preOpt,tierCounts,spaceBound,incre
                     opt_amt[Category][Store] = 0
                     NewOptim += st[Store][Category][0.0] == 1
                     NewOptim += ct[Category][0.0] == 1
-                    spaceBound[Category][0] = 0.0
+                    spaceBound[Category][0] = 0
 
         # for (j, Category) in enumerate(Categories):
         #     if (sum(brandExitArtifact[Category].values()) > 0):
@@ -183,13 +184,13 @@ def optimize(job_id,jobName,Stores,Categories,preOpt,tierCounts,spaceBound,incre
             NewOptim += lpSum([st[Store][Category][Level] for (k,Level) in enumerate(Levels)]) == 1#, "One_Level_per_Store-Category_Combination"
         # Test Again to check if better performance when done on ct level
             NewOptim += lpSum([st[Store][Category][Level] * Level for (k,Level) in enumerate(Levels)]) <= spaceBound[Category][1]         
-            # if brandExitArtifact is not None:
-                # if brandExitArtifact[Category].iloc[int(i)] == 0:
-                    # NewOptim += lpSum([st[Store][Category][Level] * Level for (k,Level) in enumerate(Levels)]) >= spaceBound[Category][0] + increment
-                # else:
-                    # NewOptim += lpSum([st[Store][Category][Level] * Level for (k,Level) in enumerate(Levels)]) >= spaceBound[Category][0]
-            # else:
-            NewOptim += lpSum([st[Store][Category][Level] * Level for (k,Level) in enumerate(Levels)]) >= spaceBound[Category][0]
+            if brandExitArtifact is not None:
+                if brandExitArtifact[Category].iloc[int(i)] == 0:
+                    NewOptim += lpSum([st[Store][Category][Level] * Level for (k,Level) in enumerate(Levels)]) >= spaceBound[Category][0] + increment
+                else:
+                    NewOptim += lpSum([st[Store][Category][Level] * Level for (k,Level) in enumerate(Levels)]) >= spaceBound[Category][0]
+            else:
+                NewOptim += lpSum([st[Store][Category][Level] * Level for (k,Level) in enumerate(Levels)]) >= spaceBound[Category][0]
             
 #Store Category Level Bounding
         #NewOptim += lpSum([st[Store][Category][Level] * Level for (k,Level) in enumerate(Levels)] ) >= lower_bound[Category][Store]#,
@@ -205,7 +206,9 @@ def optimize(job_id,jobName,Stores,Categories,preOpt,tierCounts,spaceBound,incre
     #Verify that we still cannot use a constraint if not using a sum - Look to improve efficiency   
         for (k,Level) in enumerate(Levels):
             NewOptim += lpSum([st[Store][Category][Level] for (i,Store) in enumerate(Stores)])/len(Stores) <= ct[Category][Level]#, "Relationship between ct & st"
-   
+
+    print("totalTiers")
+    print(totalTiers)
     NewOptim += lpSum([ct[Category][Level] for (j,Category) in enumerate(Categories) for (k,Level) in enumerate(Levels)]) <= totalTiers #len(Categories)*sum(tier_count[Category][1].values())
 
 #Global Balance Back  
@@ -220,11 +223,13 @@ def optimize(job_id,jobName,Stores,Categories,preOpt,tierCounts,spaceBound,incre
     print("The problem has been formulated")
 
 #Solving the Problem
-    # NewOptim.writeLP("Fixture_Optimization.lp")
-    # NewOptim.writeMPS("Fixture_Optimization.mps")
     # NewOptim.msg=1
     # NewOptim.solve(pulp.PULP_CBC_CMD(msg=1))
-    NewOptim.solve()    
+    # solver = CBC_CMD()
+    # solver = PULP_CBC_CMD()
+    solver = GUROBI_CMD(mip=True,msg=1)
+    solver.tmpdir = '\tmp'
+    NewOptim.solve(solver)
     # NewOptim.solve(pulp.COIN_CMD(msg=1))
     
 #Debugging
@@ -322,10 +327,25 @@ def optimize(job_id,jobName,Stores,Categories,preOpt,tierCounts,spaceBound,incre
             }
         }
     )
-
-    return 'Success!'
-
+    '''
+    # solvedout, result_id = fs.open_upload_stream("test_file",chunk_size_bytes=4,metadata={"contentType": "text/csv"}) 
+    #open("solvedout.csv", 'w')
+    with fs.new_file(filename="spaceResults.csv",content_type="type/csv") as solvedout:
+        solvedout.write("Store,".encode("UTF-8"))
+        for (j, Category) in enumerate(Categories):
+            solvedout.write(opt_amt.columns.values[j].encode("UTF-8") + ",".encode("UTF-8"))
+        for (i, Store) in enumerate(Stores):
+            solvedout.write(str("\n"+str(Store)).encode("UTF-8"))
+            for (j, Category) in enumerate(Categories):
+                solvedout.write(",".encode("UTF-8"))
+                for (k, Level) in enumerate(Levels):
+                    if value(st[Store][Category][Level]) == 1:
+                        solvedout.write(str(Level).encode("UTF-8"))
+        solvedout.close()
+    # print(LpStatus[LpStatus])
+    '''
     return #(longOutput)#,wideOutput)
+
     # testing=pd.read_csv("solvedout.csv").drop
 
 # if __name__ == '__main__':
@@ -333,7 +353,6 @@ def optimize(job_id,jobName,Stores,Categories,preOpt,tierCounts,spaceBound,incre
 # Should optimize after completion here call preop instead of in worker?
 
     return LpStatus[NewOptim.status]
-
 if __name__ == '__main__':
     df = pd.DataFrame(np.random.randn(10, 5), columns=['a', 'b', 'c', 'd', 'e'])
     create_output_artifact_from_dataframe(df, filename='hello.csv')

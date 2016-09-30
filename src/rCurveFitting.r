@@ -1,410 +1,389 @@
-  #Clear historical data from R server
-  rm(list=ls())
-  
-  # Set working directory
-  #setwd("C:\\Users\\alison.stern\\Documents\\Kohls\\FO Enhancements\\R Code\\3 R Functions_08.24.2016\\Curve Fitting")
-  
-  #install this package to run erf() function
-  library(pracma)
-  #Data manipulation task performed using tidyr package 
-  library(tidyr)
-  #Library to call optimization package that runs the curve fitting
-  library(nloptr)
-  
-  #initial parameter setting for curve fitting
-  Increment_Size=0.5
-  
-  #Productivity parameters
-  sales_weight<-0.7
-  profit_weight<-0.2
-  units_weight<-0.1
-  
-  #Bound parameters
-  PCT_Space_Change_Limit<-0.5
-  
-  #Select Optimization type Tiered or Drill_Down
-  type<-"Tiered"
-  
-  #big_master_data$Trgt_BA_Space_Less_Brnd_Entry<-as.numeric(as.character(big_master_data$Future_Space))-big_master_data$Entry_Space
-  big_master_data<-read.csv("output.csv",header=TRUE,sep=",")
-  bound_input<-read.csv("Bound_Input1.csv",header=TRUE,sep=",")
-  
-  #Curve Fitting and Bound Setting Function design
-curvefitting_boundsetting<-function(big_master_data,bound_input,Increment_Size,sales_weight,profit_weight,units_weight,PCT_Space_Change_Limit,type){
-    strcount_filter=100
-    avgsales_flter=200
-    curve_split<-0.75  
-    
-  #bound percent variable creation
-    names(bound_input)[1]<-"Product"
-    big_master_data<-big_master_data[,which(names(big_master_data) %in% c("Store","Climate","VSG","Product","Space","Sales","Units","Profit","Exit_Flag","Future_Space","Entry_Space"))]
-    big_master_data$PCT_Space_Change_Limit<-PCT_Space_Change_Limit
-    big_master_data<-merge(big_master_data,bound_input,by="Product",all.x=TRUE)
-    
-  #create "Climate_Group" variable
-    big_master_data$Climate_Group<-big_master_data$Climate
-    big_master_data$Climate_Group<-as.character(big_master_data$Climate_Group)
-    if(type=="Drill_Down"){
-    for(j in 1:nrow(big_master_data)){
-      big_master_data$Climate_Group[j]<-ifelse((big_master_data$Climate_Group[j]=="HOT" || big_master_data$Climate_Group[j]=="SUPER HOT"),"HOT & SH",big_master_data$Climate_Group[j])
-    }
-    } else {
-    big_master_data$Climate_Group<-"NA"
-    }
-    
-  #Filter out product/climate group combinations
-  big_master_data$prod_climate<-paste0(big_master_data$Product,"-",big_master_data$Climate_Group)
-  productlist<-unique(big_master_data$prod_climate)
-  p=1
-  
-  #Filter store/product where sales<20$ or Space<0.1
-  filtered_final<-NULL
-  if(length(which(big_master_data$Sales<20))!=0){
-    if(p==1){
-      filtered_data<-big_master_data[which(big_master_data$Sales<20),]
-      filtered_final<-filtered_data
-      p=p+1
-    } else {
-      filtered_data<-big_master_data[which(big_master_data$Sales<20),]
-      filtered_final<-rbind(filtered_final,filtered_data)
-    }
-    big_master_data<-big_master_data[-which(big_master_data$Sales<20),]
-  } 
-  if (length(which(big_master_data$Space<0.1))!=0){
-    if(p==1){
-      filtered_data<-big_master_data[which(big_master_data$Space<0.1),]
-      filtered_final<-filtered_data
-      p=p+1
-    } else {
-      filtered_data<-big_master_data[which(big_master_data$Space<0.1),]
-      filtered_final<-rbind(filtered_final,filtered_data)
-    }
-    big_master_data<-big_master_data[-which(big_master_data$Space<0.1),]
+# Accenture & Kohl's Proprietary and Confidential Information.
+# This code contains Accenture Materials; the code and the concepts used in it are subject to the 
+# Top Down Macro Space Optimization Approach agreement between Accenture & Kohl's.  
+
+# rm(list=ls())  #Clear historical data from R server
+
+# Curve Fitting and Bound Setting Function
+
+# Accenture & Kohl's Proprietary and Confidential Information.
+# This code contains Accenture Materials; the code and the concepts used in it are subject to the
+# Top Down Macro Space Optimization Approach agreement between Accenture & Kohl's.
+
+#rm(list=ls())  #Clear historical data from R server
+
+#curr_prod_name <- "TEST"
+#setwd(paste0("C:\\Users\\alison.stern\\Documents\\Kohls\\FO Enhancements\\R Code\\Testing 09.29.2016\\",curr_prod_name))
+
+
+# Curve Fitting and Bound Setting Function
+curvefitting_boundsetting<-function(master,bound_input,increment,pct_chg_limit,sls_pen_thresh,jobType,methodology){
+#  print(colnames(master))
+#  readline('Press Enter to continue')
+  library(pracma) #For error function
+  library(tidyr)  #For data manipulation
+  library(nloptr) #For running optimization to find unscaled coefficients
+  library(gdata)
+
+
+  # BEGIN curve-fitting
+
+  #	Minimal Store-Category History Filters
+  space_filter <- 0.1
+  Sales_filter <- 20
+  Profit_filter <- 5
+  Units_filter <- 5
+
+  #	Minimal Category-Climate Group History Filters
+  strcount_filter <- 100
+  avgSales_filter <- 200
+  avgProfit_filter <- 50
+  avgUnits_filter <- 50
+
+  # Rename column titles where column title contains blanks and drop irrelevant columns
+  names(master)[names(master) == "Current.Space"] <- "Space"
+  names(master)[names(master) == "Sales.."] <- "Sales"
+  names(master)[names(master) == "Profit.."] <- "Profit"
+  names(master)[names(master) == "Sales.Units"] <- "Units"
+  names(master)[names(master) == "New.Space"] <- "Space_to_Fill"
+  names(master)[names(master) == "Exit.Flag"] <- "Exit_Flag"
+#  print(colnames(master))
+
+  master <- master[c("Store", "Climate", "Category", "Space", "Sales", "Profit", "Units", "Exit_Flag", "Space_to_Fill")]
+
+  # Assign Climate Groups
+  master$Climate_Group <- as.character(master$Climate)
+  if(jobType == "Tiered"){
+    master$Climate_Group <- "NA"
+  } else {
+    master$Climate_Group <- ifelse((master$Climate_Group == "HOT" | master$Climate_Group == "SUPER HOT"), "HOT & SH", master$Climate_Group)
   }
-  #Filter store-product combination where there is too little volume/store count to build a curve
-  for (i in (1:length(productlist))){
-    testdata<-big_master_data[which(big_master_data$prod_climate %in% productlist[i]),]
-    if(nrow(testdata)>strcount_filter && ifelse(is.na(avgsales_flter)!=TRUE ,sum(testdata$Sales)/nrow(testdata)>avgsales_flter,TRUE)){
-      big_master_data<-big_master_data
-    } else {
-      #recording filtered data for later use 
-      if(p==1){
-        filtered_data<-big_master_data[which(big_master_data$prod_climate %in% productlist[i]),]
-        filtered_final<-filtered_data
-        p=p+1
+  master$Category_CG <- paste0(master$Category,"-",master$Climate_Group)
+
+  # Initialize data frame to hold unscaled curve information (analytics reference data)
+  ref <- structure(list(Category_SG=character()), class = "data.frame")
+
+  k <- 0
+  firstmetric <- TRUE
+
+  for(target in c("Sales","Profit","Units")){
+
+    # Business Area Productivity Calculation
+    master[,paste0("BA_Prod_",target)] <- NA
+    for(j in 1:nrow(master)){
+      master[,paste0("BA_Prod_",target)][j] <- sum(master[,target][which(master$Store %in% master$Store[j])])/sum(master$Space[which(master$Store %in% master$Store[j])])
+    }
+
+    #	Flag Store-Categories with Minimal History
+    master[,paste0("Str_Cat_Flag_",target)] <- 0
+    master[,paste0("Str_Cat_Flag_",target)] <- ifelse((master$Space < space_filter | master[,target] < get(paste0(target,"_filter"))), 1, 0)
+
+    #	Flag Category-Climate Groups with Minimal History
+    eligiblePrelim<-master[which(master[,paste0("Str_Cat_Flag_",target)] == 0),]
+    targetStats = do.call(data.frame, aggregate(x = eligiblePrelim[target], by = eligiblePrelim["Category_CG"], FUN = function(x) c(Average = mean(x), Str_Count = length(x))))
+    remove(eligiblePrelim)
+    targetStats[,paste0("Cat_CG_Flag_",target)] <- 0
+    targetStats[,paste0("Cat_CG_Flag_",target)] <- ifelse((targetStats[,paste0(target,".Str_Count")] < strcount_filter | targetStats[,paste0(target,".Average")] < get(paste0("avg",target,"_filter"))), 1, 0)
+    master <- merge(master,targetStats[ , c("Category_CG", paste0("Cat_CG_Flag_",target))],by="Category_CG",all.x=TRUE)
+    master[,paste0("Cat_CG_Flag_",target)][is.na(master[,paste0("Cat_CG_Flag_",target)])] <- 0
+
+    # Select the data eligible for curve-fitting, which passed all filters
+    eligible <- master[which(master[,paste0("Str_Cat_Flag_",target)] == 0 & master[,paste0("Cat_CG_Flag_",target)] == 0),]
+    eligible <- eligible[c("Store","Category", "Category_CG","Climate_Group",paste0("BA_Prod_",target),"Space",target)]
+
+    # Assign Productivity Groups
+    prodStats <- do.call(data.frame,
+                         aggregate(x = eligible[,paste0("BA_Prod_",target)],
+                                   by = eligible["Category_CG"],
+                                   FUN = function(x) c(
+                                     Str_Count = length(x),
+                                     q1 = quantile(x, probs = 0.25),
+                                     q2 = quantile(x, probs = 0.5),
+                                     q3 = quantile(x, probs = 0.75))))
+    rownames(prodStats) <- prodStats$Category_CG
+    eligible[,paste0("BA_Prod_Group_",target)] <- NA
+    for(q in (1:nrow(eligible))){
+      currCatCG <- eligible[q,"Category_CG"]
+      if(prodStats[currCatCG,"x.Str_Count"] >= 600){
+        eligible[q,paste0("BA_Prod_Group_",target)] <-
+          ifelse(eligible[q,paste0("BA_Prod_",target)]<prodStats[currCatCG,"x.q1.25."],
+                 "Low",
+                 ifelse(eligible[q,paste0("BA_Prod_",target)]>prodStats[currCatCG,"x.q3.75."],
+                        "High",
+                        "Medium"))
+      } else if (prodStats[currCatCG,"x.Str_Count"] >= 300){
+        eligible[q,paste0("BA_Prod_Group_",target)] <-
+          ifelse(eligible[q,paste0("BA_Prod_",target)]<prodStats[currCatCG,"x.q2.50."],
+                 "Low",
+                 "High")
       } else {
-        filtered_data<-big_master_data[which(big_master_data$prod_climate %in% productlist[i]),]
-        filtered_final<-rbind(filtered_final,filtered_data)
+        eligible[q,paste0("BA_Prod_Group_",target)] <- "NA"
       }
-      big_master_data<-big_master_data[-which(big_master_data$prod_climate %in% productlist[i]),]
     }
-    
-  }
-  big_master_data<-big_master_data[,-which(names(big_master_data) %in% "prod_climate")]
-  
-  
-  #Productivity Group preparation based on different rules
-  for(j in 1:nrow(big_master_data)){
-    big_master_data$productivity_group_dummy[j]<-(sales_weight*big_master_data$Sales[j] + profit_weight*big_master_data$Profit[j] + units_weight*big_master_data$Units[j])/big_master_data$Space[j]
-  }
-  big_master_data$str_climate<-paste0(big_master_data$Store,"-",big_master_data$Climate_Group)
-  
-  for(q in (1:nrow(big_master_data))){
-    big_master_data_backup<-big_master_data[which(big_master_data$Climate_Group %in% big_master_data$Climate_Group[q]),]
-    big_master_data_backup<-big_master_data_backup[which(big_master_data_backup$Product %in% big_master_data$Product[q]),]
-    if(nrow(big_master_data_backup)>=600){
-      big_master_data$Productivity_Group[q]<-ifelse(big_master_data$productivity_group_dummy[q]<quantile(big_master_data_backup$productivity_group_dummy,0.25),"Low",ifelse(big_master_data$productivity_group_dummy[q]>quantile(big_master_data_backup$productivity_group_dummy,0.75),"High","Medium"))
-    } else if (nrow(big_master_data_backup)>=400){
-      big_master_data$Productivity_Group[q]<-ifelse(big_master_data$productivity_group_dummy[q]<quantile(big_master_data_backup$productivity_group_dummy,0.5),"Low","High")  
+
+    # Assign Store Groups
+    eligible[paste0("Store_Group_",target)] <- "NA"
+    if(jobType == "Tiered"){
+      eligible[paste0("Store_Group_",target)] <- eligible[,paste0("BA_Prod_Group_",target)]
     } else {
-      big_master_data$Productivity_Group[q]<-"NA"
+      eligible[paste0("Store_Group_",target)] <- paste0(eligible$Climate_Group,"-",eligible[,paste0("BA_Prod_Group_",target)])
     }
-  }
-  big_master_data$Store_Group<-paste0(big_master_data$Climate_Group,"-",big_master_data$Productivity_Group)
-  big_master_data<-big_master_data[,-which(names(big_master_data) %in% c("productivity_group_dummy","str_climate"))]
-  big_master_data<-big_master_data[c("Store","Product","Store_Group","Space","Sales","Profit","Units","PCT_Space_Change_Limit","Space.Lower.Limit","Space.Upper.Limit","PCT_Space_Lower_Limit","PCT_Space_Upper_Limit","Exit_Flag","Future_Space","Entry_Space","Climate_Group","Productivity_Group","Climate","VSG")]
-  big_master_data$Product<-paste0(big_master_data$Product,"|",big_master_data$Store_Group)
-  #b=6
-  #loop to filter Store, Product, Space or specific VPE variables to run curve fitting
-  for(b in (5:7)){
-    if("Profit" %in% names(big_master_data)[b]){
-      target<-"Profit"
-    } else if("Sales" %in% names(big_master_data)[b]){
-      target<-"Sales"
-    }else if("Units" %in% names(big_master_data)[b]){
-      target<-"Units"
-    }
-    master_data<-big_master_data[,c(1:4,b,8:19)]
-    #master_data<-big_master_data[,c(which(names(big_master_data) %in% c("Store", "Product")),b,8:19)]
-    #sum of total space allocated across products for a given store and Break Point variable creation 
-    produclist<-unique(master_data$Product)
-    for(j in 1:nrow(master_data)){
-      master_data$BA_Space[j]<-sum(master_data$Space[which(master_data$Store == master_data$Store[j])])
-    }
-    
-    for(j in 1:nrow(master_data)){
-      master_data[[paste0("Unscaled_Break_Point_",target)]][j]<-quantile(master_data$Space[which(master_data$Product %in% master_data$Product[j])],0.01)
-    }
-    
-    #Variable to control position of the Curve plot output in an excel file    
-    # Loop for Data filter by product
-    l=1
-    #k=17
-    #loop to run Curve fitting by product and store
-    for (k in 1:nrow(data.frame(produclist))){
-      data<-master_data[which(master_data$Product %in% produclist[k]),]
-      
-      #Space_backup <- as.vector(1:nrow(data))
-      if(length(unique(data$Space))<=1){
-        data[,paste0("Correlation_",target)]<-NA
-        Estimate<-c(mean(data[,target]),-((unique(data$Space)/2)-0)/qnorm((1-(mean(data[,target])/2)/mean(data[,target]))/2),0)
+    eligible$Category_SG <- paste0(eligible$Category,"-",eligible[,paste0("Store_Group_",target)])
+
+    # Loop through each category-store group to generate unscaled coefficients
+    cat_sg_list <- unique(eligible$Category_SG)
+    first_curve <- TRUE
+    for (j in 1:nrow(data.frame(cat_sg_list))){
+
+      k = k + 1
+
+      cfdata <- eligible[which(eligible$Category_SG %in% cat_sg_list[j]),]
+
+      x <- cat_sg_list[j]
+      ref[k,"Category_SG"] <- x
+      split <- sapply(gregexpr("-", x), tail, 1)
+      ref[k,"Category"] <- substr(x, 1, split-1)
+      ref[k,"Store_Group"] <- substr(x, split+1,nchar(x))
+      ref[k,"Metric"] <- target
+
+      ref[k,"Correlation"] <- cor(cfdata[,c(target,"Space")])[1,2]
+
+      # Handle special case of one unique space value
+      if(length(unique(cfdata$Space)) == 1 ){
+
+        ref[k,"Special Case"] <- "One Unique Space"
+        ref[k,"Alpha_Seed"] <- mean(cfdata[,target])
+        ref[k,"Shift_Seed"] <- 0
+        spacebetaseed <- unique(cfdata$Space)/2
+        targetbetaseed <- ref[k,"Alpha_Seed"]/2
+        ref[k,"Beta_Seed"] <- -(spacebetaseed-ref[k,"Shift_Seed"])/qnorm((1-targetbetaseed/ref[k,"Alpha_Seed"])/2)
+        Estimate<-c(ref[k,"Alpha_Seed"],ref[k,"Beta_Seed"],ref[k,"Shift_Seed"])
         coef<-data.frame(Estimate)
         coef<-data.frame(t(data.frame(coef)))
         colnames(coef)<-c("Alpha","Beta","Shift")
-        data[,paste0("Alpha_Seed_",target)]<-NA
-        data[,paste0("Shift_Seed_",target)]<-NA
-        data[,paste0("Beta_Seed_",target)]<-NA
-        data[,paste0("Alpha_UB_",target)]<-NA
-        data[,paste0("Beta_UB_",target)]<-NA
-        data[,paste0("Shift_UB_",target)]<-NA
-        
+
       } else {
-      
-      #starting values for curve fitting coefficients
-      data[,paste0("Correlation_",target)]<-cor(data[,c(target,"Space")])[1,2]  
-      data[,paste0("Alpha_Seed_",target)]<-mean(data[,target][which(data$Space>=quantile(data$Space, curve_split))])
-      if(unique(data[,paste0("Alpha_Seed_",target)])<0){
-        data[,paste0("Alpha_Seed_",target)]<-1
+
+        ref[k,"Special Case"] <- "NA"
+
+        # Starting values for unscaled coefficients
+        ref[k,"Alpha_Seed"] <- max(mean(cfdata[,target]),mean(cfdata[,target][which(cfdata$Space>=quantile(cfdata$Space, .75))]))
+        spacebetaseed <- mean(cfdata$Space[which(cfdata$Space<=quantile(cfdata$Space, .25))])
+        targetbetaseed <- min(ref[k,"Alpha_Seed"], mean(cfdata[,target][which(cfdata$Space<=quantile(cfdata$Space, .25))]))
+        ref[k,"Shift_Seed"] <- 0
+        ref[k,"Beta_Seed"] <- max(0,-(spacebetaseed-ref[k,"Shift_Seed"])/qnorm((1-targetbetaseed/ref[k,"Alpha_Seed"])/2))
+
+        # Lower bounds for unscaled coefficients
+        ref[k,"Alpha_LB"] <- 0
+        ref[k,"Shift_LB"] <- 0
+        firstperc <- quantile(cfdata$Space, 0.01)
+        spacebetalb <- ifelse(firstperc == max(cfdata$Space), min(cfdata$Space), firstperc)
+        mean_target <- mean(cfdata[,target])
+        targetbetalblinearprod <- spacebetalb * (sum(cfdata[,target])/sum(cfdata$Space))
+        targetbetalb <- (mean_target + targetbetalblinearprod)/2
+        ref[k,"Beta_LB"] <- -(spacebetalb-ref[k,"Shift_Seed"])/qnorm((1-targetbetalb/mean_target)/2)
+        ref[k,"Beta_Seed"] <- max(ref[k,"Beta_Seed"],ref[k,"Beta_LB"])
+
+        # Upper bounds for unscaled coefficients
+        ref[k,"Alpha_UB"] <- quantile(cfdata[,target], 0.95)
+        ref[k,"Beta_UB"] <- Inf
+        ref[k,"Shift_UB"] <- ifelse(min(cfdata$Space) < 2 * max(1, increment) | ref[k,"Correlation"] <= 0.2, 0, min(cfdata$Space) - max(1, increment))
+
+        # Define functional form
+        Space <- cfdata$Space
+        targetset <- cfdata[,target]
+        predfun <- function(par) {
+          Alpha <- par[1]
+          Beta <- par[2]
+          Shift <- par[3]
+          rhat <- Alpha*erf((Space-Shift)/(sqrt(2)*Beta))
+          r <- sum((targetset - rhat)^2)
+          return(r)
+        }
+
+        # Store unscaled coefficient seed values and bounds
+        x0 <- c(ref[k,"Alpha_Seed"],ref[k,"Beta_Seed"],ref[k,"Shift_Seed"])
+        lower_bounds <- c(ref[k,"Alpha_LB"],ref[k,"Beta_LB"],ref[k,"Shift_LB"])
+        upper_bounds <- c(ref[k,"Alpha_UB"],ref[k,"Beta_UB"],ref[k,"Shift_UB"])
+
+        # Solve for unscaled coefficients using optimization function "auglag"
+        model <- auglag(x0, predfun, gr=NULL, lower=lower_bounds, upper=upper_bounds, localsolver=c("MMA"))
+
+        #Extract model results
+        coef <- t(data.frame(model$par))
+
       }
-      spacetosolvefor<-mean(data$Space[which(data$Space<=quantile(data$Space, 1-curve_split))])
-      salestosolvefor<-min(unique(data[,paste0("Alpha_Seed_",target)]), mean(data[,target][which(data$Space<=quantile(data$Space, 1-curve_split))]))
-      data[,paste0("Shift_Seed_",target)]<-0
-      
-      data[,paste0("Beta_Seed_",target)]<--(spacetosolvefor-unique(data[,paste0("Shift_Seed_",target)]))/qnorm((1-salestosolvefor/unique(data[,paste0("Alpha_Seed_",target)]))/2)
-      if(unique(data[,paste0("Beta_Seed_",target)])<0 || is.na(unique(data[,paste0("Beta_Seed_",target)]))==TRUE){
-        data[,paste0("Beta_Seed_",target)]<-0
+
+      # Finalize unscaled coefficients
+      coef[,c(1,2,3)] <- round(coef[,c(1,2,3)],4)
+      ref[k,"Unscaled_Alpha"] <- coef[1]
+      ref[k,"Unscaled_Beta"] <- coef[2]
+      ref[k,"Unscaled_Shift"] <- coef[3]
+      ref[k,"Unscaled_BP"] <- ifelse(ref[k,"Unscaled_Shift"]==0,0,quantile(cfdata$Space, 0.01))
+      ref[k,"Unscaled_BP_Target"] <- ref[k,"Unscaled_Alpha"]*erf((ref[k,"Unscaled_BP"]-ref[k,"Unscaled_Shift"])/(sqrt(2)*ref[k,"Unscaled_Beta"]))
+      ref[k,"Unscaled_BP_Prod"] <- ref[k,"Unscaled_BP_Target"]/ref[k,"Unscaled_BP"]
+      ref[k,"Critical_Point"] <- ref[k,"Unscaled_Shift"]+sqrt(2)*ref[k,"Unscaled_Beta"]*sqrt(log(sqrt(7/11)*(ref[k,"Unscaled_Alpha"]/ref[k,"Unscaled_Beta"])))
+
+      # Calculate goodness-of-fit statistics
+      Prediction <- ref[k,"Unscaled_Alpha"]*erf((cfdata$Space-ref[k,"Unscaled_Shift"])/(sqrt(2)*ref[k,"Unscaled_Beta"]))
+      ref[k,"Quasi_R_Squared"] <- 1-sum((cfdata[,target]-Prediction)^2)/(length(cfdata[,target])*var(cfdata[,target]))  # Valid when reasonably close to linear
+      ref[k,"MAPE"] <- mean(abs(Prediction-(cfdata[,target]))/(cfdata[,target])) # Mean Absolute Percentage Error
+
+      # BEGIN store scaling calculations
+
+      # Calculate the historical productivity of the store-category
+      cfdata[,paste0("Productivity_",target)] <- cfdata[,target]/cfdata$Space
+
+      # Calculate the expected target value based on the unscaled curve at the store-category's historical space
+      cfdata[,paste0("Unscaled_Predicted_",target)] <-
+        ifelse(cfdata$Space<ref[k,"Unscaled_BP"],
+               cfdata$Space*ref[k,"Unscaled_BP_Prod"],
+               ref[k,"Unscaled_Alpha"]*erf((cfdata$Space-ref[k,"Unscaled_Shift"])/(sqrt(2)*ref[k,"Unscaled_Beta"])))
+
+      # Determine the scaling type for use in scaling calculations
+      cfdata[,paste0("Scaling_Type_",target)] <-
+        ifelse(cfdata$Space>ref[k,"Critical_Point"],
+               "E", # Type E: space above where the curve has flattened out
+               ifelse(cfdata[,target]>=cfdata[,paste0("Unscaled_Predicted_",target)],
+                      ifelse(cfdata[,target]>=ref[k,"Unscaled_BP_Target"],
+                             "A", # Type A: over-performs unscaled curve and is outside unscaled BP/BP Target rectangle
+                             "C"), # Type C: over-performs unscaled curve and is inside unscaled BP/BP Target rectangle
+                      ifelse(cfdata$Space>=ref[k,"Unscaled_BP"],
+                             "B", # Type B: under-performs unscaled curve and is outside unscaled BP/BP Target rectangle
+                             "D"))) # Type D: under-performs unscaled curve and is inside unscaled BP/BP Target rectangle
+
+      # Find the space of the data point that the scaled S curve should go through
+      cfdata[,paste0("Space2Solve4_",target)] <-
+        ifelse((cfdata[,paste0("Scaling_Type_",target)]=="A" | cfdata[,paste0("Scaling_Type_",target)]=="B"),
+               cfdata$Space,
+               ref[k,"Unscaled_BP"])
+
+      # Find the target of the data point that the scaled S curve should go through
+      cfdata[,paste0(target,"2Solve4")] <-
+        ifelse((cfdata[,paste0("Scaling_Type_",target)]=="A" | cfdata[,paste0("Scaling_Type_",target)]=="B"),
+               cfdata[,target],
+               ref[k,"Unscaled_BP"]*cfdata[,paste0("Productivity_",target)])
+
+      # Scale the alpha by the difference between store's historical target value and the unscaled expected target value
+      cfdata[,paste0("Scaled_Alpha_",target)] <-
+        ref[k,"Unscaled_Alpha"]+cfdata[,target]-cfdata[,paste0("Unscaled_Predicted_",target)]
+
+      # Scale the shift, keeping slope steady relative to unscaled curve unless/until break point assumption is not needed
+      cfdata[,paste0("Scaled_Shift_",target)] <-
+        ifelse((cfdata[,paste0("Scaling_Type_",target)]=="A" | cfdata[,paste0("Scaling_Type_",target)]=="C"),
+               pmax(0,cfdata[,paste0("Space2Solve4_",target)]+ref[k,"Unscaled_Beta"]*qnorm((1-(cfdata[,paste0(target,"2Solve4")]/cfdata[,paste0("Scaled_Alpha_",target)]))/2)),
+               ref[k,"Unscaled_Shift"])
+
+      # Scale the beta such that the final scaled S curve goes through the identified point
+      cfdata[,paste0("Scaled_Beta_",target)] <-
+        ifelse(cfdata[,paste0("Scaling_Type_",target)]=="E",
+               ref[k,"Unscaled_Beta"],
+               (cfdata[,paste0("Scaled_Shift_",target)]-cfdata[,paste0("Space2Solve4_",target)])/(qnorm((1-(cfdata[,paste0(target,"2Solve4")]/cfdata[,paste0("Scaled_Alpha_",target)]))/2)))
+
+      # Scale the break point when a linear assumption is needed
+      if(ref[k,"Unscaled_BP"]==0){
+
+        cfdata[,paste0("Scaled_BP_",target)] <- 0
+        cfdata[,paste0(target,"_at_Scaled_BP")] <- 0
+        cfdata[,paste0("Prod_at_Scaled_BP_",target)] <- 0
+
+      } else{
+
+        cfdata[,paste0("Scaled_BP_",target)] <-
+          ifelse(!cfdata[,paste0("Scaling_Type_",target)]=="A",
+                 ref[k,"Unscaled_BP"],
+                 cfdata[,paste0("Scaled_Shift_",target)]-cfdata[,paste0("Scaled_Beta_",target)]*qnorm((1-(ref[k,"Unscaled_BP_Target"]/cfdata[,paste0("Scaled_Alpha_",target)]))/2))
+
+        cfdata[,paste0(target,"_at_Scaled_BP")] <- cfdata[,paste0("Scaled_Alpha_",target)]*erf((cfdata[,paste0("Scaled_BP_",target)]-cfdata[,paste0("Scaled_Shift_",target)])/(sqrt(2)*cfdata[,paste0("Scaled_Beta_",target)]))
+
+        cfdata[,paste0("Prod_at_Scaled_BP_",target)] <- cfdata[,paste0(target,"_at_Scaled_BP")]/cfdata[,paste0("Scaled_BP_",target)]
+
       }
-      #Lower bounds for curve fitting coefficients
-      Alpha_LB<-0
-      Beta_LB<-0
-      Shift_LB<-0
-      #Upper bounds for curve fitting coefficients
-      data[,paste0("Alpha_UB_",target)]<-quantile(data[,target], 0.95)
-      data[,paste0("Beta_UB_",target)]<-Inf
-      if(min(data$Space)<=1){
-        data[,paste0("Shift_UB_",target)]<-0
-      } else {
-        data[,paste0("Shift_UB_",target)]<-min(data$Space)-1
+
+      # Calculate the expected target value based on the scaled curve at historical space, which equals historical target
+      cfdata[,paste0("Scaled_Predicted_",target)] <-
+        ifelse(cfdata$Space<cfdata[,paste0("Scaled_BP_",target)],
+               cfdata$Space*cfdata[,paste0("Prod_at_Scaled_BP_",target)],
+               cfdata[,paste0("Scaled_Alpha_",target)]*erf((cfdata$Space-cfdata[,paste0("Scaled_Shift_",target)])/(sqrt(2)*cfdata[,paste0("Scaled_Beta_",target)])))
+
+      # END store scaling calculations
+
+      drop <- c("Category_SG",paste0("Productivity_",target),paste0("Unscaled_Predicted_",target),paste0("Scaling_Type_",target),
+                paste0("Space2Solve4_",target),paste0(target,"2Solve4"),paste0(target,"_at_Scaled_BP"),
+                paste0("Prod_at_Scaled_BP_",target),paste0("Scaled_Predicted_",target))
+      cfdata = cfdata[,!(names(cfdata) %in% drop)]
+
+      # Combine coefficient information for all curves within the same metric
+      if(first_curve){
+        eligibleScaled <- cfdata
+        first_curve <- FALSE
+      } else{
+        eligibleScaled <- rbind(eligibleScaled,cfdata)
       }
-      
-      #defining Sales-Space functions for optimization
-      Space<-data$Space
-      targetset<-data[,target]
-      predfun <- function(par) {
-        Alpha<-par[1]
-        Beta<-par[2]
-        Shift<-par[3]
-        rhat <- Alpha*erf((Space-Shift)/(sqrt(2)*Beta))
-        r<-sum((targetset - rhat)^2)
-        #if (debug) cat(alpha,Beta,mean(r),"\n")
-        return(r)
-      }
-      
-      #Gradient setting for objective function
-      gr <- function(par){
-        Alpha<-par[1]
-        Beta<-par[2]
-        Shift<-par[3]
-        c(erf(500*(mean(Space)-Shift)/(707*Beta)),
-          (-(1000*Alpha*(mean(Space)-Shift)*exp(-(250000*(mean(Space)-Shift)^2)/(499849*Beta^2)))/(707*sqrt(22/7)*Beta^2)),
-          (-(1000*Alpha*exp(-(250000*(mean(Space)-Shift)^2)/(499849*Beta^2)))/(707*sqrt(22/7)*Beta)))
-      }
-      #Storing the starting values in x0
-      x0<-c(unique(data[,paste0("Alpha_Seed_",target)]),unique(data[,paste0("Beta_Seed_",target)]),unique(data[,paste0("Shift_Seed_",target)]))
-      #Calling optimization function "auglag"
-      model<-auglag(x0, predfun,gr=NULL, 
-             lower=c(Alpha_LB,Beta_LB,Shift_LB),
-             upper=c(data.frame(data[,paste0("Alpha_UB_",target)])[1,1],Inf,unique(data[,paste0("Shift_UB_",target)])),
-             localsolver = c("MMA"))
-      
-      #Extracting model results 
-      coef<-t(data.frame(model$par))
-      }
-      coef[,c(1,2,3)]<-round(coef[,c(1,2,3)],4)
-      if(coef[1,2]==0){
-        Estimate<-c(mean(data[,target]),min(data$Space)/(sqrt(2)*qnorm(mean(c(mean(data[,target]),(sum(data[,target])/sum(data$Space))*min(data$Space)))/mean(data[,target]))),0)
-        coef<-data.frame(dummy=1,Estimate)
-        rownames(coef)<-c("Alpha","Beta","Shift")
-        coef<-coef[,-1]
-        #coef<-t(data.frame(coef))
-      }
-      Prediction<-coef[1]*erf((data$Space-coef[3])/(sqrt(2)*coef[2]))
-      
-      #quasi rsquared value is calculated assuming nonlinear function to be reasonably close to a linear model
-      data[,paste0("Quasi_R_Squared_",target)]<-1-sum((data[,target]-Prediction)^2)/(length(data[,target])*var(data[,target]))
-      
-      #Mean Absolute Percentage Error(MAPE) calculation
-      data[,paste0("MAPE_",target)]<-mean(abs(Prediction-(data[,target]))/(data[,target]))
-      
-      #Generating unscalled and scaled variables by store
-      data[,paste0("Unscaled_Alpha_",target)]<-coef[1]
-      data[,paste0("Unscaled_Beta_",target)]<-coef[2]
-      data[,paste0("Unscaled_Shift_",target)]<-coef[3]
-      #data[,paste0("Unscaled_Shift_",target)]<-ifelse(coef[3]>0 && coef[3]<1,round(coef[3],0),coef[3])
-      
-      data[,paste0("Unscaled_Break_Point_",target)]<-ifelse(data[,paste0("Unscaled_Shift_",target)]==0,0,data[,paste0("Unscaled_Break_Point_",target)])
-      data[,paste0("Productivity_",target)]<-data[,target]/data$Space
-      data[,paste0(target,"_BP")]<-data[,paste0("Unscaled_Alpha_",target)]*erf((data[,paste0("Unscaled_Break_Point_",target)]-data[,paste0("Unscaled_Shift_",target)])/(sqrt(2)*data[,paste0("Unscaled_Beta_",target)]))
-      data[,paste0("Productivity_BP",target)]<-data[,paste0(target,"_BP")]/data[,paste0("Unscaled_Break_Point_",target)]
-      data[,paste0("Predicted_",target)]<-ifelse(data$Space<data[,paste0("Unscaled_Break_Point_",target)],data$Space*data[,paste0("Productivity_BP",target)],data[,paste0("Unscaled_Alpha_",target)]*erf((data$Space-data[,paste0("Unscaled_Shift_",target)])/(sqrt(2)*data[,paste0("Unscaled_Beta_",target)])))
-      data[,paste0("Scaling_Type_",target)]<-ifelse(data[,target]>=data[,paste0("Predicted_",target)],ifelse(data[,target]>=data[,paste0(target,"_BP")],"A","C"),ifelse(data$Space>=data[,paste0("Unscaled_Break_Point_",target)],"B","D"))
-      
-      data[,paste0("Space2Solve4_",target)]<-ifelse(data[,paste0("Scaling_Type_",target)]=="A" | data[,paste0("Scaling_Type_",target)]=="B",data$Space,ifelse(data[,paste0("Scaling_Type_",target)]=="D",data[,paste0("Unscaled_Break_Point_",target)],data[,paste0(target,"_BP")]/data[,paste0("Productivity_",target)]))
-      data[,paste0(target,"2Solve4")]<-ifelse(data[,paste0("Scaling_Type_",target)]=="A" | data[,paste0("Scaling_Type_",target)]=="B",data[,target],ifelse(data[,paste0("Scaling_Type_",target)]=="D",data[,paste0("Unscaled_Break_Point_",target)]*data[,paste0("Productivity_",target)],data[,paste0(target,"_BP")]))
-      data[,paste0("Scaled_Alpha_",target)]<-0
-      data[,paste0("Scaled_Shift_",target)]<-0
-      data[,paste0("Scaled_Beta_",target)]<-0
-      data[,paste0("Scaled_BP_",target)]<-0
-      for(m in 1:nrow(data)){
-        critical_space<-data[,paste0("Unscaled_Shift_",target)][m]+sqrt(2)*data[,paste0("Unscaled_Beta_",target)][m]*sqrt(log(sqrt(7/11)*(data[,paste0("Unscaled_Alpha_",target)][m]/data[,paste0("Unscaled_Beta_",target)][m])))
-      data[,paste0("Scaled_Alpha_",target)][m]<-ifelse(data$Space[m]>critical_space,coef[1],data[,paste0("Unscaled_Alpha_",target)][m]+data[,target][m]-data[,paste0("Predicted_",target)][m])
-      data[,paste0("Scaled_Shift_",target)][m]<-ifelse(data$Space[m]>critical_space,coef[3],ifelse(data[,paste0("Scaling_Type_",target)][m]=="B" | data[,paste0("Scaling_Type_",target)][m]=="D",data[,paste0("Unscaled_Shift_",target)][m],ifelse(data[,paste0("Space2Solve4_",target)][m]+data[,paste0("Unscaled_Beta_",target)][m]*qnorm((1-(data[,paste0(target,"2Solve4")][m]/data[,paste0("Scaled_Alpha_",target)][m]))/2)>0,data[,paste0("Space2Solve4_",target)][m]+data[,paste0("Unscaled_Beta_",target)][m]*qnorm((1-(data[,paste0(target,"2Solve4")][m]/data[,paste0("Scaled_Alpha_",target)][m]))/2),0)))
-      data[,paste0("Scaled_Beta_",target)][m]<-ifelse(data$Space[m]>critical_space,coef[2],(data[,paste0("Scaled_Shift_",target)][m]-data[,paste0("Space2Solve4_",target)][m])/(qnorm((1-(data[,paste0(target,"2Solve4")][m]/data[,paste0("Scaled_Alpha_",target)][m]))/2)))
-      data[,paste0("Scaled_BP_",target)][m]<-ifelse(data$Space[m]>critical_space,data[,paste0("Unscaled_Break_Point_",target)][m],ifelse(!data[,paste0("Scaling_Type_",target)][m]=="A",data[,paste0("Unscaled_Break_Point_",target)][m],data[,paste0("Scaled_Shift_",target)][m]-data[,paste0("Scaled_Beta_",target)][m]*(qnorm((1-(data[,paste0(target,"_BP")][m]/data[,paste0("Scaled_Alpha_",target)][m]))/2))))
-      }
-      data[,paste0(target,"Scaled_BP")]<- data[,paste0("Scaled_Alpha_",target)]*erf((data[,paste0("Scaled_BP_",target)]-data[,paste0("Scaled_Shift_",target)])/(sqrt(2)*data[,paste0("Scaled_Beta_",target)]))
-      data[,paste0("Productivity_ScaledBP_",target)]<-data[,paste0(target,"Scaled_BP")]/data[,paste0("Scaled_BP_",target)]
-      data[,paste0("Predicted_",target,"_Final")]<-ifelse(data$Space<data[,paste0("Scaled_BP_",target)],data$Space*data[,paste0("Productivity_ScaledBP_",target)],data[,paste0("Scaled_Alpha_",target)]*erf((data$Space-data[,paste0("Scaled_Shift_",target)])/(sqrt(2)*data[,paste0("Scaled_Beta_",target)])))
-      data<-separate(data = data, col = Product, into = "Product", sep = "\\|")
-      
-      #creating products summary with unscalled coeffcients and important model metrics
-      datasummary<-unique(data[c("Product","Store_Group",paste0("Quasi_R_Squared_",target),paste0("MAPE_",target),paste0("Correlation_",target),paste0("Alpha_Seed_",target),paste0("Beta_Seed_",target),paste0("Shift_Seed_",target),paste0("Alpha_UB_",target),paste0("Beta_UB_",target),paste0("Shift_UB_",target),paste0("Unscaled_Alpha_",target),paste0("Unscaled_Beta_",target),paste0("Unscaled_Shift_",target),paste0("Unscaled_Break_Point_",target))])
-      datasummary<-separate(data = datasummary, col = Product, into = "Product", sep = "\\|")
-      
-      if (l==1){
-        Product_Summary<-datasummary
-        final<-data
-        l=2
-      } else {
-        Product_Summary<-rbind(Product_Summary,datasummary)
-        final<-rbind(final,data)
-        l=l+1
-      }
-      
+
     }
-    
-    #Resetting product counter variable 
-    l=1
-    if (b==5){
-      master_Product_Summary<-Product_Summary
-      final_master<-final
-    } else {
-      master_Product_Summary<-merge(master_Product_Summary,Product_Summary,by=c("Product","Store_Group"),all.x=TRUE)
-      final_master<-merge(final_master,final,by=c("Store","Climate","VSG","Product","Store_Group","Space","Future_Space","Climate_Group","Productivity_Group"),all.x=TRUE)
-    }
+
+    # Merge coefficient information for each metric into the master data set
+    master <- merge(master, eligibleScaled, by=c("Store","Category","Category_CG","Climate_Group",paste0("BA_Prod_",target),"Space",target), all.x=TRUE)
+
+    # Use 1's and 0's for any data points that were not part of curve-fitting
+    master[,paste0("Scaled_Alpha_",target)][is.na(master[,paste0("Scaled_Alpha_",target)])] <- 0
+    master[,paste0("Scaled_Shift_",target)][is.na(master[,paste0("Scaled_Shift_",target)])] <- 0
+    master[,paste0("Scaled_Beta_",target)][is.na(master[,paste0("Scaled_Beta_",target)])] <- 1
+    master[,paste0("Scaled_BP_",target)][is.na(master[,paste0("Scaled_BP_",target)])] <- 0
+
+    # For drill downs, use assumption for store-category history filtered stores
+    # TODO: Write code
+
   }
-  final_master<-final_master[c("Store","Climate","VSG","Product","Store_Group","Space","Sales","Scaled_Alpha_Sales","Scaled_Shift_Sales","Scaled_Beta_Sales","Scaled_BP_Sales","Units","Scaled_Alpha_Units","Scaled_Shift_Units","Scaled_Beta_Units","Scaled_BP_Units","Profit","Scaled_Alpha_Profit","Scaled_Shift_Profit","Scaled_Beta_Profit","Scaled_BP_Profit","PCT_Space_Change_Limit","Space.Lower.Limit","Space.Upper.Limit","PCT_Space_Lower_Limit","PCT_Space_Upper_Limit","Exit_Flag","Future_Space","Entry_Space","Climate_Group","Productivity_Group")]
-  #treatment of Filtered data to bring it back into the main dataset
-  if(is.null(filtered_final)==FALSE){
-  #names(filtered_final)[which(names(filtered_final) %in% "Climate")]<-"Store_Group"
-    filtered_final$Store_Group<-filtered_final$Climate
-  filtered_final$Productivity_Group<-"NA"
-  filtered_final$Store_Group<-paste0(filtered_final$Climate_Group,"-",filtered_final$Productivity_Group)
-  #Creating scaled variables
-  filtered_final$Scaled_Alpha_Sales<-0
-  filtered_final$Scaled_Shift_Sales<-0
-  filtered_final$Scaled_Beta_Sales<-1
-  filtered_final$Scaled_BP_Sales<-0
-  filtered_final$Scaled_Alpha_Units<-0
-  filtered_final$Scaled_Shift_Units<-0
-  filtered_final$Scaled_Beta_Units<-1
-  filtered_final$Scaled_BP_Units<-0
-  filtered_final$Scaled_Alpha_Profit<-0
-  filtered_final$Scaled_Shift_Profit<-0
-  filtered_final$Scaled_Beta_Profit<-1
-  filtered_final$Scaled_BP_Profit<-0
-  filtered_final$Exit_Flag<-"TRUE"
-  
-  for(i in 1:nrow(filtered_final)){
-  if(type=="Drill_Down"){
-  if(length(master_Product_Summary[which(master_Product_Summary$Product==filtered_final$Product[i] & master_Product_Summary$Store_Group==filtered_final$Store_Group[i]),]$Unscaled_Alpha_Sales)==0){
-  filtered_final$Scaled_Alpha_Sales[i]<-0
-  filtered_final$Scaled_Shift_Sales[i]<-0
-  filtered_final$Scaled_Beta_Sales[i]<-1
-  filtered_final$Scaled_BP_Sales[i]<-0
-  filtered_final$Scaled_Alpha_Units[i]<-0
-  filtered_final$Scaled_Shift_Units[i]<-0
-  filtered_final$Scaled_Beta_Units[i]<-1
-  filtered_final$Scaled_BP_Units[i]<-0
-  filtered_final$Scaled_Alpha_Profit[i]<-0
-  filtered_final$Scaled_Shift_Profit[i]<-0
-  filtered_final$Scaled_Beta_Profit[i]<-1
-  filtered_final$Scaled_BP_Profit[i]<-0
-  filtered_final$Exit_Flag[i]<-"TRUE"
-  } else if(length(master_Product_Summary[which(master_Product_Summary$Product==filtered_final$Product[i] & master_Product_Summary$Store_Group==filtered_final$Store_Group[i]),]$Unscaled_Alpha_Sales)!=0){
-    Avg_productivity<-sum(big_master_data[which(big_master_data$Store_Group %in% filtered_final$Store_Group[i]),]$Sales)/sum(big_master_data[which(big_master_data$Store_Group %in% filtered_final$Store_Group[i]),]$Space)
-    PCT_Share_Coefficient<-(sum(big_master_data[which(big_master_data$Store %in% filtered_final$Store[i]),]$Sales)/sum(big_master_data[which(big_master_data$Store %in% filtered_final$Store[i]),]$Space))/Avg_productivity
-    filtered_final$Scaled_Alpha_Sales[i]<-PCT_Share_Coefficient*master_Product_Summary[which(master_Product_Summary$Product==filtered_final$Product[i] & master_Product_Summary$Store_Group==filtered_final$Store_Group[i]),]$Unscaled_Alpha_Sales
-    filtered_final$Scaled_Shift_Sales[i]<-PCT_Share_Coefficient*master_Product_Summary[which(master_Product_Summary$Product==filtered_final$Product[i] & master_Product_Summary$Store_Group==filtered_final$Store_Group[i]),]$Unscaled_Shift_Sales
-    filtered_final$Scaled_Beta_Sales[i]<-PCT_Share_Coefficient*master_Product_Summary[which(master_Product_Summary$Product==filtered_final$Product[i] & master_Product_Summary$Store_Group==filtered_final$Store_Group[i]),]$Unscaled_Beta_Sales
-    filtered_final$Scaled_BP_Sales[i]<-PCT_Share_Coefficient*master_Product_Summary[which(master_Product_Summary$Product==filtered_final$Product[i] & master_Product_Summary$Store_Group==filtered_final$Store_Group[i]),]$Unscaled_Break_Point_Sales
-    filtered_final$Scaled_Alpha_Units[i]<-PCT_Share_Coefficient*master_Product_Summary[which(master_Product_Summary$Product==filtered_final$Product[i] & master_Product_Summary$Store_Group==filtered_final$Store_Group[i]),]$Unscaled_Alpha_Units
-    filtered_final$Scaled_Shift_Units[i]<-PCT_Share_Coefficient*master_Product_Summary[which(master_Product_Summary$Product==filtered_final$Product[i] & master_Product_Summary$Store_Group==filtered_final$Store_Group[i]),]$Unscaled_Shift_Units
-    filtered_final$Scaled_Beta_Units[i]<-PCT_Share_Coefficient*master_Product_Summary[which(master_Product_Summary$Product==filtered_final$Product[i] & master_Product_Summary$Store_Group==filtered_final$Store_Group[i]),]$Unscaled_Beta_Units
-    filtered_final$Scaled_BP_Units[i]<-PCT_Share_Coefficient*master_Product_Summary[which(master_Product_Summary$Product==filtered_final$Product[i] & master_Product_Summary$Store_Group==filtered_final$Store_Group[i]),]$Unscaled_Break_Point_Units
-    filtered_final$Scaled_Alpha_Profit[i]<-PCT_Share_Coefficient*master_Product_Summary[which(master_Product_Summary$Product==filtered_final$Product[i] & master_Product_Summary$Store_Group==filtered_final$Store_Group[i]),]$Unscaled_Alpha_Profit
-    filtered_final$Scaled_Shift_Profit[i]<-PCT_Share_Coefficient*master_Product_Summary[which(master_Product_Summary$Product==filtered_final$Product[i] & master_Product_Summary$Store_Group==filtered_final$Store_Group[i]),]$Unscaled_Shift_Profit
-    filtered_final$Scaled_Beta_Profit[i]<-PCT_Share_Coefficient*master_Product_Summary[which(master_Product_Summary$Product==filtered_final$Product[i] & master_Product_Summary$Store_Group==filtered_final$Store_Group[i]),]$Unscaled_Beta_Profit
-    filtered_final$Scaled_BP_Profit[i]<-PCT_Share_Coefficient*master_Product_Summary[which(master_Product_Summary$Product==filtered_final$Product[i] & master_Product_Summary$Store_Group==filtered_final$Store_Group[i]),]$Unscaled_Break_Point_Profit
-    filtered_final$Exit_Flag[i]<-0
-  } 
-  } else if(type=="Tiered") {
-    filtered_final$Scaled_Alpha_Sales[i]<-0
-    filtered_final$Scaled_Shift_Sales[i]<-0
-    filtered_final$Scaled_Beta_Sales[i]<-1
-    filtered_final$Scaled_BP_Sales[i]<-0
-    filtered_final$Scaled_Alpha_Units[i]<-0
-    filtered_final$Scaled_Shift_Units[i]<-0
-    filtered_final$Scaled_Beta_Units[i]<-1
-    filtered_final$Scaled_BP_Units[i]<-0
-    filtered_final$Scaled_Alpha_Profit[i]<-0
-    filtered_final$Scaled_Shift_Profit[i]<-0
-    filtered_final$Scaled_Beta_Profit[i]<-1
-    filtered_final$Scaled_BP_Profit[i]<-0
-    filtered_final$Exit_Flag[i]<-"TRUE"
+
+  # END curve-fitting
+
+  # BEGIN bound-setting
+
+  # Add name to category bound table and merge with master data set
+  names(bound_input)[1] <- "Category"
+  master <- merge(master, bound_input, by="Category",all.x=TRUE)
+
+  # Apply category percent of space bounds to store-category level
+  master$PCT_of_Space_Lower_Limit <- floor(master$PCT_Space_Lower_Limit*master$Space_to_Fill/increment)*increment
+  master$PCT_of_Space_Upper_Limit <- ceiling(master$PCT_Space_Upper_Limit*master$Space_to_Fill/increment)*increment
+
+  # Apply percent space change bound to store-category level (does not apply to drill-downs, so dummy values are used)
+  if(jobType=="Tiered"){
+    master$PCT_Change_Lower_Limit <- pmax(0,floor(master$Space*(1-pct_chg_limit)/increment)*increment)
+    master$PCT_Change_Upper_Limit <- ceiling(master$Space*(1+pct_chg_limit)/increment)*increment
+  } else {
+    master$PCT_Change_Lower_Limit <- 0
+    master$PCT_Change_Upper_Limit <- master$PCT_of_Space_Upper_Limit
   }
+
+  # Take the max of the lower and min of the upper as the preliminary bounds
+  master$Lower_Limit <- pmax(master$Space.Lower.Limit,master$PCT_Change_Lower_Limit,master$PCT_of_Space_Lower_Limit)
+  master$Upper_Limit <- pmin(master$Space.Upper.Limit,master$PCT_Change_Upper_Limit,master$PCT_of_Space_Upper_Limit)
+
+  # Apply exception conditions for sales penetration threshold, exits, and where no sales curve was generated (Enhanced only)
+  for(i in 1:nrow(master)){
+    master$Sales_Pen[i] <- master$Sales[i]/sum(master$Sales[which(master$Store[i] == master$Store)])
   }
-  
-  
-  filtered_final<-filtered_final[c("Store","Climate","VSG","Product","Store_Group","Space","Sales","Scaled_Alpha_Sales","Scaled_Shift_Sales","Scaled_Beta_Sales","Scaled_BP_Sales","Units","Scaled_Alpha_Units","Scaled_Shift_Units","Scaled_Beta_Units","Scaled_BP_Units","Profit","Scaled_Alpha_Profit","Scaled_Shift_Profit","Scaled_Beta_Profit","Scaled_BP_Profit","PCT_Space_Change_Limit","Space.Lower.Limit","Space.Upper.Limit","PCT_Space_Lower_Limit","PCT_Space_Upper_Limit","Exit_Flag","Future_Space","Entry_Space","Climate_Group","Productivity_Group")]
-  #merging filtered data with the final data
-  final_master<-rbind(final_master,filtered_final)
-  }
-  #Final lower and upper limits variable generation
-  if(type=="Tiered"){
-  final_master$PCT_Change_Lower_Limit<-floor(final_master$Space*(1-final_master$PCT_Space_Change_Limit)/Increment_Size)*Increment_Size
-  final_master$PCT_Change_Upper_Limit<-ceiling(final_master$Space*(1+final_master$PCT_Space_Change_Limit)/Increment_Size)*Increment_Size
-  } else if(type=="Drill_Down" || is.null(PCT_Space_Change_Limit)==TRUE) {
-    final_master$PCT_Change_Lower_Limit<-0
-    final_master$PCT_Change_Upper_Limit<-0
-  }
-  final_master$PCT_of_Space_Lower_Limit<-floor(final_master$PCT_Space_Lower_Limit*(final_master$Future_Space-final_master$Entry_Space)/Increment_Size)*Increment_Size
-  final_master$PCT_of_Space_Upper_Limit<-ceiling(final_master$PCT_Space_Upper_Limit*(final_master$Future_Space-final_master$Entry_Space)/Increment_Size)*Increment_Size
-  
-  
-  for(h in (1:nrow(final_master))){
-  final_master$Lower_Limit[h]<-ifelse(final_master$Exit_Flag[h]=="TRUE",0,max(final_master$Space.Lower.Limit[h],final_master$PCT_Change_Lower_Limit[h],final_master$PCT_of_Space_Lower_Limit[h]))  
-  upper_limit<-c(final_master$Space.Upper.Limit[h],final_master$PCT_Change_Upper_Limit[h],final_master$PCT_of_Space_Upper_Limit[h])
-  final_master$Upper_Limit[h]<-ifelse(final_master$Exit_Flag[h]=="TRUE",0,min(upper_limit[which(upper_limit!=0)]))
-  }
-  final_master<-final_master[c("Store","Climate","VSG","Product","Store_Group","Space","Sales","Scaled_Alpha_Sales","Scaled_Shift_Sales","Scaled_Beta_Sales","Scaled_BP_Sales","Units","Scaled_Alpha_Units","Scaled_Shift_Units","Scaled_Beta_Units","Scaled_BP_Units","Profit","Scaled_Alpha_Profit","Scaled_Shift_Profit","Scaled_Beta_Profit","Scaled_BP_Profit","Lower_Limit","Upper_Limit")]
-  final_out<-list(master_Product_Summary,final_master)
-  return(final_out)
-  }
-#   
-  #Function calling
-  #output<-curvefitting_boundsetting(big_master_data,bound_input,Increment_Size,sales_weight,profit_weight,units_weight,PCT_Space_Change_Limit,type)
-  #Final output
-  #write.csv(output[1], "Analytics_Reference_Data.csv",row.names=FALSE)
-  #write.csv(output[2], "Output_Data.csv",row.names=FALSE)
-  
+  master$Lower_Limit <-
+    ifelse((master$Exit_Flag == 1 | master$Sales_Pen < sls_pen_thresh | (jobType == "Enhanced" & master$Scaled_Alpha_Sales == 0)),
+           0,
+           master$Lower_Limit)
+  master$Upper_Limit <-
+    ifelse((master$Exit_Flag == 1 | master$Sales_Pen < sls_pen_thresh | (jobType == "Enhanced" & master$Scaled_Alpha_Sales == 0)),
+           0,
+           master$Upper_Limit)
+
+  # END bound-setting
+
+  master <- master[c("Store","Category","Store_Group_Sales","Store_Group_Profit","Store_Group_Units",
+                     "Scaled_Alpha_Sales","Scaled_Shift_Sales","Scaled_Beta_Sales","Scaled_BP_Sales",
+                     "Scaled_Alpha_Units","Scaled_Shift_Units","Scaled_Beta_Units","Scaled_BP_Units",
+                     "Scaled_Alpha_Profit","Scaled_Shift_Profit","Scaled_Beta_Profit","Scaled_BP_Profit",
+                     "Lower_Limit","Upper_Limit")]
+  final_out <- list(master,ref)
+
+  return (final_out)
+
+}
