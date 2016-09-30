@@ -1,23 +1,22 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import logging
 import datetime as dt
-from brandExitConversion import brandExitMung
-from preoptimizerR4 import preoptimize
-from optimizerR4 import optimize
-import config as env
 import json
-from pymongo import MongoClient
+
 import gridfs
-from bson.objectid import ObjectId
 import pandas as pd
+from bson.objectid import ObjectId
 from pulp import *
+from pymongo import MongoClient
+
+import config as env
 from CurveFitting import curveFittingBS
-from Forecasting import forecastFunction
-from preoptimizerEnh import preoptimizeEnh
 from FixtureOptimization.ksMerging import ksMerge
 from FixtureOptimization.mungingFunctions import mergePreOptCF
+from FixtureOptimization.preoptimizerEnh import preoptimizeEnh
+from optimizerR4 import optimize
+
 # from TierKey import tierKeyCreate
 # from TierOptim import tierDef
 

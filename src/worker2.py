@@ -3,22 +3,20 @@
 
 
 import json
-import pika
-import time
-from pymongo import MongoClient
+
 import gridfs
-from bson.objectid import ObjectId
 import pandas as pd
+import pika
+from bson.objectid import ObjectId
+from pymongo import MongoClient
+
 import config
-from pulp import *
-from brandExitConversion import brandExitMung
-from preoptimizer2 import preoptimize
-from optimizerR4 import optimize
 from CurveFitting import curveFittingBS
-from Forecasting import forecastFunction
-from preoptimizerEnh import preoptimizeEnh
 from FixtureOptimization.ksMerging import ksMerge
 from FixtureOptimization.mungingFunctions import mergePreOptCF
+from FixtureOptimization.preoptimizerEnh import preoptimizeEnh
+from optimizerR4 import optimize
+
 # from TierKey import tierKeyCreate
 # from TierOptim import tierDef
 
