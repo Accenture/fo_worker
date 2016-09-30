@@ -109,9 +109,13 @@ def preoptimizeEnh(dataMunged, salesPenThreshold, mAdjustment, optimizedMetrics,
     adj_p = calcPen(adj_p)
     adj_p.fillna(0)
     # adj_p[np.isnan(adj_p)] = 0
-
     # Create Code to make adjustments to adj_p
     opt_amt = roundDF(adj_p.multiply(newSpace, axis='index'), increment)
+    print('adj type')
+    print(type(adj_p))
+    print('opt_amt type')
+    print(type(opt_amt))
+    input()
     return (adj_p, opt_amt)
 
 

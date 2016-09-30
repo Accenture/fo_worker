@@ -3,9 +3,10 @@ import pandas as pd
 # Create long table for user download
 def createLong(mergedPreOptCF, Results):
     # Merge the optimize output with the curve-fitting output (which was already merged with the preoptimize output)
-    result_long = pd.DataFrame(Results.unstack()).swaplevel()
-    result_long.rename(columns={result_long.columns[-1]: "Result Space"}, inplace=True)
-    lOutput = pd.concat([mergedPreOptCF, result_long], axis=1)
+
+    # result_long = pd.DataFrame(Results.unstack()).swaplevel()
+    # result_long.rename(columns={result_long.columns[-1]: "Result Space"}, inplace=True)
+    # lOutput = pd.concat([mergedPreOptCF, result_long], axis=1)
     lOutput["Result Space"] = lOutput["Result Space"].astype(float)
 
     variables = ["Sales", "Profit", "Units"]

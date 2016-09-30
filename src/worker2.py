@@ -16,6 +16,7 @@ from FixtureOptimization.ksMerging import ksMerge
 from FixtureOptimization.mungingFunctions import mergePreOptCF
 from FixtureOptimization.preoptimizerEnh import preoptimizeEnh
 from optimizerR4 import optimize
+from FixtureOptimization.outputFunctions import createLong, createWide, createDrillDownSummary, createTieredSummary
 
 # from TierKey import tierKeyCreate
 # from TierOptim import tierDef
@@ -163,9 +164,9 @@ def main():
             #                      optimizedMetrics=msg["optimizedMetrics"], increment=msg["increment"],
             #                      brandExitArtifact=brandExitArtifact, newSpace=futureSpace)
             preOpt = preoptimizeEnh(dataMunged=dataMerged[1], mAdjustment=float(msg["metricAdjustment"]),
-                                 salesPenThreshold=float(msg["salesPenetrationThreshold"]),
-                                 optimizedMetrics=msg["optimizedMetrics"], increment=msg["increment"])
-            mergePreOptCF(cfbsArtifact, preOpt)
+                                 salesPenThreshold = float(msg["salesPenetrationThreshold"]),
+                                 optimizedMetrics = msg["optimizedMetrics"], increment=msg["increment"])
+            mPreOptCFBS = mergePreOptCF(cfbsArtifact, preOpt)
             optimRes = optimize(job_id, msg['meta']['name'], Stores, Categories, preOpt, msg["tierCounts"],
                                 msg["spaceBounds"], msg["increment"], fixtureArtifact, brandExitArtifact)
             # except:
@@ -182,13 +183,13 @@ def main():
             print("Ken hasn't finished development for that yet")
 
         # Call functions to create output information
-        longOutput = createLong(mergedPreOptCFReturned, optimResult)
-        wideOutput = createWide(Stores, Categories, optimResult, optReturned, penReturned, fixtureArtifact)
+        longOutput = createLong(mPreOptCFBS, optimRes)
+        wideOutput = createWide(longOutput, msg['jobType'], msg['optimizationType'])
 
-        if optimType == "Tiered":
-            summaryReturned = createTieredSummary(longReturned)
+        if msg['optimizationType'] == "tiered":
+            summaryReturned = createTieredSummary(longOutput)
         else:  # since type == "Drill Down"
-            summaryReturned = createDrillDownSummary(longReturned)
+            summaryReturned = createDrillDownSummary(longOutput)
 
 
 

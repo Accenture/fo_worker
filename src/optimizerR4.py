@@ -344,7 +344,7 @@ def optimize(job_id,jobName,Stores,Categories,preOpt,tierCounts,spaceBound,incre
         solvedout.close()
     # print(LpStatus[LpStatus])
     '''
-    return #(longOutput)#,wideOutput)
+    return Results #(longOutput)#,wideOutput)
 
     # testing=pd.read_csv("solvedout.csv").drop
 
