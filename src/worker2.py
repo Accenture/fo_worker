@@ -18,6 +18,7 @@ from Forecasting import forecastFunction
 from pulp import *
 import config
 from FixtureOptimization.ksMerging import ksMerge
+from FixtureOptimization.mungingFunctions import mergePreOptCF
 from kbMerging import kbMerge
 # from TierKey import tierKeyCreate
 # from TierOptim import tierDef
@@ -91,7 +92,36 @@ def main():
             file = fs.get(ObjectId(artifact_id))
             file = pd.read_csv(file,header=0,skiprows=[1])
             return file
-        # dataMerged=ksMerge(msg['jobType'],fetchTransactions(msg["artifacts"]["salesArtifactId"]),fetchSpace(msg["artifacts"]["spaceArtifactId"]),fetchExit(msg["artifacts"]["brandExitArtifactId"]),fetchSpace(msg["artifacts"]["futureSpaceId"]))
+
+        #Test Files
+        # rawDM = pd.read_csv('TEST_Data_Merging_Output_Adj.csv', header=0)
+        # bounds = pd.read_csv('TEST_Bound_Input.csv',header=0)
+        # cfbsArtifact = curveFittingBS(rawDM, bounds, msg['increment'], msg['storeCategoryBounds'],
+        #                               float(msg["salesPenetrationThreshold"]), msg['jobType'], msg['optimizationType'])
+        dataMerged=ksMerge(msg['jobType'],fetchTransactions(msg["artifacts"]["salesArtifactId"]),fetchSpace(msg["artifacts"]["spaceArtifactId"]),fetchExit(msg["artifacts"]["brandExitArtifactId"]),fetchSpace(msg["artifacts"]["futureSpaceId"]))
+        # masterData = dataMerged[0]
+        # print(pd.unique(masterData.columns==rawDM.columns))
+        # input()
+        # print(pd.unique(masterData.index==rawDM.index))
+        # input()
+        # print('masterData types')
+        # print(masterData.dtypes)
+        # print('rawDM types')
+        # print(rawDM.dtypes)
+        # input()
+        # for col in masterData.columns:
+        #     print(col)
+        #     print(pd.unique(masterData[col]==rawDM[col]))
+        #     # if False in pd.unique(masterData[col]==rawDM[col]):
+        #     #     print(dataMerged[col].dtypes)
+        #     #     print(rawDM[col].dtypes)
+        #     input()
+        # dataMerged[0].to_csv('ksMergedRes.csv',sep=',',index=False)
+
+        cfbsArtifact = curveFittingBS(dataMerged[0], msg['spaceBounds'], msg['increment'], msg['storeCategoryBounds'],
+                                      float(msg["salesPenetrationThreshold"]), msg['jobType'], msg['optimizationType'])
+        print(cfbsArtifact.head())
+        input('it worked!')
         # print(dataMerged.head())
         def primaryMung(df):
             df.columns = df.iloc[0].values
@@ -120,14 +150,9 @@ def main():
         except:
             print("Brand Exit was not Uploaded")
             brandExitArtifact=None
-        # mData=kbMerge(msg['jobType'], transactionArtifact, fixtureArtifact, futureSpace, brandExitArtifact)
-        # masterData = dataMerging(msg["jobType"],transactionArtifact, fixtureArtifact, futureSpace, brandExitArtifact)
         transactionArtifact = primaryMung(transactionArtifact)
         fixtureArtifact = primaryMung(fixtureArtifact)
-        # print(fixtureArtifact.head())
-        # print(transactionArtifact.head())
-        masterData=pd.read_csv('cOut2.csv',header=0)
-        # bounds=pd.read_csv('src/bounds.csv',header=0)
+
         msg["optimizationType"]='traditional'
         if (str(msg["optimizationType"]) == 'traditional'):
             cfbsArtifact=curveFittingBS(masterData,msg['spaceBounds'],msg['increment'],msg['storeCategoryBounds'],float(msg["salesPenetrationThreshold"]),msg['jobType'],msg['optimizationType'])

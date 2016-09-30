@@ -70,6 +70,6 @@ def ksMerge(optimizationType,transactions,space,brandExit,futureSpace):
             mergeTrad=pd.merge(mergeTrad,brandExit,on=['Store','Category'],how='inner')
             print('There are ' + str(len(masterData[masterData['Exit Flag'] == 1])) + ' brand exits')
             # masterData.to_csv('mergedData.csv',sep=',',index=False)
-            masterData['Store']=pd.to_numeric(masterData['Store'])
+            masterData=masterData.apply(lambda x: pd.to_numeric(x, errors='ignore'))
             # input('Stop')
     return (masterData,mergeTrad)

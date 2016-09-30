@@ -6,22 +6,35 @@ import numpy as np
 import json
 import pika
 import time
-from pymongo import MongoClient
-import gridfs
 import rpy2.robjects as robjects
-from rpy2.robjects.vectors import DataFrame
+# from rpy2.robjects.vectors import DataFrame
 from rpy2.robjects import pandas2ri
 from rpy2.robjects.packages import importr
+import pymongo as pm
+import gridfs
+import config
 
 
-import os 
-cwd = os.getcwd()
-print(cwd)
+db = pm.MongoClient(config.MONGO_CON)['app']
+fs = gridfs.GridFS(db)
+
+#
+# import os
+# cwd = os.getcwd()
+# print(cwd)
 
 def curveFittingBS(big_master_data,bound_input,increment_size,PCT_Space_Change_Limit,salesPen,jobType,optimType):
+    def create_output_artifact_from_dataframe(dataframe, *args, **kwargs):
+        """
+        Returns the bson.objectid.ObjectId of the resulting GridFS artifact
+
+        """
+        return fs.put(dataframe.to_csv().encode(), **kwargs)
+
     pandas2ri.activate()
     bound_input=pd.DataFrame.from_dict(bound_input).T.reset_index()
-    bound_input.columns=['Categories','Space_Lower_Limit','Space_Upper_Limit','PCT_Space_Lower_Limit','PCT_Space_Upper_Limit']
+    bound_input.columns=['Categories', 'Space Lower Limit', 'Space Upper Limit', 'PCT_Space_Lower_Limit', 'PCT_Space_Upper_Limit']
+    # bound_inpunput.columns=['Category','Space Lower Limit','Space Upper Limit','PCT_Space_Lower_Limit','PCT_Space_Upper_Limit']
     gdata = importr("gdata")
     dataTable = importr("pracma")
     sqldf = importr("nloptr")
@@ -29,19 +42,10 @@ def curveFittingBS(big_master_data,bound_input,increment_size,PCT_Space_Change_L
 
     print('merged data')
     print(big_master_data.head())
+    print(big_master_data.columns)
     input('bounds')
     print(bound_input)
-    input('increment size')
-    print(increment_size)
-    input('percent change limit')
-    print(PCT_Space_Change_Limit)
-    input('sales pen threshold')
-    print(salesPen)
-    input('job type')
-    print(jobType)
-    input('optimization type')
-    print(optimType)
-    input('Done')
+    input()
 
     #Source the R code
     r_source = robjects.r['source']
@@ -54,9 +58,7 @@ def curveFittingBS(big_master_data,bound_input,increment_size,PCT_Space_Change_L
     r_list_output=r_curvefitting_boundsetting(big_master_data,bound_input,increment_size,PCT_Space_Change_Limit,salesPen,jobType,optimType,)
 
     # Convert R list output into 2 python data frames, put into python list for the return statement
-    cfbsArtifact=pandas2ri.ri2py(r_list_output[0])
-    # p_output1=pandas2ri.ri2py(r_list_output[1])
-    # p_list_output = [p_output0,p_output1]
-    cfbs_id = create_output_artifact_from_dataframe(r_list_output[0])
-    analytics_id = create_output_artifact_from_dataframe(r_list_output[1])
+    cfbsArtifact=pandas2ri.ri2py(r_list_output[0]).sort_values(by=['Store','Category']).reset_index(drop=True).reset_index(drop=True)
+    cfbs_id = create_output_artifact_from_dataframe(pandas2ri.ri2py(r_list_output[0]).reset_index(drop=True))
+    analytics_id = create_output_artifact_from_dataframe(pandas2ri.ri2py(r_list_output[1]).reset_index(drop=True))
     return cfbsArtifact
