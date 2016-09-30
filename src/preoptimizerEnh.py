@@ -28,7 +28,6 @@ def spreadCalc(sales, boh, receipt, mAdjustment):
     # calculate adjusted penetration
     # Not necessary -- sales.columns = master_columns
     inv = boh + receipt
-    calcPen(sales)
     calcPen(inv)
     return calcPen(sales) + ((calcPen(sales) - calcPen(inv)) * float(mAdjustment))
 
@@ -80,7 +79,6 @@ def roundDF(array, increment):
 
 def preoptimizeEnh(dataMunged, salesPenThreshold, mAdjustment, optimizedMetrics, increment):
     sales = dataMunged.pivot(index='Store',columns='Category',values='Sales $')
-    print(sales.head())
     boh = dataMunged.pivot(index='Store',columns='Category',values='BOH $')
     receipt = dataMunged.pivot(index='Store',columns='Category',values='Receipts  $')
     sold_units = dataMunged.pivot(index='Store',columns='Category',values='Sales Units')

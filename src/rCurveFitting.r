@@ -48,7 +48,6 @@ curvefitting_boundsetting<-function(master,bound_input,increment,pct_chg_limit,s
   names(master)[names(master) == "New.Space"] <- "Space_to_Fill"
   names(master)[names(master) == "Exit.Flag"] <- "Exit_Flag"
 #  print(colnames(master))
-  readline('Does the above match: Store Climate Space Sales Profit Units Exit_Flag Space_to_Fill')
 
   master <- master[c("Store", "Climate", "Category", "Space", "Sales", "Profit", "Units", "Exit_Flag", "Space_to_Fill")]
 

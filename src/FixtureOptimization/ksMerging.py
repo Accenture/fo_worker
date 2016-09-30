@@ -71,5 +71,6 @@ def ksMerge(optimizationType,transactions,space,brandExit,futureSpace):
             print('There are ' + str(len(masterData[masterData['Exit Flag'] == 1])) + ' brand exits')
             # masterData.to_csv('mergedData.csv',sep=',',index=False)
             masterData=masterData.apply(lambda x: pd.to_numeric(x, errors='ignore'))
+            mergeTrad = mergeTrad.apply(lambda x: pd.to_numeric(x, errors='ignore'))
             # input('Stop')
     return (masterData,mergeTrad)
