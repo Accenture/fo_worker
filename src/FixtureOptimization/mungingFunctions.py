@@ -13,7 +13,7 @@ def brandExitMung(df,Stores,Categories):
     brand_exit = pd.DataFrame(index=Stores,columns=Categories)
     for (i,Store) in enumerate(Stores):
         for (j,Category) in enumerate(Categories):
-            if str(Store) in pd.unique(df[Category].values):
+            if Store in pd.unique(df[Category].values):
                 brand_exit[Category].iloc[i] = 1
             else:
                 brand_exit[Category].iloc[i] = 0

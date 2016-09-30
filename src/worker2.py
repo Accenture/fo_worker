@@ -13,13 +13,12 @@ from brandExitConversion import brandExitMung
 from preoptimizer2 import preoptimize
 from optimizerR4 import optimize
 from CurveFitting import curveFittingBS
-from DataMerging import dataMerging
 from Forecasting import forecastFunction
 from pulp import *
+from preoptimizerEnh import preoptimizeEnh
 import config
 from FixtureOptimization.ksMerging import ksMerge
 from FixtureOptimization.mungingFunctions import mergePreOptCF
-from kbMerging import kbMerge
 # from TierKey import tierKeyCreate
 # from TierOptim import tierDef
 
@@ -74,6 +73,11 @@ def main():
             }
         )
 
+        def fetch_artifact(artifact_id):
+            file = fs.get(ObjectId(artifact_id))
+            file = pd.read_csv(file,header=None)
+            return file
+
         def fetchTransactions(artifact_id):
             file = fs.get(ObjectId(artifact_id))
             file = pd.read_csv(file,header=None)
@@ -114,14 +118,17 @@ def main():
         # dataMerged[0].to_csv('ksMergedRes.csv',sep=',',index=False)
 
         def primaryMung(df):
-            df.Store.astype(int)
+            df['Store'].astype(int)
             df.set_index('Store',drop=True,inplace=True)
             return df
 
         fixtureArtifact=fetch_artifact(msg["artifacts"]["spaceArtifactId"])
         transactionArtifact=fetch_artifact(msg["artifacts"]["salesArtifactId"])
-        Stores=fixtureArtifact[0].reindex(fixtureArtifact.index.drop([0,1])).reset_index(drop=True).rename('Stores').astype(int).values
-        Categories=fixtureArtifact.loc[0][3::,].reset_index(drop=True).rename('Categories')
+        # Stores=.to_numeric
+        Stores=msg['salesStores']
+        # Stores=fixtureArtifact[0].reindex(fixtureArtifact.index.drop([0,1])).reset_index(drop=True).rename('Stores').astype(int).values
+        Categories=msg['salesCategories']
+        # Categories=fixtureArtifact.loc[0][3::,].reset_index(drop=True).rename('Categories')
 
         try:
             # futureSpace=primaryMung(fetch_artifact(msg["artifacts"]["futureSpaceId"]))
@@ -134,13 +141,13 @@ def main():
             # brandExitArtifact=(fetch_artifact(msg["artifacts"]["brandExitArtifactId"]))
             brandExitArtifact=fetchExit(msg["artifacts"]["brandExitArtifactId"])
             print("Brand Exit was Uploaded")
-            brandExitArtifact=brandExitMung(brandExitArtifact,Stores,Categories)
+            # brandExitArtifact=brandExitMung(brandExitArtifact,Stores,Categories)
             print("Brand Exit Munged")
         except:
             print("Brand Exit was not Uploaded")
             brandExitArtifact=None
-        transactionArtifact = primaryMung(transactionArtifact)
-        fixtureArtifact = primaryMung(fixtureArtifact)
+        # transactionArtifact = primaryMung(fetchTransactions(msg["artifacts"]["salesArtifactId"]))
+        # fixtureArtifact = primaryMung(fetchSpace(msg["artifacts"]["spaceArtifactId"]))
 
         msg["optimizationType"]='traditional'
         if (str(msg["optimizationType"]) == 'traditional'):
@@ -152,11 +159,14 @@ def main():
                                           msg['storeCategoryBounds'],
                                           float(msg["salesPenetrationThreshold"]), msg['jobType'],
                                           msg['optimizationType'])
-            preOpt = preoptimize(Stores=Stores, Categories=Categories, spaceData=fixtureArtifact,
-                                 data=transactionArtifact, mAdjustment=float(msg["metricAdjustment"]),
+            # preOpt = preoptimize(Stores=Stores, Categories=Categories, spaceData=fixtureArtifact,
+            #                      data=transactionArtifact, mAdjustment=float(msg["metricAdjustment"]),
+            #                      salesPenThreshold=float(msg["salesPenetrationThreshold"]),
+            #                      optimizedMetrics=msg["optimizedMetrics"], increment=msg["increment"],
+            #                      brandExitArtifact=brandExitArtifact, newSpace=futureSpace)
+            preOpt = preoptimizeEnh(dataMunged=dataMerged[1], mAdjustment=float(msg["metricAdjustment"]),
                                  salesPenThreshold=float(msg["salesPenetrationThreshold"]),
-                                 optimizedMetrics=msg["optimizedMetrics"], increment=msg["increment"],
-                                 brandExitArtifact=brandExitArtifact, newSpace=futureSpace)
+                                 optimizedMetrics=msg["optimizedMetrics"], increment=msg["increment"])
             mergePreOptCF(cfbsArtifact, preOpt)
             optimRes = optimize(job_id, msg['meta']['name'], Stores, Categories, preOpt, msg["tierCounts"],
                                 msg["spaceBounds"], msg["increment"], fixtureArtifact, brandExitArtifact)

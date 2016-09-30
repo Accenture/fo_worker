@@ -27,15 +27,19 @@ def spreadCalc(sales, boh, receipt, mAdjustment):
     # finding sales penetration, GAFS and spread for each brand in given stores
     # calculate adjusted penetration
     # Not necessary -- sales.columns = master_columns
+    print(boh.shape)
+    print(receipt.shape)
+    print(sales.shape)
     inv = boh + receipt
+    print(inv.shape)
     return calcPen(sales) + ((calcPen(sales) - calcPen(inv)) * float(mAdjustment))
 
-def metric_per_fixture(metric1, metric2, mAdjustment, newSpace):
+def metric_per_fixture(metric1, metric2, mAdjustment):
     # storing input sales data in an array
     # finding penetration for each brand in given stores
     # calculate adjusted penetration
-    spacePen = metric2.div(newSpace, axis='index')
-    return calcPen(metric1) + ((calcPen(metric1) - spacePen) * float(mAdjustment))
+    # spacePen = metric2.div(newSpace, axis='index')
+    return calcPen(metric1) + ((calcPen(metric1) - calcPen(metric2)) * float(mAdjustment))
 
 
 def metric_per_metric(metric1, metric2, mAdjustment):
@@ -76,25 +80,26 @@ def roundDF(array, increment):
                 rounded[j].loc[i] = np.around(array[j].loc[i], 3) - np.mod(np.around(array[j].loc[i], 3), increment)
     return rounded
 
-def preoptimize(cfbs, Categories, spaceData, data, salesPenThreshold, mAdjustment, optimizedMetrics, increment,
-                newSpace=None, brandExitArtifact=None):
-    fixture_data = cfbs.pivot(index='Store',columns='Category',values='Current Space')
-    # bfc = fixture_data[[*np.arange(len(fixture_data.columns))[0::1]]].convert_objects(convert_numeric=True)
-    sales = cfbs.pivot(index='Store',columns='Category',values='Sales $')
-    boh = cfbs.pivot(index='Store',columns='Category',values='BOH $')
-    receipt = cfbs.pivot(index='Store',columns='Category',values='Receipts $')
-    sold_units = cfbs.pivot(index='Store',columns='Category',values='Sales Units')
-    boh_units = cfbs.pivot(index='Store',columns='Category',values='BOH Units')
-    receipts_units = cfbs.pivot(index='Store',columns='Category',values='Receipts Units')
-    profit = cfbs.pivot(index='Store',columns='Category',values='Profit $')
-    gm_perc = cfbs.pivot(index='Store',columns='Category',values='Profit %')
-    ccCount= cfbs.pivot(index='Store',columns='Category',values='CC Count w/ BOH')
+def preoptimizeEnh(dataMunged, salesPenThreshold, mAdjustment, optimizedMetrics, increment):
+    sales = dataMunged.pivot(index='Store',columns='Category',values='Sales $')
+    print(sales.head())
+    boh = dataMunged.pivot(index='Store',columns='Category',values='BOH $')
+    receipt = dataMunged.pivot(index='Store',columns='Category',values='Receipts  $')
+    sold_units = dataMunged.pivot(index='Store',columns='Category',values='Sales Units')
+    boh_units = dataMunged.pivot(index='Store',columns='Category',values='BOH Units')
+    receipts_units = dataMunged.pivot(index='Store',columns='Category',values='Receipts Units')
+    profit = dataMunged.pivot(index='Store',columns='Category',values='Profit $')
+    gm_perc = dataMunged.pivot(index='Store',columns='Category',values='Profit %')
+    ccCount= dataMunged.pivot(index='Store',columns='Category',values='CC Count w/ BOH')
+    newSpace= dataMunged.pivot(index='Store',columns='Category',values='New Space')
+    bfc = dataMunged.pivot(index='Store',columns='Category',values='Current Space')
+
+
 
     mAdjustment = float(mAdjustment)
     adj_p = int(optimizedMetrics['spread']) * spreadCalc(sales, boh, receipt, mAdjustment) + int(
         optimizedMetrics['salesPenetration']) * calcPen(sales) + int(
-        optimizedMetrics['salesPerSpaceUnit']) * metric_per_fixture(sales, bfc, mAdjustment, getColumns(data),
-                                                                    newSpace) + int(
+        optimizedMetrics['salesPerSpaceUnit']) * metric_per_fixture(sales, bfc, mAdjustment) + int(
         optimizedMetrics['grossMargin']) * calcPen(gm_perc) + int(
         optimizedMetrics['inventoryTurns']) * invTurn_Calc(sold_units, boh_units, receipts_units)
 

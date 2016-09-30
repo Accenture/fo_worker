@@ -40,12 +40,12 @@ def curveFittingBS(big_master_data,bound_input,increment_size,PCT_Space_Change_L
     sqldf = importr("nloptr")
     tidyr = importr("tidyr")
 
-    print('merged data')
-    print(big_master_data.head())
-    print(big_master_data.columns)
-    input('bounds')
-    print(bound_input)
-    input()
+    # print('merged data')
+    # print(big_master_data.head())
+    # print(big_master_data.columns)
+    # input('bounds')
+    # print(bound_input)
+    # input()
 
     #Source the R code
     r_source = robjects.r['source']
