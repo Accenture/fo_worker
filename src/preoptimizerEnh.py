@@ -22,48 +22,30 @@ def getColumns(df):
     return df[[*np.arange(len(df.columns))[0::9]]].drop(df.index[[0]]).convert_objects(convert_numeric=True).columns
 
 
-def spreadCalc(sales, boh, receipt, master_columns, mAdjustment):
+def spreadCalc(sales, boh, receipt, mAdjustment):
     # storing input sales and inventory data in separate 2D arrays
     # finding sales penetration, GAFS and spread for each brand in given stores
     # calculate adjusted penetration
     # Not necessary -- sales.columns = master_columns
-    boh.columns = master_columns
-    receipt.columns = master_columns
     inv = boh + receipt
     return calcPen(sales) + ((calcPen(sales) - calcPen(inv)) * float(mAdjustment))
 
-
-def spCalc(metric, master_columns):
-    # storing input sales data in an array
-    # finding sales penetration for each brand in given stores
-    # calculate adjusted penetration
-    metric.columns = master_columns
-    return calcPen(metric)
-
-
-def metric_per_fixture(metric1, metric2, mAdjustment, master_columns, newSpace):
+def metric_per_fixture(metric1, metric2, mAdjustment, newSpace):
     # storing input sales data in an array
     # finding penetration for each brand in given stores
     # calculate adjusted penetration
-    metric1.columns = master_columns
-    # metric2.columns = master_columns
     spacePen = metric2.div(newSpace, axis='index')
     return calcPen(metric1) + ((calcPen(metric1) - spacePen) * float(mAdjustment))
 
 
-def metric_per_metric(metric1, metric2, mAdjustment, master_columns):
+def metric_per_metric(metric1, metric2, mAdjustment):
     # storing input sales data in an array
     # finding penetration for each brand in given stores
     # calculate adjusted penetration
-    metric1.columns = master_columns
-    metric2.columns = master_columns
     return calcPen(metric1) + ((calcPen(metric1) - calcPen(metric2)) * float(mAdjustment))
 
 
-def invTurn_Calc(sold_units, boh_units, receipts_units, master_columns):
-    sold_units.columns = master_columns
-    boh_units.columns = master_columns
-    receipts_units.columns = master_columns
+def invTurn_Calc(sold_units, boh_units, receipts_units):
     calcPen(sold_units)
     calcPen(boh_units + receipts_units)
     inv_turn = calcPen(sold_units).div(calcPen(boh_units + receipts_units), axis='index')
@@ -94,100 +76,27 @@ def roundDF(array, increment):
                 rounded[j].loc[i] = np.around(array[j].loc[i], 3) - np.mod(np.around(array[j].loc[i], 3), increment)
     return rounded
 
-
-def futureSpace(bfc, futureFixt, Stores):
-    futureFixt = futureFixt.drop(futureFixt.index[[0]])
-    futureFixt = futureFixt.drop(futureFixt.columns[[0, 1]], axis=1)
-    futureSpace = pd.Series(0, futureFixt.index)
-    for (i, Store) in enumerate(Stores):
-        if pd.to_numeric(futureFixt['Future Space'].iloc[i]) == 0 or pd.isnull(
-                pd.to_numeric(futureFixt['Future Space'].iloc[i])):
-            futureFixt['Future Space'].iloc[i] = bfc.sum(axis=1).iloc[i]
-    futureSpace = pd.to_numeric(futureFixt['Future Space']) - pd.to_numeric(futureFixt['Entry Space'])
-    return futureSpace
-    # return futureFixt['New_Space']
-
-
-def brandExitSpace(spaceData, brandExit, Stores, Categories):
-    # brandExit.index.apply(lambda x: if(brandExit[Category].iloc[x]==1: spaceData[Category].iloc[x]=0))
-    # newSpace=pd.DataFrame(index=Stores,columns=Categories)
-    for (i, Store) in enumerate(Stores):
-        for (j, Category) in enumerate(Categories):
-            if brandExit[Category][Store] == 1:
-                spaceData[Category][Store] = 0
-                # transaction.iloc[i]=pd.Series(0,np.arange(9))
-    return spaceData
-
-
-def brandExitTransac(Transactions, brandExit, Stores, Categories):
-    Transactions.columns = Categories
-    for (i, Store) in enumerate(Stores):
-        for (j, Category) in enumerate(Categories):
-            if brandExit[Category][Store] == 1:
-                Transactions[Category].loc[Store] = 0
-    return Transactions
-
-
-def preoptimize(Stores, Categories, spaceData, data, salesPenThreshold, mAdjustment, optimizedMetrics, increment,
+def preoptimize(cfbs, Categories, spaceData, data, salesPenThreshold, mAdjustment, optimizedMetrics, increment,
                 newSpace=None, brandExitArtifact=None):
-    fixture_data = spaceData.drop(spaceData.columns[[0, 1]], axis=1)
-    # spaceData.drop(spaceData.columns[[0,1]],axis=1,inplace=True)
-    # fixture_data.drop(fixture_data.columns[[0,1]],axis=1,inplace=True) # Access Columns dynamically
-    # TODO Verify that this works correctly after changes in what is commented and changing the order
-    # Was previously not commented, see other changes
-    # bfc = fixture_data[[ *np.arange(len(fixture_data.columns))[0::1] ]].convert_objects(convert_numeric=True)
-    if brandExitArtifact is None:
-        print("We don't have brandExitArtifact in preoptimize")
-        #### New, may or may not work correctly after switching the order
-        bfc = fixture_data[[*np.arange(len(fixture_data.columns))[0::1]]].convert_objects(convert_numeric=True)
-        #### bfc was previously not recreated for Brand Exit... should verify if this is an issue
-        sales = data[[*np.arange(len(data.columns))[0::9]]].convert_objects(convert_numeric=True)
-        boh = data[[*np.arange(len(data.columns))[1::9]]].convert_objects(convert_numeric=True)
-        receipt = data[[*np.arange(len(data.columns))[2::9]]].convert_objects(convert_numeric=True)
-        sold_units = data[[*np.arange(len(data.columns))[3::9]]].convert_objects(convert_numeric=True)
-        boh_units = data[[*np.arange(len(data.columns))[4::9]]].convert_objects(convert_numeric=True)
-        receipts_units = data[[*np.arange(len(data.columns))[5::9]]].convert_objects(convert_numeric=True)
-        profit = data[[*np.arange(len(data.columns))[6::9]]].convert_objects(convert_numeric=True)
-        gm_perc = data[[*np.arange(len(data.columns))[7::9]]].convert_objects(convert_numeric=True)
-    else:
-        print("We have brandExitArtifact in preoptimize!")
-        fixture_data = brandExitSpace(fixture_data, brandExitArtifact, Stores, Categories)
-        #### New, may or may not work correctly after switching the order
-        bfc = fixture_data[[*np.arange(len(fixture_data.columns))[0::1]]].convert_objects(convert_numeric=True)
-        #### bfc was previously not recreated for Brand Exit... should verify if this is an issue
-        sales = brandExitTransac(data[[*np.arange(len(data.columns))[0::9]]].convert_objects(convert_numeric=True),
-                                 brandExitArtifact, Stores, Categories)
-        boh = brandExitTransac(data[[*np.arange(len(data.columns))[1::9]]].convert_objects(convert_numeric=True),
-                               brandExitArtifact, Stores, Categories)
-        receipt = brandExitTransac(data[[*np.arange(len(data.columns))[2::9]]].convert_objects(convert_numeric=True),
-                                   brandExitArtifact, Stores, Categories)
-        sold_units = brandExitTransac(data[[*np.arange(len(data.columns))[3::9]]].convert_objects(convert_numeric=True),
-                                      brandExitArtifact, Stores, Categories)
-        boh_units = brandExitTransac(data[[*np.arange(len(data.columns))[4::9]]].convert_objects(convert_numeric=True),
-                                     brandExitArtifact, Stores, Categories)
-        receipts_units = brandExitTransac(
-            data[[*np.arange(len(data.columns))[5::9]]].convert_objects(convert_numeric=True),
-            brandExitArtifact, Stores, Categories)
-        profit = brandExitTransac(data[[*np.arange(len(data.columns))[6::9]]].convert_objects(convert_numeric=True),
-                                  brandExitArtifact, Stores, Categories)
-        gm_perc = brandExitTransac(data[[*np.arange(len(data.columns))[7::9]]].convert_objects(convert_numeric=True),
-                                   brandExitArtifact, Stores, Categories)
-
-    if newSpace is None:
-        newSpace = bfc.sum(axis=1)
-        print("We don't have futureSpace in preoptimize.")
-    else:
-        print("We have futureSpace in preoptimize!")
-        newSpace = futureSpace(bfc, newSpace, Stores)
-        print("Result of Future Space Function")
+    fixture_data = cfbs.pivot(index='Store',columns='Category',values='Current Space')
+    # bfc = fixture_data[[*np.arange(len(fixture_data.columns))[0::1]]].convert_objects(convert_numeric=True)
+    sales = cfbs.pivot(index='Store',columns='Category',values='Sales $')
+    boh = cfbs.pivot(index='Store',columns='Category',values='BOH $')
+    receipt = cfbs.pivot(index='Store',columns='Category',values='Receipts $')
+    sold_units = cfbs.pivot(index='Store',columns='Category',values='Sales Units')
+    boh_units = cfbs.pivot(index='Store',columns='Category',values='BOH Units')
+    receipts_units = cfbs.pivot(index='Store',columns='Category',values='Receipts Units')
+    profit = cfbs.pivot(index='Store',columns='Category',values='Profit $')
+    gm_perc = cfbs.pivot(index='Store',columns='Category',values='Profit %')
+    ccCount= cfbs.pivot(index='Store',columns='Category',values='CC Count w/ BOH')
 
     mAdjustment = float(mAdjustment)
-    adj_p = int(optimizedMetrics['spread']) * spreadCalc(sales, boh, receipt, getColumns(data), mAdjustment) + int(
-        optimizedMetrics['salesPenetration']) * spCalc(sales, getColumns(data)) + int(
+    adj_p = int(optimizedMetrics['spread']) * spreadCalc(sales, boh, receipt, mAdjustment) + int(
+        optimizedMetrics['salesPenetration']) * calcPen(sales) + int(
         optimizedMetrics['salesPerSpaceUnit']) * metric_per_fixture(sales, bfc, mAdjustment, getColumns(data),
                                                                     newSpace) + int(
-        optimizedMetrics['grossMargin']) * spCalc(gm_perc, getColumns(data)) + int(
-        optimizedMetrics['inventoryTurns']) * invTurn_Calc(sold_units, boh_units, receipts_units, getColumns(data))
+        optimizedMetrics['grossMargin']) * calcPen(gm_perc) + int(
+        optimizedMetrics['inventoryTurns']) * invTurn_Calc(sold_units, boh_units, receipts_units)
 
     # adj_p.fillna(np.float(0))
     # adj_p[np.isnan(adj_p)] = 0

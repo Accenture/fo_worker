@@ -7,9 +7,9 @@ def primaryMung(df):
     return df
 
 def brandExitMung(df,Stores,Categories):
-    df.columns = df.iloc[0].values
-    df.drop(df.index[[0, 1]], axis=0, inplace=True)
-    df=df.reset_index(drop=True)
+    # df.columns = df.iloc[0].values
+    # df.drop(df.index[[0, 1]], axis=0, inplace=True)
+    # df=df.reset_index(drop=True)
     brand_exit = pd.DataFrame(index=Stores,columns=Categories)
     for (i,Store) in enumerate(Stores):
         for (j,Category) in enumerate(Categories):
