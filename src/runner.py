@@ -2,16 +2,24 @@
 # -*- coding: utf-8 -*-
 
 import logging
-from pymongo import MongoClient
-import gridfs
-from bson.objectid import ObjectId
-import pandas as pd
-import json
 import datetime as dt
 from brandExitConversion import brandExitMung
 from preoptimizerR4 import preoptimize
 from optimizerR4 import optimize
 import config as env
+import json
+from pymongo import MongoClient
+import gridfs
+from bson.objectid import ObjectId
+import pandas as pd
+from pulp import *
+from CurveFitting import curveFittingBS
+from Forecasting import forecastFunction
+from preoptimizerEnh import preoptimizeEnh
+from FixtureOptimization.ksMerging import ksMerge
+from FixtureOptimization.mungingFunctions import mergePreOptCF
+# from TierKey import tierKeyCreate
+# from TierOptim import tierDef
 
 #
 # ENV VARS
@@ -84,58 +92,81 @@ def run(body):
         file = pd.read_csv(file, header=0, skiprows=[1])
         return file
 
-    dataMerged = ksMerge(msg['jobType'], fetchTransactions(msg["artifacts"]["salesArtifactId"]),
-                         fetchSpace(msg["artifacts"]["spaceArtifactId"]),
-                         fetchExit(msg["artifacts"]["brandExitArtifactId"]),
-                         fetchSpace(msg["artifacts"]["futureSpaceId"]))
+    # Test Files
+    # rawDM = pd.read_csv('TEST_Data_Merging_Output_Adj.csv', header=0)
+    # bounds = pd.read_csv('TEST_Bound_Input.csv',header=0)
+    # cfbsArtifact = curveFittingBS(rawDM, bounds, msg['increment'], msg['storeCategoryBounds'],
+    #                               float(msg["salesPenetrationThreshold"]), msg['jobType'], msg['optimizationType'])
+    # masterData = dataMerged[0]
+    # print(pd.unique(masterData.columns==rawDM.columns))
+    # input()
+    # print(pd.unique(masterData.index==rawDM.index))
+    # input()
+    # print('masterData types')
+    # print(masterData.dtypes)
+    # print('rawDM types')
+    # print(rawDM.dtypes)
+    # input()
+    # for col in masterData.columns:
+    #     print(col)
+    #     print(pd.unique(masterData[col]==rawDM[col]))
+    #     # if False in pd.unique(masterData[col]==rawDM[col]):
+    #     #     print(dataMerged[col].dtypes)
+    #     #     print(rawDM[col].dtypes)
+    #     input()
+    # dataMerged[0].to_csv('ksMergedRes.csv',sep=',',index=False)
 
-    # print(dataMerged.head())
     def primaryMung(df):
-        df.columns = df.iloc[0].values
-        df.drop(df.index[[0, 1]], axis=0, inplace=True)
-        df.Store.astype(int)
+        df['Store'].astype(int)
         df.set_index('Store', drop=True, inplace=True)
-        # df.set_index(df.Store.values.astype(int),drop=True,inplace=True)
         return df
 
     fixtureArtifact = fetch_artifact(msg["artifacts"]["spaceArtifactId"])
     transactionArtifact = fetch_artifact(msg["artifacts"]["salesArtifactId"])
-    Stores = fixtureArtifact[0].reindex(fixtureArtifact.index.drop([0, 1])).reset_index(drop=True).rename(
-        'Stores').astype(int).values
-    print(type(Stores[0]))
-    Categories = fixtureArtifact.loc[0][3::, ].reset_index(drop=True).rename('Categories')
+    # Stores=.to_numeric
+    Stores = msg['salesStores']
+    # Stores=fixtureArtifact[0].reindex(fixtureArtifact.index.drop([0,1])).reset_index(drop=True).rename('Stores').astype(int).values
+    Categories = msg['salesCategories']
+    # Categories=fixtureArtifact.loc[0][3::,].reset_index(drop=True).rename('Categories')
 
     try:
-        futureSpace = primaryMung(fetch_artifact(msg["artifacts"]["futureSpaceId"]))
+        # futureSpace=primaryMung(fetch_artifact(msg["artifacts"]["futureSpaceId"]))
+        futureSpace = primaryMung(fetchSpace(msg["artifacts"]["futureSpaceId"]))
         print("Future Space was Uploaded")
     except:
         futureSpace = None
         print("Future Space was not Uploaded")
     try:
-        brandExitArtifact = (fetch_artifact(msg["artifacts"]["brandExitArtifactId"]))
+        # brandExitArtifact=(fetch_artifact(msg["artifacts"]["brandExitArtifactId"]))
+        brandExitArtifact = fetchExit(msg["artifacts"]["brandExitArtifactId"])
         print("Brand Exit was Uploaded")
-        brandExitArtifact = brandExitMung(brandExitArtifact, Stores, Categories)
+        # brandExitArtifact=brandExitMung(brandExitArtifact,Stores,Categories)
         print("Brand Exit Munged")
     except:
         print("Brand Exit was not Uploaded")
         brandExitArtifact = None
-    # mData=kbMerge(msg['jobType'], transactionArtifact, fixtureArtifact, futureSpace, brandExitArtifact)
-    # masterData = dataMerging(msg["jobType"],transactionArtifact, fixtureArtifact, futureSpace, brandExitArtifact)
-    transactionArtifact = primaryMung(transactionArtifact)
-    fixtureArtifact = primaryMung(fixtureArtifact)
-    # print(fixtureArtifact.head())
-    # print(transactionArtifact.head())
-    masterData = pd.read_csv('childrenOutput.csv', header=0)
-    # bounds=pd.read_csv('src/bounds.csv',header=0)
+    # transactionArtifact = primaryMung(fetchTransactions(msg["artifacts"]["salesArtifactId"]))
+    # fixtureArtifact = primaryMung(fetchSpace(msg["artifacts"]["spaceArtifactId"]))
+
     msg["optimizationType"] = 'traditional'
     if (str(msg["optimizationType"]) == 'traditional'):
-        cfbsArtifact = curveFittingBS(masterData, msg['spaceBounds'], msg['increment'], msg['storeCategoryBounds'],
-                                      float(msg["salesPenetrationThreshold"]), msg['jobType'], msg['optimizationType'])
-        preOpt = preoptimize(Stores=Stores, Categories=Categories, spaceData=fixtureArtifact, data=transactionArtifact,
-                             mAdjustment=float(msg["metricAdjustment"]),
-                             salesPenThreshold=float(msg["salesPenetrationThreshold"]),
-                             optimizedMetrics=msg["optimizedMetrics"], increment=msg["increment"],
-                             brandExitArtifact=brandExitArtifact, newSpace=futureSpace)
+        dataMerged = ksMerge(msg['jobType'], fetchTransactions(msg["artifacts"]["salesArtifactId"]),
+                             fetchSpace(msg["artifacts"]["spaceArtifactId"]),
+                             fetchExit(msg["artifacts"]["brandExitArtifactId"]),
+                             fetchSpace(msg["artifacts"]["futureSpaceId"]))
+        cfbsArtifact = curveFittingBS(dataMerged[0], msg['spaceBounds'], msg['increment'],
+                                      msg['storeCategoryBounds'],
+                                      float(msg["salesPenetrationThreshold"]), msg['jobType'],
+                                      msg['optimizationType'])
+        # preOpt = preoptimize(Stores=Stores, Categories=Categories, spaceData=fixtureArtifact,
+        #                      data=transactionArtifact, mAdjustment=float(msg["metricAdjustment"]),
+        #                      salesPenThreshold=float(msg["salesPenetrationThreshold"]),
+        #                      optimizedMetrics=msg["optimizedMetrics"], increment=msg["increment"],
+        #                      brandExitArtifact=brandExitArtifact, newSpace=futureSpace)
+        preOpt = preoptimizeEnh(dataMunged=dataMerged[1], mAdjustment=float(msg["metricAdjustment"]),
+                                salesPenThreshold=float(msg["salesPenetrationThreshold"]),
+                                optimizedMetrics=msg["optimizedMetrics"], increment=msg["increment"])
+        mergePreOptCF(cfbsArtifact, preOpt)
         optimRes = optimize(job_id, msg['meta']['name'], Stores, Categories, preOpt, msg["tierCounts"],
                             msg["spaceBounds"], msg["increment"], fixtureArtifact, brandExitArtifact)
         # except:
@@ -159,7 +190,6 @@ def run(body):
         summaryReturned = createTieredSummary(longReturned)
     else:  # since type == "Drill Down"
         summaryReturned = createDrillDownSummary(longReturned)
-        # set status to done
     db.jobs.update_one(
         {'_id': job['_id']},
         {

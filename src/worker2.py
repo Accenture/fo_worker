@@ -9,14 +9,14 @@ from pymongo import MongoClient
 import gridfs
 from bson.objectid import ObjectId
 import pandas as pd
+import config
+from pulp import *
 from brandExitConversion import brandExitMung
 from preoptimizer2 import preoptimize
 from optimizerR4 import optimize
 from CurveFitting import curveFittingBS
 from Forecasting import forecastFunction
-from pulp import *
 from preoptimizerEnh import preoptimizeEnh
-import config
 from FixtureOptimization.ksMerging import ksMerge
 from FixtureOptimization.mungingFunctions import mergePreOptCF
 # from TierKey import tierKeyCreate
