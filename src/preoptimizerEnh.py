@@ -27,11 +27,9 @@ def spreadCalc(sales, boh, receipt, mAdjustment):
     # finding sales penetration, GAFS and spread for each brand in given stores
     # calculate adjusted penetration
     # Not necessary -- sales.columns = master_columns
-    print(boh.shape)
-    print(receipt.shape)
-    print(sales.shape)
     inv = boh + receipt
-    print(inv.shape)
+    calcPen(sales)
+    calcPen(inv)
     return calcPen(sales) + ((calcPen(sales) - calcPen(inv)) * float(mAdjustment))
 
 def metric_per_fixture(metric1, metric2, mAdjustment):

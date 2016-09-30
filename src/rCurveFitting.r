@@ -18,8 +18,8 @@
 
 # Curve Fitting and Bound Setting Function
 curvefitting_boundsetting<-function(master,bound_input,increment,pct_chg_limit,sls_pen_thresh,jobType,methodology){
-  print(colnames(master))
-  readline('Press Enter to continue')
+#  print(colnames(master))
+#  readline('Press Enter to continue')
   library(pracma) #For error function
   library(tidyr)  #For data manipulation
   library(nloptr) #For running optimization to find unscaled coefficients
@@ -47,7 +47,7 @@ curvefitting_boundsetting<-function(master,bound_input,increment,pct_chg_limit,s
   names(master)[names(master) == "Sales.Units"] <- "Units"
   names(master)[names(master) == "New.Space"] <- "Space_to_Fill"
   names(master)[names(master) == "Exit.Flag"] <- "Exit_Flag"
-  print(colnames(master))
+#  print(colnames(master))
   readline('Does the above match: Store Climate Space Sales Profit Units Exit_Flag Space_to_Fill')
 
   master <- master[c("Store", "Climate", "Category", "Space", "Sales", "Profit", "Units", "Exit_Flag", "Space_to_Fill")]
