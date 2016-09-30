@@ -1,2 +1,0 @@
-install.packages("tidyr")
-install.packages("reshape2")
