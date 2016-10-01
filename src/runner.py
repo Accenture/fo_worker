@@ -15,7 +15,7 @@ from CurveFitting import curveFittingBS
 from FixtureOptimization.ksMerging import ksMerge
 from FixtureOptimization.mungingFunctions import mergePreOptCF
 from FixtureOptimization.preoptimizerEnh import preoptimizeEnh
-from optimizerR4 import optimize
+from optimizerR5 import optimize
 
 # from TierKey import tierKeyCreate
 # from TierOptim import tierDef

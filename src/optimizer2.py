@@ -1,9 +1,15 @@
 from scipy.special import erf
-import pandas as pd
-from gurobipy import *
+# from gurobipy import *
 import math
 from pulp import *
 import numpy as np
+import pandas as pd
+import os
+import json
+import pymongo as pm
+import gridfs
+import config
+import datetime as dt
 
 
 db = pm.MongoClient(config.MONGO_CON)['app']
@@ -12,6 +18,8 @@ fs = gridfs.GridFS(db)
 # Run tiered optimization algorithm
 def optimize(methodology,jobName,Stores,Categories,tierCounts,increment,weights,mergedPreOptCF):
     # Helper function for optimize function, to create eligible space levels
+    print(mergedPreOptCF.columns)
+    print(mergedPreOptCF.head())
     def createLevels(mergedPreOptCF, increment):
 
         minLevel = mergedPreOptCF.loc[:, 'Lower_Limit'].min()
@@ -83,7 +91,7 @@ def optimize(methodology,jobName,Stores,Categories,tierCounts,increment,weights,
         return max(bound,(2*increment)/row)
 
     # Identify the total amount of space to fill in the optimization for each location and for all locations
-    locSpaceToFill = mergedPreOptCF.groupby(level=0)['Space_to_Fill'].agg(np.mean)
+    locSpaceToFill = mergedPreOptCF.groupby(level=0)['New Space'].agg(np.mean)
     aggSpaceToFill = locSpaceToFill.sum()
 
     # Hard-coded tolerance limits for balance back constraints
@@ -204,11 +212,11 @@ def optimize(methodology,jobName,Stores,Categories,tierCounts,increment,weights,
     # start_seconds = dt.datetime.today().hour*60*60+ dt.datetime.today().minute*60 + dt.datetime.today().second
 
     # Solve the problem using open source solver
-    # NewOptim.solve(pulp.PULP_CBC_CMD(msg=1))
+    NewOptim.solve(pulp.PULP_CBC_CMD(msg=1))
     # solver = "CBC" #for unit testing
 
     #Solve the problem using Gurobi
-    NewOptim.solve(pulp.GUROBI())
+    # NewOptim.solve(pulp.GUROBI())
     #solver = "Gurobi" #for unit testing
 
     #Time stamp for optimization solve time

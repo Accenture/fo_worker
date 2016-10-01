@@ -88,7 +88,7 @@ def createTieredSummary(longTable) :
     return str(create_output_artifact_from_dataframe(tieredSummaryPivot))
 
 
-def optimize(job_id,jobName,Stores,Categories,preOpt,tierCounts,spaceBound,increment,spaceArtifact,brandExitArtifact=None):
+def optimize(job_id,jobName,Stores,Categories,preOpt,tierCounts,spaceBound,increment,spaceArtifact,dataMunged):
     """
     Run an LP-based optimization
 
@@ -100,10 +100,11 @@ def optimize(job_id,jobName,Stores,Categories,preOpt,tierCounts,spaceBound,incre
     Synopsis:
         I just wrapped the script from Ken in a callable - DCE
     """
+    dataMunged = dataMunged.apply(lambda x: pd.to_numeric(x, errors='ignore'))
+    print(type(Categories[0]))
     start_time = dt.datetime.today().hour*60*60+ dt.datetime.today().minute*60 + dt.datetime.today().second
-    print(preOpt)
-    penetration=preOpt[0]
-    opt_amt=preOpt[1]
+    opt_amt=dataMunged.pivot(index='Store', columns='Category', values='Optimal Space') #preOpt[1]
+    brandExitArtifact = dataMunged.pivot(index='Store', columns='Category', values='Exit Flag')
 
     print("HEY I'M IN THE OPTIMIZATION!!!!!!!")
     ###############################################################################################
@@ -136,24 +137,31 @@ def optimize(job_id,jobName,Stores,Categories,preOpt,tierCounts,spaceBound,incre
 
     NewOptim = LpProblem(jobName, LpMinimize)  # Define Optimization Problem/
 
+    print(opt_amt)
+    input('preopt')
+    print(brandExitArtifact)
+    input('Brand Exit')
+    print()
+
+
     # Brand Exit Enhancement
-    if brandExitArtifact is None:
-        print("No Brand Exit in the Optimization")
-    else:
-        for (i, Store) in enumerate(Stores):
-            for (j, Category) in enumerate(Categories):
-                if (brandExitArtifact[Category][Store] != 0):
-                    # upper_bound[Category].loc[Store] = 0
-                    # lower_bound[Category].loc[Store] = 0
-                    opt_amt[Category][Store] = 0
-                    NewOptim += st[Store][Category][0.0] == 1
-                    NewOptim += ct[Category][0.0] == 1
-                    spaceBound[Category][0] = 0
+    # if brandExitArtifact is None:
+    #     print("No Brand Exit in the Optimization")
+    # else:
+    #     for (i, Store) in enumerate(Stores):
+    #         for (j, Category) in enumerate(Categories):
+    #             if (brandExitArtifact[Category].loc[Store] != 0):
+    #                 upper_bound[Category].loc[Store] = 0
+    #                 lower_bound[Category].loc[Store] = 0
+                    # opt_amt[Category].loc[Store] = 0
+                    # NewOptim += st[Store][Category][0.0] == 1
+                    # NewOptim += ct[Category][0.0] == 1
+                    # spaceBound[Category][0] = 0
 
         # for (j, Category) in enumerate(Categories):
         #     if (sum(brandExitArtifact[Category].values()) > 0):
         #         tier_count["Upper_Bound"][Category] += 1
-
+    print(type(opt_amt.loc[7]))
     BA = np.zeros((len(Stores), len(Categories), len(Levels)))
     error = np.zeros((len(Stores), len(Categories), len(Levels)))
     for (i, Store) in enumerate(Stores):
@@ -168,15 +176,14 @@ def optimize(job_id,jobName,Stores,Categories,preOpt,tierCounts,spaceBound,incre
 ############################################### Constraints
 ###############################################################################################################
 #Makes is to that there is only one Selected tier for each Store/ Category Combination
-
     for (i,Store) in enumerate(Stores):
 #Conditional for Balance Back regarding if in Fixtures || 2 Increment Min & Max instead
-        if TFC[i] > increment * 5:
-            NewOptim += lpSum([(st[Store][Category][Level]) * Level for (j, Category) in enumerate(Categories) for (k, Level) in enumerate(Levels)]) <= TFC[i] * (1 + bI)#, "Upper Bound for Fixtures per Store"
-            NewOptim += lpSum([(st[Store][Category][Level]) * Level for (j, Category) in enumerate(Categories) for (k, Level) in enumerate(Levels)]) >= TFC[i] * (1 - bI)#, "Lower Bound for Fixtures per Store"
+        if TFC[Store] > increment * 5:
+            NewOptim += lpSum([(st[Store][Category][Level]) * Level for (j, Category) in enumerate(Categories) for (k, Level) in enumerate(Levels)]) <= TFC[Store] * (1 + bI)#, "Upper Bound for Fixtures per Store"
+            NewOptim += lpSum([(st[Store][Category][Level]) * Level for (j, Category) in enumerate(Categories) for (k, Level) in enumerate(Levels)]) >= TFC[Store] * (1 - bI)#, "Lower Bound for Fixtures per Store"
         else:
-            NewOptim += lpSum([(st[Store][Category][Level]) * Level for (j, Category) in enumerate(Categories) for (k, Level) in enumerate(Levels)]) <= TFC[i] + (increment * 2)#, "Upper Bound for Fixtures per Store"
-            NewOptim += lpSum([(st[Store][Category][Level]) * Level for (j, Category) in enumerate(Categories) for (k, Level) in enumerate(Levels)]) >= TFC[i] - (increment * 2)#, "Lower Bound for Fixtures per Store"
+            NewOptim += lpSum([(st[Store][Category][Level]) * Level for (j, Category) in enumerate(Categories) for (k, Level) in enumerate(Levels)]) <= TFC[Store] + (increment * 2)#, "Upper Bound for Fixtures per Store"
+            NewOptim += lpSum([(st[Store][Category][Level]) * Level for (j, Category) in enumerate(Categories) for (k, Level) in enumerate(Levels)]) >= TFC[Store] - (increment * 2)#, "Lower Bound for Fixtures per Store"
         
 #One Space per Store Category
     #Makes sure that the number of fixtures, by store, does not go above or below some percentage of the total number of fixtures within the store 
@@ -184,13 +191,13 @@ def optimize(job_id,jobName,Stores,Categories,preOpt,tierCounts,spaceBound,incre
             NewOptim += lpSum([st[Store][Category][Level] for (k,Level) in enumerate(Levels)]) == 1#, "One_Level_per_Store-Category_Combination"
         # Test Again to check if better performance when done on ct level
             NewOptim += lpSum([st[Store][Category][Level] * Level for (k,Level) in enumerate(Levels)]) <= spaceBound[Category][1]         
-            if brandExitArtifact is not None:
-                if brandExitArtifact[Category].iloc[int(i)] == 0:
-                    NewOptim += lpSum([st[Store][Category][Level] * Level for (k,Level) in enumerate(Levels)]) >= spaceBound[Category][0] + increment
-                else:
-                    NewOptim += lpSum([st[Store][Category][Level] * Level for (k,Level) in enumerate(Levels)]) >= spaceBound[Category][0]
-            else:
-                NewOptim += lpSum([st[Store][Category][Level] * Level for (k,Level) in enumerate(Levels)]) >= spaceBound[Category][0]
+            # if brandExitArtifact is not None:
+            #     if brandExitArtifact[Category].iloc[int(i)] == 0:
+            #         NewOptim += lpSum([st[Store][Category][Level] * Level for (k,Level) in enumerate(Levels)]) >= spaceBound[Category][0] + increment
+            #     else:
+            #         NewOptim += lpSum([st[Store][Category][Level] * Level for (k,Level) in enumerate(Levels)]) >= spaceBound[Category][0]
+            # else:
+            NewOptim += lpSum([st[Store][Category][Level] * Level for (k,Level) in enumerate(Levels)]) >= spaceBound[Category][0]
             
 #Store Category Level Bounding
         #NewOptim += lpSum([st[Store][Category][Level] * Level for (k,Level) in enumerate(Levels)] ) >= lower_bound[Category][Store]#,
