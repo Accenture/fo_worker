@@ -45,6 +45,13 @@ def run(body):
                      port=MONGO_PORT)[MONGO_NAME]
     fs = gridfs.GridFS(db)
 
+    def create_output_artifact_from_dataframe(dataframe, *args, **kwargs):
+        """
+        Returns the bson.objectid.ObjectId of the resulting GridFS artifact
+
+        """
+        return fs.put(dataframe.to_csv().encode(), **kwargs)
+
     def fetch_artifact(artifact_id):
         file = fs.get(ObjectId(artifact_id))
         file = pd.read_csv(file, header=0)
@@ -136,11 +143,14 @@ def run(body):
         print("Ken hasn't finished development for that yet")
     # Call functions to create output information
     longOutput = createLong(cfbsArtifact, optimRes[1])
-    wideOutput = createWide(longOutput, msg['jobType'], msg['optimizationType'])
+    wideID = create_output_artifact_from_dataframe(createWide(longOutput, msg['jobType'], msg['optimizationType']))
+
+    longID=create_output_artifact_from_dataframe(longOutput)
+
     if msg['jobType'] == "tiered":
-        summaryReturned = createTieredSummary(longOutput)
+        summaryID = create_output_artifact_from_dataframe(createTieredSummary(longOutput))
     else:  # since type == "Drill Down"
-        summaryReturned = createDrillDownSummary(longOutput)
+        summaryID = createDrillDownSummary(longOutput)
 
     end_time = dt.datetime.utcnow()
     db.jobs.find_one_and_update(
@@ -148,11 +158,10 @@ def run(body):
         {
             "$set": {
                 'optimization_end_time': end_time,
-                'optimzation_total_time': total_time,
                 "artifactResults": {
-                    'long_table':long_id,
-                    'wide_table':wide_id,
-                    'summary_report': summary_id
+                    'long_table':longID,
+                    'wide_table':wideID,
+                    'summary_report': summaryID
                 }
             }
         }
