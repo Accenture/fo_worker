@@ -43,7 +43,6 @@ def optimize(job_id,jobName,Stores,Categories,tierCounts,spaceBound,increment,da
         I just wrapped the script from Ken in a callable - DCE
     """
     dataMunged = dataMunged.apply(lambda x: pd.to_numeric(x, errors='ignore'))
-    print(type(Categories[0]))
     start_time = dt.datetime.today().hour*60*60+ dt.datetime.today().minute*60 + dt.datetime.today().second
     opt_amt=dataMunged.pivot(index='Store', columns='Category', values='Optimal Space') #preOpt[1]
     brandExitArtifact = dataMunged.pivot(index='Store', columns='Category', values='Exit Flag')
@@ -78,13 +77,6 @@ def optimize(job_id,jobName,Stores,Categories,tierCounts,spaceBound,increment,da
                           upBound=1, cat='Binary')
 
     NewOptim = LpProblem(jobName, LpMinimize)  # Define Optimization Problem/
-
-    print(opt_amt)
-    input('preopt')
-    print(brandExitArtifact)
-    input('Brand Exit')
-    print()
-
 
     # Brand Exit Enhancement
     # if brandExitArtifact is None:
@@ -247,55 +239,40 @@ def optimize(job_id,jobName,Stores,Categories,tierCounts,spaceBound,increment,da
             for (k,Level) in enumerate(Levels):
                 if value(st[Store][Category][Level]) == 1:
                     Results[Category][Store] = Level
-    Results=pd.melt(Results.reset_index(), id_vars=['Store'], var_name='Category',
-            value_name='Result Space')
+    Results.reset_index(inplace=True)
+    Results.columns.values[0]='Store'
+    Results = pd.melt(Results.reset_index(), id_vars=['Store'], var_name='Category', value_name='Result Space')
+    Results=Results.apply(lambda x: pd.to_numeric(x, errors='ignore'))
     dataMunged=pd.merge(dataMunged,Results,on=['Store','Category'])
     # fs.put(createLong(Stores,Categories,Levels,st,preOpt[1],preOpt[0],spaceArtifact))
     # fs.put(createWide(preopt[1],preOpt[0],Results,spaceArtifact))
     # TODO: use jobid in long and wide filenames(filename key word argument)
-    '''
-#Create Outputs
-    longOutput= createLong(Stores,Categories,Levels,st,preOpt[1],preOpt[0],spaceArtifact)
-    long_id = longOutput[0]
-    wide_id = createWide(Stores,Categories,Levels,st,Results,preOpt[1],preOpt[0],spaceArtifact)
-    summary_id = createTieredSummary(longOutput[1])
 
-    end_time = dt.datetime.today().hour*60*60 + dt.datetime.today().minute*60 + dt.datetime.today().second 
-    total_time= end_time - start_time
-    print("Total time taken is:")
-    print(total_time)
-    end_time = dt.datetime.utcnow()
-    db.jobs.find_one_and_update(
-        {'_id': job_id},
-        {
-            "$set": {
-                'optimization_end_time': end_time,
-                'optimzation_total_time': total_time, 
-                "artifactResults": {
-                    'long_table':long_id,
-                    'wide_table':wide_id,
-                    'summary_report': summary_id
-                }
-            }
-        }
-    )
-
-    # solvedout, result_id = fs.open_upload_stream("test_file",chunk_size_bytes=4,metadata={"contentType": "text/csv"}) 
-    #open("solvedout.csv", 'w')
-    with fs.new_file(filename="spaceResults.csv",content_type="type/csv") as solvedout:
-        solvedout.write("Store,".encode("UTF-8"))
-        for (j, Category) in enumerate(Categories):
-            solvedout.write(opt_amt.columns.values[j].encode("UTF-8") + ",".encode("UTF-8"))
-        for (i, Store) in enumerate(Stores):
-            solvedout.write(str("\n"+str(Store)).encode("UTF-8"))
-            for (j, Category) in enumerate(Categories):
-                solvedout.write(",".encode("UTF-8"))
-                for (k, Level) in enumerate(Levels):
-                    if value(st[Store][Category][Level]) == 1:
-                        solvedout.write(str(Level).encode("UTF-8"))
-        solvedout.close()
-    # print(LpStatus[LpStatus])
-    '''
+    # Create Outputs
+    # longOutput= createLong(Stores,Categories,Levels,st,preOpt[1],preOpt[0],spaceArtifact)
+    # long_id = longOutput[0]
+    # wide_id = createWide(Stores,Categories,Levels,st,Results,preOpt[1],preOpt[0],spaceArtifact)
+    # summary_id = createTieredSummary(longOutput[1])
+    #
+    # end_time = dt.datetime.today().hour*60*60 + dt.datetime.today().minute*60 + dt.datetime.today().second
+    # total_time= end_time - start_time
+    # print("Total time taken is:")
+    # print(total_time)
+    # end_time = dt.datetime.utcnow()
+    # db.jobs.find_one_and_update(
+    #     {'_id': job_id},
+    #     {
+    #         "$set": {
+    #             'optimization_end_time': end_time,
+    #             'optimzation_total_time': total_time,
+    #             "artifactResults": {
+    #                 'long_table':long_id,
+    #                 'wide_table':wide_id,
+    #                 'summary_report': summary_id
+    #             }
+    #         }
+    #     }
+    # )
     return (LpStatus[NewOptim.status],dataMunged) #(longOutput)#,wideOutput)
 
     # testing=pd.read_csv("solvedout.csv").drop

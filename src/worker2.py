@@ -167,9 +167,10 @@ def main():
             preOpt = preoptimizeEnh(dataMunged=dataMerged[1], mAdjustment=float(msg["metricAdjustment"]),
                                  salesPenThreshold = float(msg["salesPenetrationThreshold"]),
                                  optimizedMetrics = msg["optimizedMetrics"], increment=msg["increment"])
-            mPreOptCFBS = mergePreOptCF(cfbsArtifact, preOpt)
+            # mPreOptCFBS = mergePreOptCF(cfbsArtifact, preOpt[['Store','Category','Penetration','Optimal Space']])
+            mPreOptCFBS = pd.merge(cfbsArtifact, preOpt[['Store','Category','Penetration','Optimal Space']],on=['Store','Category'])
             optimRes = optimize(job_id, msg['meta']['name'], Stores, Categories, msg["tierCounts"],
-                                msg["spaceBounds"], msg["increment"], preOpt[0])
+                                msg["spaceBounds"], msg["increment"], preOpt)
             # optimRes = optimize(msg['optimizationType'], msg['meta']['name'], Stores, Categories, msg['tierCounts'],
             #                     msg['increment'], msg['optimizedMetrics'], mPreOptCFBS)
             # except:
@@ -184,12 +185,14 @@ def main():
                 # optimize(job_id,preOpt,msg["tierCounts"],msg["increment"],cfbsArtifact)
             # except:
             print("Ken hasn't finished development for that yet")
-        print(optimRes[1].head())
         # Call functions to create output information
         longOutput = createLong(mPreOptCFBS, optimRes[1])
+        print(longOutput.head())
+        print(longOutput.columns)
         wideOutput = createWide(longOutput, msg['jobType'], msg['optimizationType'])
-
-        if msg['optimizationType'] == "tiered":
+        print(wideOutput.head())
+        print(wideOutput.columns)
+        if msg['jobType'] == "tiered":
             summaryReturned = createTieredSummary(longOutput)
         else:  # since type == "Drill Down"
             summaryReturned = createDrillDownSummary(longOutput)

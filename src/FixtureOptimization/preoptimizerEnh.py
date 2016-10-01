@@ -116,11 +116,9 @@ def preoptimizeEnh(dataMunged, salesPenThreshold, mAdjustment, optimizedMetrics,
     opt_amt2 = pd.melt(opt_amt.reset_index(), id_vars=['Store'], var_name='Category',
                       value_name='Optimal Space')
     longPre=pd.merge(penetration,opt_amt2,on=['Store','Category'])
-    print(dataMunged.columns)
-    print(longPre.columns)
     information=pd.merge(dataMunged,longPre,on=['Store','Category'])
     # return (adj_p, opt_amt)
-    return (information, opt_amt)
+    return (information)
 
 '''
 #For Testing
