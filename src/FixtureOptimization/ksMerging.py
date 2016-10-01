@@ -7,7 +7,7 @@ import sys
 # futureSpace=pd.read_csv('futureSpace_data.csv',header=0,dtype={'Store': object},skiprows=[1])
 # brandExit=pd.read_csv('exit_data.csv',header=0,skiprows=[1])
 
-def ksMerge(optimizationType,transactions,space,brandExit,futureSpace):
+def ksMerge(optimizationType,transactions,space,brandExit=None,futureSpace=None):
     if optimizationType == 'tiered':
         def brandExitMung(df, Stores, Categories):
             brand_exit = pd.DataFrame(index=Stores, columns=Categories)
@@ -23,8 +23,8 @@ def ksMerge(optimizationType,transactions,space,brandExit,futureSpace):
         Metrics = transactions.loc[1, 1:9].reset_index(drop=True)
         Categories = transactions[[*np.arange(len(transactions.columns))[1::9]]].loc[0].reset_index(drop=True).values.astype(
             str)
-        spaceData = pd.melt(space, id_vars=['Store', 'Climate', 'VSG'], var_name='Category', value_name='Current Space')
-
+        spaceData = pd.melt(space, id_vars=['Store', 'Climate', 'VSG'], var_name='Category', value_name='Historical Space')
+        spaceData['Current Space'] = spaceData['Historical Space']
 
         def longTransaction(df, storeList, categories):
             df.loc[0, :] = categories
@@ -65,7 +65,7 @@ def ksMerge(optimizationType,transactions,space,brandExit,futureSpace):
             mergeTrad=masterData
             for i in range(0,len(mergeTrad)):
                 if brandExit['Exit Flag'].loc[i] == 1:
-                    mergeTrad.loc[i,4::]=0
+                    mergeTrad.loc[i,5::]=0
             masterData=pd.merge(masterData,brandExit,on=['Store','Category'],how='inner')
             mergeTrad=pd.merge(mergeTrad,brandExit,on=['Store','Category'],how='inner')
             print('There are ' + str(len(masterData[masterData['Exit Flag'] == 1])) + ' brand exits')

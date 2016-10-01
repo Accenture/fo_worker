@@ -5,16 +5,17 @@ import math
 
 # Create long table for user download
 def createLong(cfbs, optimSpace):
-    lOutput = pd.merge(cfbs, optimSpace[['Store','Climate','VSG', 'Category','Current Space', 'Result Space']],
-                           on=['Store', 'Category'])
-    print(lOutput.columns)
-    print(lOutput.head())
+    lOutput = pd.merge(optimSpace[
+                           ['Store', 'Climate', 'VSG', 'Category', 'Historical Space', 'Current Space', 'Penetration',
+                            'Optimal Space', 'Result Space', 'Sales $', 'Profit $', 'Sales Units']], cfbs,
+                       on=['Store', 'Category'])
+
     # Merge the optimize output with the curve-fitting output (which was already merged with the preoptimize output)
     # result_long = pd.DataFrame(Results.unstack()).swaplevel()
     # result_long.rename(columns={result_long.columns[-1]: "Result Space"}, inplace=True)
     # lOutput = pd.concat([mergedPreOptCF, result_long], axis=1)
     lOutput["Result Space"] = lOutput["Result Space"].astype(float)
-
+    lOutput = lOutput.apply(lambda x: pd.to_numeric(x, errors='ignore'))
     variables = ["Sales", "Profit", "Units"]
 
     for v in variables:
@@ -48,7 +49,7 @@ def createWide(long, jobType, optimizationType):
 
     # Set up for pivot by renaming metrics and converting blanks to 0's for Enhanced in long table
     adjusted_long = long.rename(
-        columns={'Current Space': 'current', "Optimal Space": "optimal", "Result Space": "result",
+        columns={'Historical Space': 'current', "Optimal Space": "optimal", "Result Space": "result",
                  "Penetration": "penetration"})
     if optimizationType == "Enhanced":
         adjusted_long["optimal"] = 0
