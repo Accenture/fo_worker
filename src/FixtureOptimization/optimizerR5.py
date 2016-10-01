@@ -30,65 +30,7 @@ def create_output_artifact_from_dataframe(dataframe, *args, **kwargs):
     return fs.put(dataframe.to_csv().encode(), **kwargs)
 
 
-def createLong(Stores, Categories, Levels, st, Optimal, Penetration, Historical):
-    """
-    Return str oid of GridFS artifact
-    """
-    storeDict=Historical[[0,1,2]].T.to_dict()
-    #Historical=Historical.drop(Historical.columns[[1,2]],axis=1)
-    l=0
-    lOutput=pd.DataFrame(index=np.arange(len(Stores)*len(Categories)),columns=["Store","Climate","VSG","Category","Result Space","Optimal Space","Penetration","Historical Space"])
-    for (i,Store) in enumerate(Stores):    
-        for (j,Category) in enumerate(Categories):
-            lOutput["Store"].iloc[l]=Store
-            lOutput["Category"].iloc[l] = Category
-            lOutput["Optimal Space"].iloc[l] = Optimal[Category].iloc[i]        
-            lOutput["Penetration"].iloc[l] = Penetration[Category].iloc[i]
-            # lOutput["Climate"].iloc[l] = storeDict.get("Store",{}).get("Climate",{}) 
-            # lOutput["VSG"].iloc[l] = storeDict.get("Store",{}).get("VSG",{})
-            lOutput["Historical Space"].iloc[l] = Historical[Category].iloc[i]
-            for (k,Level) in enumerate(Levels):        
-                if value(st[Store][Category][Level])== 1:
-                    lOutput["Result Space"].iloc[l] = Level
-            l=l+1
-    lOutput['VSG']=lOutput.Store.apply(lambda x: (storeDict[x]['VSG ']))
-    lOutput['Climate']=lOutput.Store.apply(lambda x: (storeDict[x]['Climate']))
-    lOutput.set_index("Store")
-    return (str(create_output_artifact_from_dataframe(lOutput)),lOutput)
-
-def createWide(Stores,Categories,Levels,st,Results,Optimal,Penetration,Historical):
-    bfc = Historical[[ *np.arange(len(Historical.columns))[0::1] ]].convert_objects(convert_numeric=True)
-    storeDict=Historical[[0,1]]#.T.to_dict()
-    # storeDict["Store"]=storeDict.index
-    Historical=Historical.drop(Historical.columns[[0,1]],axis=1)
-    Optimal.columns = [str(col) + '_optimal' for col in Categories]
-    Penetration.columns = [str(col) + '_penetration' for col in Categories]
-    Results.columns = [str(col) + '_result' for col in Categories]
-    Historical.columns = [str(col) + '_current' for col in Historical.columns]
-    sumOutput=pd.DataFrame(index=Stores,columns=['Total_result','Total_current'])
-    sumOutput['Total_result']=Results.sum(axis=1)
-    sumOutput['Total_current']=bfc.sum(axis=1)
-    wOutput=pd.concat([storeDict,Results,Historical,Optimal,sumOutput,Penetration],axis=1) #Results.append([Optimal,Penetration,Historical])
-    # wOutput["Store"]=wOutput.index
-    # wOutput['VSG']=wOutput.Store.apply(lambda x: (storeDict[x]['VSG ']))
-    # wOutput['Climate']=wOutput.Store.apply(lambda x: (storeDict[x]['Climate']))    
-    # wOutput.set_index("Store")
-    # end=len(wOutput.columns)-3
-    # wOutput=wOutput.columns[[-3,-1,-2]]
-    # wOutput=wOutput.drop(wOutput.columns[[-5]],axis=1)
-    return str(create_output_artifact_from_dataframe(wOutput))
-
-def createTieredSummary(longTable) :
-    #pivot the long table to create a data frame providing the store count for each Category-ResultSpace by Climate along with the total for all climates
-    tieredSummaryPivot = pd.pivot_table(longTable, index=['Category', 'Result Space'], columns='Climate', values='Store', aggfunc=len, margins=True)
-    #rename the total for all climates column
-    tieredSummaryPivot.rename(columns = {'All':'Total Store Count'}, inplace = True)
-    #delete the last row of the pivot, as it is a sum of all the values in the column and has no business value in this context
-    tieredSummaryPivot = tieredSummaryPivot.ix[:-1]
-    return str(create_output_artifact_from_dataframe(tieredSummaryPivot))
-
-
-def optimize(job_id,jobName,Stores,Categories,preOpt,tierCounts,spaceBound,increment,spaceArtifact,brandExitArtifact=None):
+def optimize(job_id,jobName,Stores,Categories,tierCounts,spaceBound,increment,dataMunged):
     """
     Run an LP-based optimization
 
@@ -100,10 +42,10 @@ def optimize(job_id,jobName,Stores,Categories,preOpt,tierCounts,spaceBound,incre
     Synopsis:
         I just wrapped the script from Ken in a callable - DCE
     """
+    dataMunged = dataMunged.apply(lambda x: pd.to_numeric(x, errors='ignore'))
     start_time = dt.datetime.today().hour*60*60+ dt.datetime.today().minute*60 + dt.datetime.today().second
-    print(preOpt)
-    penetration=preOpt[0]
-    opt_amt=preOpt[1]
+    opt_amt=dataMunged.pivot(index='Store', columns='Category', values='Optimal Space') #preOpt[1]
+    brandExitArtifact = dataMunged.pivot(index='Store', columns='Category', values='Exit Flag')
 
     print("HEY I'M IN THE OPTIMIZATION!!!!!!!")
     ###############################################################################################
@@ -136,6 +78,7 @@ def optimize(job_id,jobName,Stores,Categories,preOpt,tierCounts,spaceBound,incre
     NewOptim = LpProblem(jobName, LpMinimize)  # Define Optimization Problem/
 
     # Brand Exit Enhancement
+<<<<<<< HEAD:src/optimizerR4.py
     if brandExitArtifact is None:
         print("No Brand Exit in the Optimization")
     else:
@@ -148,11 +91,25 @@ def optimize(job_id,jobName,Stores,Categories,preOpt,tierCounts,spaceBound,incre
                     NewOptim += st[Store][Category][0.0] == 1
                     NewOptim += ct[Category][0.0] == 1
                     spaceBound[Category][0] = 0.0
+=======
+    # if brandExitArtifact is None:
+    #     print("No Brand Exit in the Optimization")
+    # else:
+    #     for (i, Store) in enumerate(Stores):
+    #         for (j, Category) in enumerate(Categories):
+    #             if (brandExitArtifact[Category].loc[Store] != 0):
+    #                 upper_bound[Category].loc[Store] = 0
+    #                 lower_bound[Category].loc[Store] = 0
+                    # opt_amt[Category].loc[Store] = 0
+                    # NewOptim += st[Store][Category][0.0] == 1
+                    # NewOptim += ct[Category][0.0] == 1
+                    # spaceBound[Category][0] = 0
+>>>>>>> BBI-4521:src/FixtureOptimization/optimizerR5.py
 
         # for (j, Category) in enumerate(Categories):
         #     if (sum(brandExitArtifact[Category].values()) > 0):
         #         tier_count["Upper_Bound"][Category] += 1
-
+    print(type(opt_amt.loc[7]))
     BA = np.zeros((len(Stores), len(Categories), len(Levels)))
     error = np.zeros((len(Stores), len(Categories), len(Levels)))
     for (i, Store) in enumerate(Stores):
@@ -167,15 +124,14 @@ def optimize(job_id,jobName,Stores,Categories,preOpt,tierCounts,spaceBound,incre
 ############################################### Constraints
 ###############################################################################################################
 #Makes is to that there is only one Selected tier for each Store/ Category Combination
-
     for (i,Store) in enumerate(Stores):
 #Conditional for Balance Back regarding if in Fixtures || 2 Increment Min & Max instead
-        if TFC[i] > increment * 5:
-            NewOptim += lpSum([(st[Store][Category][Level]) * Level for (j, Category) in enumerate(Categories) for (k, Level) in enumerate(Levels)]) <= TFC[i] * (1 + bI)#, "Upper Bound for Fixtures per Store"
-            NewOptim += lpSum([(st[Store][Category][Level]) * Level for (j, Category) in enumerate(Categories) for (k, Level) in enumerate(Levels)]) >= TFC[i] * (1 - bI)#, "Lower Bound for Fixtures per Store"
+        if TFC[Store] > increment * 5:
+            NewOptim += lpSum([(st[Store][Category][Level]) * Level for (j, Category) in enumerate(Categories) for (k, Level) in enumerate(Levels)]) <= TFC[Store] * (1 + bI)#, "Upper Bound for Fixtures per Store"
+            NewOptim += lpSum([(st[Store][Category][Level]) * Level for (j, Category) in enumerate(Categories) for (k, Level) in enumerate(Levels)]) >= TFC[Store] * (1 - bI)#, "Lower Bound for Fixtures per Store"
         else:
-            NewOptim += lpSum([(st[Store][Category][Level]) * Level for (j, Category) in enumerate(Categories) for (k, Level) in enumerate(Levels)]) <= TFC[i] + (increment * 2)#, "Upper Bound for Fixtures per Store"
-            NewOptim += lpSum([(st[Store][Category][Level]) * Level for (j, Category) in enumerate(Categories) for (k, Level) in enumerate(Levels)]) >= TFC[i] - (increment * 2)#, "Lower Bound for Fixtures per Store"
+            NewOptim += lpSum([(st[Store][Category][Level]) * Level for (j, Category) in enumerate(Categories) for (k, Level) in enumerate(Levels)]) <= TFC[Store] + (increment * 2)#, "Upper Bound for Fixtures per Store"
+            NewOptim += lpSum([(st[Store][Category][Level]) * Level for (j, Category) in enumerate(Categories) for (k, Level) in enumerate(Levels)]) >= TFC[Store] - (increment * 2)#, "Lower Bound for Fixtures per Store"
         
 #One Space per Store Category
     #Makes sure that the number of fixtures, by store, does not go above or below some percentage of the total number of fixtures within the store 
@@ -184,10 +140,17 @@ def optimize(job_id,jobName,Stores,Categories,preOpt,tierCounts,spaceBound,incre
         # Test Again to check if better performance when done on ct level
             NewOptim += lpSum([st[Store][Category][Level] * Level for (k,Level) in enumerate(Levels)]) <= spaceBound[Category][1]         
             # if brandExitArtifact is not None:
+<<<<<<< HEAD:src/optimizerR4.py
                 # if brandExitArtifact[Category].iloc[int(i)] == 0:
                     # NewOptim += lpSum([st[Store][Category][Level] * Level for (k,Level) in enumerate(Levels)]) >= spaceBound[Category][0] + increment
                 # else:
                     # NewOptim += lpSum([st[Store][Category][Level] * Level for (k,Level) in enumerate(Levels)]) >= spaceBound[Category][0]
+=======
+            #     if brandExitArtifact[Category].iloc[int(i)] == 0:
+            #         NewOptim += lpSum([st[Store][Category][Level] * Level for (k,Level) in enumerate(Levels)]) >= spaceBound[Category][0] + increment
+            #     else:
+            #         NewOptim += lpSum([st[Store][Category][Level] * Level for (k,Level) in enumerate(Levels)]) >= spaceBound[Category][0]
+>>>>>>> BBI-4521:src/FixtureOptimization/optimizerR5.py
             # else:
             NewOptim += lpSum([st[Store][Category][Level] * Level for (k,Level) in enumerate(Levels)]) >= spaceBound[Category][0]
             
@@ -293,10 +256,16 @@ def optimize(job_id,jobName,Stores,Categories,preOpt,tierCounts,spaceBound,incre
             for (k,Level) in enumerate(Levels):
                 if value(st[Store][Category][Level]) == 1:
                     Results[Category][Store] = Level
+    Results.reset_index(inplace=True)
+    Results.columns.values[0]='Store'
+    Results = pd.melt(Results.reset_index(), id_vars=['Store'], var_name='Category', value_name='Result Space')
+    Results=Results.apply(lambda x: pd.to_numeric(x, errors='ignore'))
+    dataMunged=pd.merge(dataMunged,Results,on=['Store','Category'])
     # fs.put(createLong(Stores,Categories,Levels,st,preOpt[1],preOpt[0],spaceArtifact))
     # fs.put(createWide(preopt[1],preOpt[0],Results,spaceArtifact))
     # TODO: use jobid in long and wide filenames(filename key word argument)
 
+<<<<<<< HEAD:src/optimizerR4.py
 #Create Outputs
     longOutput= createLong(Stores,Categories,Levels,st,preOpt[1],preOpt[0],spaceArtifact)
     long_id = longOutput[0]
@@ -322,6 +291,34 @@ def optimize(job_id,jobName,Stores,Categories,preOpt,tierCounts,spaceBound,incre
             }
         }
     )
+=======
+    # Create Outputs
+    # longOutput= createLong(Stores,Categories,Levels,st,preOpt[1],preOpt[0],spaceArtifact)
+    # long_id = longOutput[0]
+    # wide_id = createWide(Stores,Categories,Levels,st,Results,preOpt[1],preOpt[0],spaceArtifact)
+    # summary_id = createTieredSummary(longOutput[1])
+    #
+    # end_time = dt.datetime.today().hour*60*60 + dt.datetime.today().minute*60 + dt.datetime.today().second
+    # total_time= end_time - start_time
+    # print("Total time taken is:")
+    # print(total_time)
+    # end_time = dt.datetime.utcnow()
+    # db.jobs.find_one_and_update(
+    #     {'_id': job_id},
+    #     {
+    #         "$set": {
+    #             'optimization_end_time': end_time,
+    #             'optimzation_total_time': total_time,
+    #             "artifactResults": {
+    #                 'long_table':long_id,
+    #                 'wide_table':wide_id,
+    #                 'summary_report': summary_id
+    #             }
+    #         }
+    #     }
+    # )
+    return (LpStatus[NewOptim.status],dataMunged) #(longOutput)#,wideOutput)
+>>>>>>> BBI-4521:src/FixtureOptimization/optimizerR5.py
 
     return 'Success!'
 
@@ -332,8 +329,11 @@ def optimize(job_id,jobName,Stores,Categories,preOpt,tierCounts,spaceBound,incre
 #     optimize()
 # Should optimize after completion here call preop instead of in worker?
 
+<<<<<<< HEAD:src/optimizerR4.py
     return LpStatus[NewOptim.status]
 
+=======
+>>>>>>> BBI-4521:src/FixtureOptimization/optimizerR5.py
 if __name__ == '__main__':
     df = pd.DataFrame(np.random.randn(10, 5), columns=['a', 'b', 'c', 'd', 'e'])
     create_output_artifact_from_dataframe(df, filename='hello.csv')

@@ -1,14 +1,21 @@
 import pandas as pd
+import numpy as np
+from scipy.special import erf
+import math
 
 # Create long table for user download
-def createLong(mergedPreOptCF, Results):
-    # Merge the optimize output with the curve-fitting output (which was already merged with the preoptimize output)
+def createLong(cfbs, optimSpace):
+    lOutput = pd.merge(optimSpace[
+                           ['Store', 'Climate', 'VSG', 'Category', 'Historical Space', 'Current Space', 'Penetration',
+                            'Optimal Space', 'Result Space', 'Sales $', 'Profit $', 'Sales Units']], cfbs,
+                       on=['Store', 'Category'])
 
+    # Merge the optimize output with the curve-fitting output (which was already merged with the preoptimize output)
     # result_long = pd.DataFrame(Results.unstack()).swaplevel()
     # result_long.rename(columns={result_long.columns[-1]: "Result Space"}, inplace=True)
     # lOutput = pd.concat([mergedPreOptCF, result_long], axis=1)
     lOutput["Result Space"] = lOutput["Result Space"].astype(float)
-
+    lOutput = lOutput.apply(lambda x: pd.to_numeric(x, errors='ignore'))
     variables = ["Sales", "Profit", "Units"]
 
     for v in variables:
@@ -22,7 +29,6 @@ def createLong(mergedPreOptCF, Results):
                                                  math.sqrt(2) * lOutput["Scaled_Beta_" + v])))
 
     # Reset the index and name the columns
-    lOutput = lOutput.reset_index()
     lOutput.rename(columns={'level_0': 'Store', 'level_1': 'Category', 'Space': 'Historical Space'}, inplace=True)
 
     # Either drop or rename space to fill, lower limit, and upper limit
@@ -34,7 +40,7 @@ def createLong(mergedPreOptCF, Results):
     # Drop scaled coefficients, can be uncommented to test curve-fitting/forecasting
     cols = [c for c in lOutput.columns if c[:6] != 'Scaled']
     lOutput = lOutput[cols]
-    lOutput.drop(['Store_Group'], axis=1, inplace=True)
+    lOutput.drop(['Store_Group_Sales','Store_Group_Units','Store_Group_Profit'], axis=1, inplace=True)
 
     return lOutput
 
@@ -50,7 +56,7 @@ def createWide(long, jobType, optimizationType):
         adjusted_long["penetration"] = 0
 
     # Pivot to convert long table to wide, including Time in index for drill downs
-    if jobType == "Tiered":
+    if jobType == "tiered":
         wide = pd.pivot_table(adjusted_long, values=["current", "optimal", "result", "penetration"],
                               index=["Store", "Climate", "VSG"], columns="Category", aggfunc=np.sum, margins=True,
                               margins_name="Total")

@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import logging
 import datetime as dt
 import logging
 from pulp import *
@@ -151,9 +150,6 @@ def run(body):
     if msg['jobType'] == "tiered":
         summaryID = str(create_output_artifact_from_dataframe(createTieredSummary(longOutput)))
     else:  # since type == "Drill Down"
-<<<<<<< HEAD
-        summaryReturned = createDrillDownSummary(longReturned)
-=======
         summaryID = str(create_output_artifact_from_dataframe(createDrillDownSummary(longOutput)))
 
     end_time = dt.datetime.utcnow()
@@ -171,7 +167,6 @@ def run(body):
             }
         }
     )
->>>>>>> BBI-4521
 
     db.jobs.update_one(
         {'_id': job['_id']},

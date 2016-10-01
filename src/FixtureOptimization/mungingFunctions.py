@@ -27,11 +27,11 @@ def mergePreOptCF(cfOutput,preOpt):
         mergedPreOptCF = cfOutput
     #For traditional min error optimizations, single store optimals are created in preoptimize and are merged here into the long table
     else :
-        penetration = pd.melt(preOpt[0], id_vars='Store', var_name='Category',
+        penetration = pd.melt(preOpt[0].reset_index(), id_vars=['Store'], var_name='Category',
                               value_name='Penetration')
-        opt_amt = pd.melt(preOpt[1], id_vars='Store', var_name='Category',
+        opt_amt = pd.melt(preOpt[1].reset_index(), id_vars=['Store'], var_name='Category',
                           value_name='Optimal Space')
-        mergedPreOptCF = pd.merge(penetration,opt_amt,on='Store')
+        mergedPreOptCF = pd.merge(penetration,opt_amt,on=['Store','Category'])
         # penetration=preOpt[0].melt()
         # opt_amt=preOpt[1].melt()
         # pen_long = pd.DataFrame(penetration.unstack()).swaplevel()
