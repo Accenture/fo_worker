@@ -98,7 +98,6 @@ def run(body):
     Categories = msg['salesCategories']
 
     try:
-        # futureSpace=primaryMung(fetch_artifact(msg["artifacts"]["futureSpaceId"]))
         futureSpace = fetchSpace(msg["artifacts"]["futureSpaceId"])
         print("Future Space was Uploaded")
     except:
@@ -116,10 +115,12 @@ def run(body):
         dataMerged = ksMerge(msg['jobType'], fetchTransactions(msg["artifacts"]["salesArtifactId"]),
                              fetchSpace(msg["artifacts"]["spaceArtifactId"]),
                              brandExitArtifact, futureSpace)
+        # dataMerged[0].csv('dataMerge.csv',sep=',')
         cfbsArtifact = curveFittingBS(dataMerged[0], msg['spaceBounds'], msg['increment'],
                                       msg['storeCategoryBounds'],
                                       float(msg["salesPenetrationThreshold"]), msg['jobType'],
                                       msg['optimizationType'])
+        print('finished curve fitting')
         preOpt = preoptimizeEnh(dataMunged=dataMerged[1], mAdjustment=float(msg["metricAdjustment"]),
                                 salesPenThreshold=float(msg["salesPenetrationThreshold"]),
                                 optimizedMetrics=msg["optimizedMetrics"], increment=msg["increment"])
@@ -132,15 +133,6 @@ def run(body):
         # except:
         # print(TypeError)
         # print("Traditional Optimization has Failed")
-    if (msg["optimizationType"] == 'enhanced'):
-        #     try:
-        #     masterData=dataMerging(msg)
-        # cfbsArtifact=curveFittingBS(masterData,spaceBounds,increment,optimizedMetrics['sales'],optimizedMetrics['profits'],optimizedMetrics['units'],msg['storeCategoryBounds'],msg['optimizationType'])
-        # cfbsDict=cfbsArtifact.set_index(["Store","Product"])
-        # preOpt = preoptimize(Stores=Stores,Categories=Categories,spaceData=fixtureArtifact,data=transactionArtifact,metricAdjustment=float(msg["metricAdjustment"]),salesPenetrationThreshold=float(msg["salesPenetrationThreshold"]),optimizedMetrics=msg["optimizedMetrics"],increment=msg
-        # optimize(job_id,preOpt,msg["tierCounts"],msg["increment"],cfbsArtifact)
-        # except:
-        print("Ken hasn't finished development for that yet")
     # Call functions to create output information
     longOutput = createLong(cfbsArtifact[0], optimRes[1])
     wideID = str(create_output_artifact_from_dataframe(createWide(longOutput, msg['jobType'], msg['optimizationType'])))
@@ -162,7 +154,7 @@ def run(body):
                     'long_table':longID,
                     'wide_table':wideID,
                     'summary_report': summaryID,
-                    'ananlytics_data': analtyticsID
+                    'analytic_data': analtyticsID
                 }
             }
         }

@@ -41,13 +41,14 @@ curvefitting_boundsetting<-function(master,bound_input,increment,pct_chg_limit,s
   avgUnits_filter <- 50
 
   # Rename column titles where column title contains blanks and drop irrelevant columns
-  names(master)[names(master) == "Current.Space"] <- "Space"
+  print(colnames(master))
+  names(master)[names(master) == "Historical.Space"] <- "Space"
   names(master)[names(master) == "Sales.."] <- "Sales"
   names(master)[names(master) == "Profit.."] <- "Profit"
   names(master)[names(master) == "Sales.Units"] <- "Units"
   names(master)[names(master) == "New.Space"] <- "Space_to_Fill"
   names(master)[names(master) == "Exit.Flag"] <- "Exit_Flag"
-#  print(colnames(master))
+  print(colnames(master))
 
   master <- master[c("Store", "Climate", "Category", "Space", "Sales", "Profit", "Units", "Exit_Flag", "Space_to_Fill")]
 
