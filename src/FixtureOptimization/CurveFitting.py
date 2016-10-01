@@ -39,7 +39,7 @@ def curveFittingBS(big_master_data,bound_input,increment_size,PCT_Space_Change_L
 
     # Convert R list output into 2 python data frames, put into python list for the return statement
     cfbsArtifact=pandas2ri.ri2py(r_list_output[0]).sort_values(by=['Store','Category']).reset_index(drop=True)
-    cfbs_id = create_output_artifact_from_dataframe(pandas2ri.ri2py(r_list_output[0]).reset_index(drop=True))
-    analytics_id = create_output_artifact_from_dataframe(pandas2ri.ri2py(r_list_output[1]).reset_index(drop=True))
+    # cfbs_id = str(create_output_artifact_from_dataframe(pandas2ri.ri2py(r_list_output[0]).reset_index(drop=True)))
+    analyticsData = pandas2ri.ri2py(r_list_output[1]).reset_index(drop=True)
     # print(cfbsArtifact.head())
-    return cfbsArtifact
+    return (cfbsArtifact,analyticsData)

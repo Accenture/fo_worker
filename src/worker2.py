@@ -134,12 +134,8 @@ def main():
             # except:
             print("Ken hasn't finished development for that yet")
         # Call functions to create output information
-        longOutput = createLong(cfbsArtifact, optimRes[1])
-        print(longOutput.head())
-        print(longOutput.columns)
+        longOutput = createLong(cfbsArtifact[0], optimRes[1])
         wideOutput = createWide(longOutput, msg['jobType'], msg['optimizationType'])
-        print(wideOutput.head())
-        print(wideOutput.columns)
         if msg['jobType'] == "tiered":
             summaryReturned = createTieredSummary(longOutput)
         else:  # since type == "Drill Down"

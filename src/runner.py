@@ -142,15 +142,15 @@ def run(body):
         # except:
         print("Ken hasn't finished development for that yet")
     # Call functions to create output information
-    longOutput = createLong(cfbsArtifact, optimRes[1])
-    wideID = create_output_artifact_from_dataframe(createWide(longOutput, msg['jobType'], msg['optimizationType']))
-
-    longID=create_output_artifact_from_dataframe(longOutput)
+    longOutput = createLong(cfbsArtifact[0], optimRes[1])
+    wideID = str(create_output_artifact_from_dataframe(createWide(longOutput, msg['jobType'], msg['optimizationType'])))
+    longID= str(create_output_artifact_from_dataframe(longOutput))
+    analtyticsID = str(create_output_artifact_from_dataframe(cfbsArtifact[1]))
 
     if msg['jobType'] == "tiered":
-        summaryID = create_output_artifact_from_dataframe(createTieredSummary(longOutput))
+        summaryID = str(create_output_artifact_from_dataframe(createTieredSummary(longOutput)))
     else:  # since type == "Drill Down"
-        summaryID = createDrillDownSummary(longOutput)
+        summaryID = str(create_output_artifact_from_dataframe(createDrillDownSummary(longOutput)))
 
     end_time = dt.datetime.utcnow()
     db.jobs.find_one_and_update(
@@ -161,7 +161,8 @@ def run(body):
                 "artifactResults": {
                     'long_table':longID,
                     'wide_table':wideID,
-                    'summary_report': summaryID
+                    'summary_report': summaryID,
+                    'ananlytics_data': analtyticsID
                 }
             }
         }
