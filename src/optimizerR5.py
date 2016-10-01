@@ -30,65 +30,7 @@ def create_output_artifact_from_dataframe(dataframe, *args, **kwargs):
     return fs.put(dataframe.to_csv().encode(), **kwargs)
 
 
-def createLong(Stores, Categories, Levels, st, Optimal, Penetration, Historical):
-    """
-    Return str oid of GridFS artifact
-    """
-    storeDict=Historical[[0,1,2]].T.to_dict()
-    #Historical=Historical.drop(Historical.columns[[1,2]],axis=1)
-    l=0
-    lOutput=pd.DataFrame(index=np.arange(len(Stores)*len(Categories)),columns=["Store","Climate","VSG","Category","Result Space","Optimal Space","Penetration","Historical Space"])
-    for (i,Store) in enumerate(Stores):    
-        for (j,Category) in enumerate(Categories):
-            lOutput["Store"].iloc[l]=Store
-            lOutput["Category"].iloc[l] = Category
-            lOutput["Optimal Space"].iloc[l] = Optimal[Category].iloc[i]        
-            lOutput["Penetration"].iloc[l] = Penetration[Category].iloc[i]
-            # lOutput["Climate"].iloc[l] = storeDict.get("Store",{}).get("Climate",{}) 
-            # lOutput["VSG"].iloc[l] = storeDict.get("Store",{}).get("VSG",{})
-            lOutput["Historical Space"].iloc[l] = Historical[Category].iloc[i]
-            for (k,Level) in enumerate(Levels):        
-                if value(st[Store][Category][Level])== 1:
-                    lOutput["Result Space"].iloc[l] = Level
-            l=l+1
-    lOutput['VSG']=lOutput.Store.apply(lambda x: (storeDict[x]['VSG ']))
-    lOutput['Climate']=lOutput.Store.apply(lambda x: (storeDict[x]['Climate']))
-    lOutput.set_index("Store")
-    return (str(create_output_artifact_from_dataframe(lOutput)),lOutput)
-
-def createWide(Stores,Categories,Levels,st,Results,Optimal,Penetration,Historical):
-    bfc = Historical[[ *np.arange(len(Historical.columns))[0::1] ]].convert_objects(convert_numeric=True)
-    storeDict=Historical[[0,1]]#.T.to_dict()
-    # storeDict["Store"]=storeDict.index
-    Historical=Historical.drop(Historical.columns[[0,1]],axis=1)
-    Optimal.columns = [str(col) + '_optimal' for col in Categories]
-    Penetration.columns = [str(col) + '_penetration' for col in Categories]
-    Results.columns = [str(col) + '_result' for col in Categories]
-    Historical.columns = [str(col) + '_current' for col in Historical.columns]
-    sumOutput=pd.DataFrame(index=Stores,columns=['Total_result','Total_current'])
-    sumOutput['Total_result']=Results.sum(axis=1)
-    sumOutput['Total_current']=bfc.sum(axis=1)
-    wOutput=pd.concat([storeDict,Results,Historical,Optimal,sumOutput,Penetration],axis=1) #Results.append([Optimal,Penetration,Historical])
-    # wOutput["Store"]=wOutput.index
-    # wOutput['VSG']=wOutput.Store.apply(lambda x: (storeDict[x]['VSG ']))
-    # wOutput['Climate']=wOutput.Store.apply(lambda x: (storeDict[x]['Climate']))    
-    # wOutput.set_index("Store")
-    # end=len(wOutput.columns)-3
-    # wOutput=wOutput.columns[[-3,-1,-2]]
-    # wOutput=wOutput.drop(wOutput.columns[[-5]],axis=1)
-    return str(create_output_artifact_from_dataframe(wOutput))
-
-def createTieredSummary(longTable) :
-    #pivot the long table to create a data frame providing the store count for each Category-ResultSpace by Climate along with the total for all climates
-    tieredSummaryPivot = pd.pivot_table(longTable, index=['Category', 'Result Space'], columns='Climate', values='Store', aggfunc=len, margins=True)
-    #rename the total for all climates column
-    tieredSummaryPivot.rename(columns = {'All':'Total Store Count'}, inplace = True)
-    #delete the last row of the pivot, as it is a sum of all the values in the column and has no business value in this context
-    tieredSummaryPivot = tieredSummaryPivot.ix[:-1]
-    return str(create_output_artifact_from_dataframe(tieredSummaryPivot))
-
-
-def optimize(job_id,jobName,Stores,Categories,preOpt,tierCounts,spaceBound,increment,spaceArtifact,dataMunged):
+def optimize(job_id,jobName,Stores,Categories,tierCounts,spaceBound,increment,dataMunged):
     """
     Run an LP-based optimization
 
@@ -305,10 +247,13 @@ def optimize(job_id,jobName,Stores,Categories,preOpt,tierCounts,spaceBound,incre
             for (k,Level) in enumerate(Levels):
                 if value(st[Store][Category][Level]) == 1:
                     Results[Category][Store] = Level
+    Results=pd.melt(Results.reset_index(), id_vars=['Store'], var_name='Category',
+            value_name='Result Space')
+    dataMunged=pd.merge(dataMunged,Results,on=['Store','Category'])
     # fs.put(createLong(Stores,Categories,Levels,st,preOpt[1],preOpt[0],spaceArtifact))
     # fs.put(createWide(preopt[1],preOpt[0],Results,spaceArtifact))
     # TODO: use jobid in long and wide filenames(filename key word argument)
-
+    '''
 #Create Outputs
     longOutput= createLong(Stores,Categories,Levels,st,preOpt[1],preOpt[0],spaceArtifact)
     long_id = longOutput[0]
@@ -334,7 +279,7 @@ def optimize(job_id,jobName,Stores,Categories,preOpt,tierCounts,spaceBound,incre
             }
         }
     )
-    '''
+
     # solvedout, result_id = fs.open_upload_stream("test_file",chunk_size_bytes=4,metadata={"contentType": "text/csv"}) 
     #open("solvedout.csv", 'w')
     with fs.new_file(filename="spaceResults.csv",content_type="type/csv") as solvedout:
@@ -351,7 +296,7 @@ def optimize(job_id,jobName,Stores,Categories,preOpt,tierCounts,spaceBound,incre
         solvedout.close()
     # print(LpStatus[LpStatus])
     '''
-    return Results #(longOutput)#,wideOutput)
+    return (LpStatus[NewOptim.status],dataMunged) #(longOutput)#,wideOutput)
 
     # testing=pd.read_csv("solvedout.csv").drop
 
@@ -359,7 +304,6 @@ def optimize(job_id,jobName,Stores,Categories,preOpt,tierCounts,spaceBound,incre
 #     optimize()
 # Should optimize after completion here call preop instead of in worker?
 
-    return LpStatus[NewOptim.status]
 if __name__ == '__main__':
     df = pd.DataFrame(np.random.randn(10, 5), columns=['a', 'b', 'c', 'd', 'e'])
     create_output_artifact_from_dataframe(df, filename='hello.csv')

@@ -167,9 +167,9 @@ def main():
             preOpt = preoptimizeEnh(dataMunged=dataMerged[1], mAdjustment=float(msg["metricAdjustment"]),
                                  salesPenThreshold = float(msg["salesPenetrationThreshold"]),
                                  optimizedMetrics = msg["optimizedMetrics"], increment=msg["increment"])
-            # mPreOptCFBS = mergePreOptCF(cfbsArtifact, preOpt)
-            optimRes = optimize(job_id, msg['meta']['name'], Stores, Categories, preOpt, msg["tierCounts"],
-                                msg["spaceBounds"], msg["increment"], fixtureArtifact, preOpt[0])
+            mPreOptCFBS = mergePreOptCF(cfbsArtifact, preOpt)
+            optimRes = optimize(job_id, msg['meta']['name'], Stores, Categories, msg["tierCounts"],
+                                msg["spaceBounds"], msg["increment"], preOpt[0])
             # optimRes = optimize(msg['optimizationType'], msg['meta']['name'], Stores, Categories, msg['tierCounts'],
             #                     msg['increment'], msg['optimizedMetrics'], mPreOptCFBS)
             # except:
@@ -184,7 +184,7 @@ def main():
                 # optimize(job_id,preOpt,msg["tierCounts"],msg["increment"],cfbsArtifact)
             # except:
             print("Ken hasn't finished development for that yet")
-
+        print(optimRes[1].head())
         # Call functions to create output information
         longOutput = createLong(mPreOptCFBS, optimRes[1])
         wideOutput = createWide(longOutput, msg['jobType'], msg['optimizationType'])
