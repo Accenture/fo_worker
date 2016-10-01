@@ -78,20 +78,6 @@ def optimize(job_id,jobName,Stores,Categories,tierCounts,spaceBound,increment,da
     NewOptim = LpProblem(jobName, LpMinimize)  # Define Optimization Problem/
 
     # Brand Exit Enhancement
-<<<<<<< HEAD:src/optimizerR4.py
-    if brandExitArtifact is None:
-        print("No Brand Exit in the Optimization")
-    else:
-        for (i, Store) in enumerate(Stores):
-            for (j, Category) in enumerate(Categories):
-                if (brandExitArtifact[Category][Store] != 0):
-                    # upper_bound[Category].loc[Store] = 0
-                    # lower_bound[Category].loc[Store] = 0
-                    opt_amt[Category][Store] = 0
-                    NewOptim += st[Store][Category][0.0] == 1
-                    NewOptim += ct[Category][0.0] == 1
-                    spaceBound[Category][0] = 0.0
-=======
     # if brandExitArtifact is None:
     #     print("No Brand Exit in the Optimization")
     # else:
@@ -104,7 +90,7 @@ def optimize(job_id,jobName,Stores,Categories,tierCounts,spaceBound,increment,da
                     # NewOptim += st[Store][Category][0.0] == 1
                     # NewOptim += ct[Category][0.0] == 1
                     # spaceBound[Category][0] = 0
->>>>>>> BBI-4521:src/FixtureOptimization/optimizerR5.py
+
 
         # for (j, Category) in enumerate(Categories):
         #     if (sum(brandExitArtifact[Category].values()) > 0):
@@ -140,17 +126,10 @@ def optimize(job_id,jobName,Stores,Categories,tierCounts,spaceBound,increment,da
         # Test Again to check if better performance when done on ct level
             NewOptim += lpSum([st[Store][Category][Level] * Level for (k,Level) in enumerate(Levels)]) <= spaceBound[Category][1]         
             # if brandExitArtifact is not None:
-<<<<<<< HEAD:src/optimizerR4.py
-                # if brandExitArtifact[Category].iloc[int(i)] == 0:
-                    # NewOptim += lpSum([st[Store][Category][Level] * Level for (k,Level) in enumerate(Levels)]) >= spaceBound[Category][0] + increment
-                # else:
-                    # NewOptim += lpSum([st[Store][Category][Level] * Level for (k,Level) in enumerate(Levels)]) >= spaceBound[Category][0]
-=======
             #     if brandExitArtifact[Category].iloc[int(i)] == 0:
             #         NewOptim += lpSum([st[Store][Category][Level] * Level for (k,Level) in enumerate(Levels)]) >= spaceBound[Category][0] + increment
             #     else:
             #         NewOptim += lpSum([st[Store][Category][Level] * Level for (k,Level) in enumerate(Levels)]) >= spaceBound[Category][0]
->>>>>>> BBI-4521:src/FixtureOptimization/optimizerR5.py
             # else:
             NewOptim += lpSum([st[Store][Category][Level] * Level for (k,Level) in enumerate(Levels)]) >= spaceBound[Category][0]
             
@@ -265,33 +244,6 @@ def optimize(job_id,jobName,Stores,Categories,tierCounts,spaceBound,increment,da
     # fs.put(createWide(preopt[1],preOpt[0],Results,spaceArtifact))
     # TODO: use jobid in long and wide filenames(filename key word argument)
 
-<<<<<<< HEAD:src/optimizerR4.py
-#Create Outputs
-    longOutput= createLong(Stores,Categories,Levels,st,preOpt[1],preOpt[0],spaceArtifact)
-    long_id = longOutput[0]
-    wide_id = createWide(Stores,Categories,Levels,st,Results,preOpt[1],preOpt[0],spaceArtifact)
-    summary_id = createTieredSummary(longOutput[1])
-
-    end_time = dt.datetime.today().hour*60*60 + dt.datetime.today().minute*60 + dt.datetime.today().second 
-    total_time= end_time - start_time
-    print("Total time taken is:")
-    print(total_time)
-    end_time = dt.datetime.utcnow()
-    db.jobs.find_one_and_update(
-        {'_id': job_id},
-        {
-            "$set": {
-                'optimization_end_time': end_time,
-                'optimzation_total_time': total_time, 
-                "artifactResults": {
-                    'long_table':long_id,
-                    'wide_table':wide_id,
-                    'summary_report': summary_id
-                }
-            }
-        }
-    )
-=======
     # Create Outputs
     # longOutput= createLong(Stores,Categories,Levels,st,preOpt[1],preOpt[0],spaceArtifact)
     # long_id = longOutput[0]
@@ -318,22 +270,7 @@ def optimize(job_id,jobName,Stores,Categories,tierCounts,spaceBound,increment,da
     #     }
     # )
     return (LpStatus[NewOptim.status],dataMunged) #(longOutput)#,wideOutput)
->>>>>>> BBI-4521:src/FixtureOptimization/optimizerR5.py
 
-    return 'Success!'
-
-    return #(longOutput)#,wideOutput)
-    # testing=pd.read_csv("solvedout.csv").drop
-
-# if __name__ == '__main__':
-#     optimize()
-# Should optimize after completion here call preop instead of in worker?
-
-<<<<<<< HEAD:src/optimizerR4.py
-    return LpStatus[NewOptim.status]
-
-=======
->>>>>>> BBI-4521:src/FixtureOptimization/optimizerR5.py
 if __name__ == '__main__':
     df = pd.DataFrame(np.random.randn(10, 5), columns=['a', 'b', 'c', 'd', 'e'])
     create_output_artifact_from_dataframe(df, filename='hello.csv')

@@ -7,8 +7,8 @@ import gridfs
 import config
 
 
-db = pm.MongoClient(config.MONGO_CON)['app']
-fs = gridfs.GridFS(db)
+# db = pm.MongoClient(config.MONGO_CON)['app']
+# fs = gridfs.GridFS(db)
 
 def curveFittingBS(big_master_data,bound_input,increment_size,PCT_Space_Change_Limit,salesPen,jobType,optimType):
     def create_output_artifact_from_dataframe(dataframe, *args, **kwargs):
