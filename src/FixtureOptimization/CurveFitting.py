@@ -1,4 +1,5 @@
 import pandas as pd
+import readline
 import rpy2.robjects as robjects
 from rpy2.robjects import pandas2ri
 from rpy2.robjects.packages import importr
@@ -23,8 +24,8 @@ def curveFittingBS(big_master_data,bound_input,increment_size,PCT_Space_Change_L
     bound_input.columns=['Categories', 'Space Lower Limit', 'Space Upper Limit', 'PCT_Space_Lower_Limit', 'PCT_Space_Upper_Limit']
     # bound_inpunput.columns=['Category','Space Lower Limit','Space Upper Limit','PCT_Space_Lower_Limit','PCT_Space_Upper_Limit']
     gdata = importr("gdata")
-    dataTable = importr("pracma")
-    sqldf = importr("nloptr")
+    pracma = importr("pracma")
+    nloptr = importr("nloptr")
     tidyr = importr("tidyr")
 
     #Source the R code

@@ -5,16 +5,19 @@ import math
 
 # Create long table for user download
 def createLong(cfbs, optimSpace):
-    lOutput = pd.merge(optimSpace[
-                           ['Store', 'Climate', 'VSG', 'Category', 'Historical Space', 'Current Space', 'Penetration',
-                            'Optimal Space', 'Result Space', 'Sales $', 'Profit $', 'Sales Units']], cfbs,
-                       on=['Store', 'Category'])
-
+    print('Inside createLong')
+    print(cfbs.columns)
+    print(optimSpace.columns)
+    lOutput = pd.merge(optimSpace[['Store','Climate','VSG','Category','Historical Space','New Space','Penetration','Optimal Space','Result Space']], cfbs,
+                       on=['Store','Climate','Category'])
+    # lOutput.rename(columns={'Sales $': 'Sales', 'Profit $': 'Profit', 'Sales Units': 'Units'}, inplace=True)
+    print('initial merge')
+    print(lOutput.columns)
     # Merge the optimize output with the curve-fitting output (which was already merged with the preoptimize output)
     # result_long = pd.DataFrame(Results.unstack()).swaplevel()
     # result_long.rename(columns={result_long.columns[-1]: "Result Space"}, inplace=True)
     # lOutput = pd.concat([mergedPreOptCF, result_long], axis=1)
-    lOutput["Result Space"] = lOutput["Result Space"].astype(float)
+    # lOutput["Result Space"] = lOutput["Result Space"].astype(float)
     lOutput = lOutput.apply(lambda x: pd.to_numeric(x, errors='ignore'))
     variables = ["Sales", "Profit", "Units"]
 
@@ -27,21 +30,22 @@ def createLong(cfbs, optimSpace):
                                              lOutput["Scaled_Alpha_" + v] * erf(
                                                  (lOutput["Result Space"] - lOutput["Scaled_Shift_" + v]) / (
                                                  math.sqrt(2) * lOutput["Scaled_Beta_" + v])))
-
+    print("Finished Forecasting")
     # Reset the index and name the columns
-    lOutput.rename(columns={'level_0': 'Store', 'level_1': 'Category', 'Space': 'Historical Space'}, inplace=True)
+    # lOutput.rename(columns={'level_0': 'Store', 'level_1': 'Category', 'Space': 'Historical Space'}, inplace=True)
 
     # Either drop or rename space to fill, lower limit, and upper limit
-    # lOutput.drop((['Space_to_Fill'],['Lower_Limit'],['Upper_Limit']), axis=1, inplace=True)
-    lOutput.rename(
-        columns={'Space_to_Fill': 'Space to Fill', 'Lower_Limit': 'Lower Limit', 'Upper_Limit': 'Upper Limit'},
-        inplace=True)
-
+    # lOutput.drop((['Space.to.Fill'],['Lower.Limit'],['Upper.Limit']), axis=1, inplace=True)
+    # lOutput.rename(
+    #     columns={'Space_to_Fill': 'Space to Fill', 'Lower_Limit': 'Lower Limit', 'Upper_Limit': 'Upper Limit','Exit_Flag': 'Exit Flag'},
+    #     inplace=True)
+    print('Dropped Columns')
     # Drop scaled coefficients, can be uncommented to test curve-fitting/forecasting
     cols = [c for c in lOutput.columns if c[:6] != 'Scaled']
     lOutput = lOutput[cols]
+    print('Dropped more Columns')
     lOutput.drop(['Store_Group_Sales','Store_Group_Units','Store_Group_Profit'], axis=1, inplace=True)
-
+    print('Dropped Group Columns')
     return lOutput
 
 # Create wide table for user download
@@ -51,6 +55,7 @@ def createWide(long, jobType, optimizationType):
     adjusted_long = long.rename(
         columns={'Historical Space': 'current', "Optimal Space": "optimal", "Result Space": "result",
                  "Penetration": "penetration"})
+    print('Got past renaming')
     if optimizationType == "Enhanced":
         adjusted_long["optimal"] = 0
         adjusted_long["penetration"] = 0

@@ -16,6 +16,7 @@ from FixtureOptimization.CurveFitting import curveFittingBS
 from FixtureOptimization.ksMerging import ksMerge
 from FixtureOptimization.preoptimizerEnh import preoptimizeEnh
 from FixtureOptimization.optimizerR5 import optimize
+from FixtureOptimization.optimizer2 import optimize2
 from FixtureOptimization.outputFunctions import createLong, createWide, createDrillDownSummary, createTieredSummary
 
 # from TierKey import tierKeyCreate
@@ -126,18 +127,28 @@ def run(body):
                                 optimizedMetrics=msg["optimizedMetrics"], increment=msg["increment"])
         # mPreOptCFBS = mergePreOptCF(cfbsArtifact, preOpt[['Store','Category','Penetration','Optimal Space']])
         # mPreOptCFBS = pd.merge(cfbsArtifact, preOpt[['Store','Category','Penetration','Optimal Space']],on=['Store','Category'])
-        optimRes = optimize(job_id, msg['meta']['name'], Stores, Categories, msg["tierCounts"],
-                            msg["spaceBounds"], msg["increment"], preOpt)
-        # optimRes = optimize(msg['optimizationType'], msg['meta']['name'], Stores, Categories, msg['tierCounts'],
-        #                     msg['increment'], msg['optimizedMetrics'], mPreOptCFBS)
+        try:
+            optimRes = optimize2(msg['optimizationType'], msg['meta']['name'], Stores, Categories, msg['tierCounts'],
+                                msg['increment'], msg['optimizedMetrics'], cfbsArtifact[0],preOpt)
+            print('New optimization completed')
+        except:
+            print('Still using the old optimization')
+            optimRes = optimize(job_id, msg['meta']['name'], Stores, Categories, msg["tierCounts"], msg["spaceBounds"],
+                                msg["increment"], preOpt)
         # except:
         # print(TypeError)
         # print("Traditional Optimization has Failed")
     # Call functions to create output information
+    print('Out of the optimization')
     longOutput = createLong(cfbsArtifact[0], optimRes[1])
+    print('Created Long Output')
+    print(longOutput.head())
+    print(longOutput.columns)
     wideID = str(create_output_artifact_from_dataframe(createWide(longOutput, msg['jobType'], msg['optimizationType'])))
-    longID= str(create_output_artifact_from_dataframe(longOutput))
+    print('Created Wide Output')
+    longID= str(create_output_artifact_from_dataframe(longOutput[['Store','Climate','VSG','Category','Result Space','Historical Space','Optimal Space','Penetration','Sales','Profit','Units','Estimated Sales','Estimated Profit','Estimated Units']]))
     analtyticsID = str(create_output_artifact_from_dataframe(cfbsArtifact[1]))
+    print('Created analytics ID')
 
     if msg['jobType'] == "tiered":
         summaryID = str(create_output_artifact_from_dataframe(createTieredSummary(longOutput)))
