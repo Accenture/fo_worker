@@ -1,4 +1,6 @@
 import pandas as pd
+# readline is needed for rpy2 to work...
+import readline
 import rpy2.robjects as robjects
 from rpy2.robjects import pandas2ri
 from rpy2.robjects.packages import importr
