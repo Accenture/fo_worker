@@ -6,13 +6,13 @@ import math
 # Create long table for user download
 def createLong(cfbs, optimSpace):
     print('Inside createLong')
-    print(cfbs.columns)
-    print(optimSpace.columns)
+    # print(cfbs.columns)
+    # print(optimSpace.columns)
     lOutput = pd.merge(optimSpace[['Store','Climate','VSG','Category','Historical Space','New Space','Penetration','Optimal Space','Result Space']], cfbs,
                        on=['Store','Climate','Category'])
     # lOutput.rename(columns={'Sales $': 'Sales', 'Profit $': 'Profit', 'Sales Units': 'Units'}, inplace=True)
     print('initial merge')
-    print(lOutput.columns)
+    # print(lOutput.columns)
     # Merge the optimize output with the curve-fitting output (which was already merged with the preoptimize output)
     # result_long = pd.DataFrame(Results.unstack()).swaplevel()
     # result_long.rename(columns={result_long.columns[-1]: "Result Space"}, inplace=True)
@@ -46,7 +46,7 @@ def createLong(cfbs, optimSpace):
     print('Dropped more Columns')
     lOutput.drop(['Store_Group_Sales','Store_Group_Units','Store_Group_Profit'], axis=1, inplace=True)
     print('Dropped Group Columns')
-    return lOutput
+    return lOutput[['Store','Climate','VSG','Category','Result Space','Historical Space','Optimal Space','Penetration','Sales','Profit','Units','Estimated Sales','Estimated Profit','Estimated Units']]
 
 # Create wide table for user download
 def createWide(long, jobType, optimizationType):
