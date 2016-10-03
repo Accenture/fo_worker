@@ -133,7 +133,7 @@ def run(body):
             print('New optimization completed')
         except:
             print('Still using the old optimization')
-            optimRes = optimize(job_id, msg['meta']['name'], Stores, Categories, msg["tierCounts"], msg["spaceBounds"],
+            optimRes = optimize(msg['meta']['name'], Stores, Categories, msg["tierCounts"], msg["spaceBounds"],
                                 msg["increment"], preOpt)
         # except:
         # print(TypeError)

@@ -30,7 +30,7 @@ def create_output_artifact_from_dataframe(dataframe, *args, **kwargs):
     return fs.put(dataframe.to_csv().encode(), **kwargs)
 
 
-def optimize(job_id,jobName,Stores,Categories,tierCounts,spaceBound,increment,dataMunged):
+def optimize(jobName,Stores,Categories,tierCounts,spaceBound,increment,dataMunged):
     """
     Run an LP-based optimization
 
@@ -95,7 +95,6 @@ def optimize(job_id,jobName,Stores,Categories,tierCounts,spaceBound,increment,da
         # for (j, Category) in enumerate(Categories):
         #     if (sum(brandExitArtifact[Category].values()) > 0):
         #         tier_count["Upper_Bound"][Category] += 1
-    print(type(opt_amt.loc[7]))
     BA = np.zeros((len(Stores), len(Categories), len(Levels)))
     error = np.zeros((len(Stores), len(Categories), len(Levels)))
     for (i, Store) in enumerate(Stores):

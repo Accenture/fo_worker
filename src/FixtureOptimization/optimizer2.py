@@ -12,10 +12,9 @@ import config
 import datetime as dt
 
 # Run tiered optimization algorithm
-def optimize2(methodology,jobName,Stores,Categories,tierCounts,increment,weights,mergedPreOptCF):
+def optimize2(methodology,jobName,Stores,Categories,tierCounts,increment,weights,cfbsOutput,preOpt):
     # Helper function for optimize function, to create eligible space levels
-    print(mergedPreOptCF.columns)
-    print(mergedPreOptCF.head())
+    mergedPreOptCF=pd.merge(cfbsOutput,preOpt['Store','Category','Optimal Space','Penetration'],on=['Store','Category'])
     def createLevels(mergedPreOptCF, increment):
 
         minLevel = mergedPreOptCF.loc[:, 'Lower_Limit'].min()
@@ -140,7 +139,7 @@ def optimize2(methodology,jobName,Stores,Categories,tierCounts,increment,weights
     NewOptim = LpProblem(jobName, LpMinimize)
 
     # Create objective function data
-    if methodology == "Traditional":
+    if methodology == "traditional":
         objective = createErrorByLevel(Stores, Categories,Levels,mergedPreOptCF)
         objectivetype = "Total Error"
     else: #since methodology == "Enhanced"
