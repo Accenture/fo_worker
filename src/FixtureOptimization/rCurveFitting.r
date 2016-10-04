@@ -14,7 +14,7 @@
 curvefitting_boundsetting<-function(master,bound_input,increment,pct_chg_limit,sls_pen_thresh,jobType,methodology){
   library(nloptr) #For running optimization to find unscaled coefficients
   library(pracma) #For error function
-
+  methodology='tiered'
   # BEGIN curve-fitting
   
   #	Minimal Store-Category History Filters
@@ -372,7 +372,8 @@ curvefitting_boundsetting<-function(master,bound_input,increment,pct_chg_limit,s
   for(i in 1:nrow(master)){
     master$Sales_Pen[i] <- master$Sales[i]/sum(master$Sales[which(master$Store[i] == master$Store)])
   }
-  if(methodology == "Enhanced"){
+  print('enhanced only')
+  if(methodology == "enhanced"){
     master$Lower_Limit <- 
       ifelse((master$Exit_Flag == 1 | master$Sales_Pen < sls_pen_thresh | master$Scaled_Alpha_Sales == 0), 0, master$Lower_Limit)
     master$Upper_Limit <- 
@@ -381,7 +382,7 @@ curvefitting_boundsetting<-function(master,bound_input,increment,pct_chg_limit,s
     master$Lower_Limit <- ifelse((master$Exit_Flag == 1 | master$Sales_Pen < sls_pen_thresh), 0, master$Lower_Limit)
     master$Upper_Limit <- ifelse((master$Exit_Flag == 1 | master$Sales_Pen < sls_pen_thresh), 0, master$Upper_Limit)
   }
-  
+  print('end enhanced only')
   # END bound-setting
   
   #master <- master[c("Store","Category","Lower_Limit","Upper_Limit",

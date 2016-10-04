@@ -239,35 +239,6 @@ def optimize(jobName,Stores,Categories,tierCounts,spaceBound,increment,dataMunge
     Results = pd.melt(Results.reset_index(), id_vars=['Store'], var_name='Category', value_name='Result Space')
     Results=Results.apply(lambda x: pd.to_numeric(x, errors='ignore'))
     dataMunged=pd.merge(dataMunged,Results,on=['Store','Category'])
-    # fs.put(createLong(Stores,Categories,Levels,st,preOpt[1],preOpt[0],spaceArtifact))
-    # fs.put(createWide(preopt[1],preOpt[0],Results,spaceArtifact))
-    # TODO: use jobid in long and wide filenames(filename key word argument)
-
-    # Create Outputs
-    # longOutput= createLong(Stores,Categories,Levels,st,preOpt[1],preOpt[0],spaceArtifact)
-    # long_id = longOutput[0]
-    # wide_id = createWide(Stores,Categories,Levels,st,Results,preOpt[1],preOpt[0],spaceArtifact)
-    # summary_id = createTieredSummary(longOutput[1])
-    #
-    # end_time = dt.datetime.today().hour*60*60 + dt.datetime.today().minute*60 + dt.datetime.today().second
-    # total_time= end_time - start_time
-    # print("Total time taken is:")
-    # print(total_time)
-    # end_time = dt.datetime.utcnow()
-    # db.jobs.find_one_and_update(
-    #     {'_id': job_id},
-    #     {
-    #         "$set": {
-    #             'optimization_end_time': end_time,
-    #             'optimzation_total_time': total_time,
-    #             "artifactResults": {
-    #                 'long_table':long_id,
-    #                 'wide_table':wide_id,
-    #                 'summary_report': summary_id
-    #             }
-    #         }
-    #     }
-    # )
     return (LpStatus[NewOptim.status],dataMunged) #(longOutput)#,wideOutput)
 
 if __name__ == '__main__':

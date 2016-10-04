@@ -12,12 +12,12 @@ import config
 # fs = gridfs.GridFS(db)
 
 def curveFittingBS(big_master_data,bound_input,increment_size,PCT_Space_Change_Limit,salesPen,jobType,optimType):
-    def create_output_artifact_from_dataframe(dataframe, *args, **kwargs):
-        """
-        Returns the bson.objectid.ObjectId of the resulting GridFS artifact
-
-        """
-        return fs.put(dataframe.to_csv().encode(), **kwargs)
+    # def create_output_artifact_from_dataframe(dataframe, *args, **kwargs):
+    #     """
+    #     Returns the bson.objectid.ObjectId of the resulting GridFS artifact
+    #
+    #     """
+    #     return fs.put(dataframe.to_csv().encode(), **kwargs)
 
     pandas2ri.activate()
     bound_input=pd.DataFrame.from_dict(bound_input).T.reset_index()

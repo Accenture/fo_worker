@@ -112,29 +112,32 @@ def run(body):
         brandExitArtifact = None
 
     # msg["optimizationType"] = 'traditional'
-    if (str(msg["optimizationType"]) == 'traditional'):
-        dataMerged = ksMerge(msg['jobType'], fetchTransactions(msg["artifacts"]["salesArtifactId"]),
-                             fetchSpace(msg["artifacts"]["spaceArtifactId"]),
-                             brandExitArtifact, futureSpace)
-        # dataMerged[0].csv('dataMerge.csv',sep=',')
-        cfbsArtifact = curveFittingBS(dataMerged[0], msg['spaceBounds'], msg['increment'],
-                                      msg['storeCategoryBounds'],
-                                      float(msg["salesPenetrationThreshold"]), msg['jobType'],
-                                      msg['optimizationType'])
-        print('finished curve fitting')
-        preOpt = preoptimizeEnh(dataMunged=dataMerged[1], mAdjustment=float(msg["metricAdjustment"]),
-                                salesPenThreshold=float(msg["salesPenetrationThreshold"]),
-                                optimizedMetrics=msg["optimizedMetrics"], increment=msg["increment"])
-        # mPreOptCFBS = mergePreOptCF(cfbsArtifact, preOpt[['Store','Category','Penetration','Optimal Space']])
-        # mPreOptCFBS = pd.merge(cfbsArtifact, preOpt[['Store','Category','Penetration','Optimal Space']],on=['Store','Category'])
-        try:
-            optimRes = optimize2(msg['optimizationType'], msg['meta']['name'], Stores, Categories, msg['tierCounts'],
-                                msg['increment'], msg['optimizedMetrics'], cfbsArtifact[0],preOpt)
-            print('New optimization completed')
-        except:
-            print('Still using the old optimization')
-            optimRes = optimize(msg['meta']['name'], Stores, Categories, msg["tierCounts"], msg["spaceBounds"],
-                                msg["increment"], preOpt)
+    # if (str(msg["optimizationType"]) == 'traditional'):
+    dataMerged = ksMerge(msg['jobType'], fetchTransactions(msg["artifacts"]["salesArtifactId"]),
+                            fetchSpace(msg["artifacts"]["spaceArtifactId"]),
+                            brandExitArtifact, futureSpace)
+    # dataMerged[0].csv('dataMerge.csv',sep=',')
+    cfbsArtifact = curveFittingBS(dataMerged[0], msg['spaceBounds'], msg['increment'],
+                                    msg['storeCategoryBounds'],
+                                    float(msg["salesPenetrationThreshold"]), msg['jobType'],
+                                    msg['optimizationType'])
+    print('finished curve fitting')
+    preOpt = preoptimizeEnh(dataMunged=dataMerged[1], mAdjustment=float(msg["metricAdjustment"]),
+                            salesPenThreshold=float(msg["salesPenetrationThreshold"]),
+                            optimizedMetrics=msg["optimizedMetrics"], increment=msg["increment"])
+    # mPreOptCFBS = mergePreOptCF(cfbsArtifact, preOpt[['Store','Category','Penetration','Optimal Space']])
+    # mPreOptCFBS = pd.merge(cfbsArtifact, preOpt[['Store','Category','Penetration','Optimal Space']],on=['Store','Category'])
+# try:
+    print('finished preoptimize')
+    print(cfbsArtifact[0].head())
+    print(preOpt.head())
+    optimRes = optimize2(methodology=msg['optimizationType'], jobName=msg['meta']['name'],Stores=Stores, Categories=Categories, tierCounts=msg['tierCounts'],
+                        increment=msg['increment'], weights=msg['optimizedMetrics'], cfbsOutput=cfbsArtifact[0],preOpt=preOpt)
+    print('New optimization completed')
+    # except:
+        # print('Still using the old optimization')
+        # optimRes = optimize(msg['meta']['name'], Stores, Categories, msg["tierCounts"], msg["spaceBounds"],
+                            # msg["increment"], preOpt)
         # except:
         # print(TypeError)
         # print("Traditional Optimization has Failed")
