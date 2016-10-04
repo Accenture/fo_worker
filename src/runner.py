@@ -18,6 +18,7 @@ from FixtureOptimization.preoptimizerEnh import preoptimizeEnh
 from FixtureOptimization.optimizerR5 import optimize
 from FixtureOptimization.optimizer2 import optimize2
 from FixtureOptimization.outputFunctions import createLong, createWide, createDrillDownSummary, createTieredSummary
+from pika import BlockingConnection, ConnectionParameters
 
 # from TierKey import tierKeyCreate
 # from TierOptim import tierDef
@@ -29,6 +30,12 @@ from FixtureOptimization.outputFunctions import createLong, createWide, createDr
 MONGO_HOST = env.MONGO_HOST
 MONGO_PORT = env.MONGO_PORT
 MONGO_NAME = env.MONGO_NAME
+
+#
+# MODULE CONSTANTS
+#
+
+RMQ_QUEUE_SINK = 'notify_queue'
 
 #
 # LOGGING
@@ -45,6 +52,11 @@ def run(body):
     db = MongoClient(host=MONGO_HOST,
                      port=MONGO_PORT)[MONGO_NAME]
     fs = gridfs.GridFS(db)
+    
+    # mq_conn = BlockingConnection(ConnectionParameters(host=RMQ_HOST,
+    #                                                   port=RMQ_PORT))
+    # ch = mq_conn.channel()
+    # ch.queue_declare(queue=RMQ_QUEUE_SINK, durable=True)
 
     def create_output_artifact_from_dataframe(dataframe, *args, **kwargs):
         """
@@ -79,6 +91,10 @@ def run(body):
             }
         }
     )
+    # res = dict(user_id=job['userId'], status='running')
+    # ch.basic_publish(exchange='',
+    #          routing_key=RMQ_QUEUE_SINK,
+    #          body=json.dumps(res))
 
     def fetchTransactions(artifact_id):
         file = fs.get(ObjectId(artifact_id))
@@ -159,6 +175,8 @@ def run(body):
         summaryID = str(create_output_artifact_from_dataframe(createDrillDownSummary(longOutput)))
 
     end_time = dt.datetime.utcnow()
+
+    print("Adding end time and output ids")
     db.jobs.find_one_and_update(
         {'_id': job_id},
         {
@@ -182,17 +200,7 @@ def run(body):
             }
         }
     )
-
-    res = dict(
-        job_id=msg['_id'],
-        user_id=msg['userId'],
-        outcome='Success'
-    )
-
-    db.client.close()
-
-    return json.dumps(res)
-
+    print("Job complete")
 
 if __name__ == '__main__':
     LOGGER.debug('hello from {}'.format(__name__))

@@ -77,11 +77,11 @@ def main():
         )
         print('RECONCILE DB')
 
-    def send_fail_notification(ch, id):
-        res = dict(job_id=id, user_id=id, outcome='Failure')
+    def send_notification(ch, id, status):
+        res = dict(user_id=id, status=status)
         ch.basic_publish(exchange='',
-                         routing_key=RMQ_QUEUE_SINK,
-                         body=json.dumps(res))
+                 routing_key=RMQ_QUEUE_SINK,
+                 body=json.dumps(res))
 
     logging.basicConfig(level=logging.INFO,
                         format=LOG_FORMAT,
@@ -95,22 +95,27 @@ def main():
                                                       port=RMQ_PORT))
     ch = mq_conn.channel()
     ch.queue_declare(queue=RMQ_QUEUE_SOURCE, durable=True)
-    ch.queue_declare(queue=RMQ_QUEUE_SINK)
+    ch.queue_declare(queue=RMQ_QUEUE_SINK, durable=True)
     ch.basic_qos(prefetch_count=1)
-
+   
     messages = ch.consume(queue=RMQ_QUEUE_SOURCE)
 
     try:
         for method, properties, body in messages:
             try:
+                print("Running new job")
                 process_job(run, body)
+                userId = json.loads(body.decode('utf-8'))['userId']
+                send_notification(ch, userId, 'done')
             except (TimeoutError, ProcessError):
+                print("Job has failed")
                 LOGGER.error('Proecess exited unexpectedly')
                 ch.basic_reject(delivery_tag=method.delivery_tag,
                                 requeue=False)
                 _id = json.loads(body.decode('utf-8'))['_id']
+                userId = json.loads(body.decode('utf-8'))['userId']
                 reconcile_db(db, _id)
-                send_fail_notification(ch, _id)
+                send_notification(ch, userId, 'failed')
             else:
                 ch.basic_ack(delivery_tag=method.delivery_tag)
     except KeyboardInterrupt:
