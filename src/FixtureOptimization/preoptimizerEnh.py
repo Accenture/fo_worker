@@ -78,6 +78,7 @@ def roundDF(array, increment):
     return rounded
 
 def preoptimizeEnh(optimizationType,dataMunged, salesPenThreshold, mAdjustment, optimizedMetrics, increment):
+
     sales = dataMunged.pivot(index='Store',columns='Category',values='Sales $')
     sold_units = dataMunged.pivot(index='Store',columns='Category',values='Sales Units')
     profit = dataMunged.pivot(index='Store',columns='Category',values='Profit $')
@@ -85,7 +86,7 @@ def preoptimizeEnh(optimizationType,dataMunged, salesPenThreshold, mAdjustment, 
     bfc = dataMunged.pivot(index='Store',columns='Category',values='Current Space')
 
     mAdjustment = float(mAdjustment)
-    if optimizationType=='tiered':
+    if optimizationType=='traditional':
         boh = dataMunged.pivot(index='Store', columns='Category', values='BOH $')
         receipt = dataMunged.pivot(index='Store', columns='Category', values='Receipts  $')
         boh_units = dataMunged.pivot(index='Store', columns='Category', values='BOH Units')
@@ -120,14 +121,3 @@ def preoptimizeEnh(optimizationType,dataMunged, salesPenThreshold, mAdjustment, 
     information=pd.merge(dataMunged,longPre,on=['Store','Category'])
     # return (adj_p, opt_amt)
     return (information)
-
-'''
-#For Testing
-salesPenThreshold=0
-mAdjustment=0
-metric=6
-increment=.25
-adj_p = metric_creation(transaction_data, bfc,salesPenThreshold,mAdjustment,metric,increment)
-adj_p.head()
-'''
-# opt_amt=adj_p.multiply(bfc.sum(axis=1),axis='index').as_matrix()

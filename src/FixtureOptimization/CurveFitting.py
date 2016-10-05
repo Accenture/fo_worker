@@ -35,6 +35,7 @@ def curveFittingBS(big_master_data,bound_input,increment_size,PCT_Space_Change_L
     # # Extract the main function from the R code
     r_curvefitting_boundsetting = robjects.globalenv['curvefitting_boundsetting']
     # pandas2ri.py2ri(big_master_data)
+    print('made it to the R script')
     # # Call the r function with the dataframes
     r_list_output=r_curvefitting_boundsetting(big_master_data,bound_input,increment_size,PCT_Space_Change_Limit,salesPen,jobType,optimType,)
 
@@ -43,4 +44,6 @@ def curveFittingBS(big_master_data,bound_input,increment_size,PCT_Space_Change_L
     # cfbs_id = str(create_output_artifact_from_dataframe(pandas2ri.ri2py(r_list_output[0]).reset_index(drop=True)))
     analyticsData = pandas2ri.ri2py(r_list_output[1]).reset_index(drop=True)
     # print(cfbsArtifact.head())
+    # cfbsArtifact.to_csv('macroCFBS.csv',sep=',')
+    # analyticsData.to_csv('macroAnalytics.csv',sep=',')
     return (cfbsArtifact,analyticsData)

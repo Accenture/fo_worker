@@ -18,6 +18,7 @@ from FixtureOptimization.preoptimizerEnh import preoptimizeEnh
 from FixtureOptimization.optimizerR5 import optimize
 from FixtureOptimization.optimizer2 import optimize2
 from FixtureOptimization.outputFunctions import createLong, createWide, createDrillDownSummary, createTieredSummary
+# from FixtureOptimization.SingleStoreOptimization import optimizeSingleStore
 from pika import BlockingConnection, ConnectionParameters
 
 # from TierKey import tierKeyCreate
@@ -63,7 +64,7 @@ def run(body):
         Returns the bson.objectid.ObjectId of the resulting GridFS artifact
 
         """
-        return fs.put(dataframe.to_csv().encode(), **kwargs)
+        return fs.put(dataframe.to_csv(index=False).encode(), **kwargs)
 
     def fetch_artifact(artifact_id):
         file = fs.get(ObjectId(artifact_id))
@@ -111,8 +112,8 @@ def run(body):
         file = pd.read_csv(file, header=0, skiprows=[1])
         return file
 
-    Stores = msg['salesStores']
-    Categories = msg['salesCategories']
+    # Stores = msg['salesStores']
+    # Categories = msg['salesCategories']
 
     try:
         futureSpace = fetchSpace(msg["artifacts"]["futureSpaceId"])
@@ -127,12 +128,9 @@ def run(body):
         print("Brand Exit was not Uploaded")
         brandExitArtifact = None
 
-    # msg["optimizationType"] = 'traditional'
-    # if (str(msg["optimizationType"]) == 'traditional'):
     dataMerged = ksMerge(msg['jobType'], fetchTransactions(msg["artifacts"]["salesArtifactId"]),
                             fetchSpace(msg["artifacts"]["spaceArtifactId"]),
                             brandExitArtifact, futureSpace)
-    # dataMerged[0].csv('dataMerge.csv',sep=',')
     cfbsArtifact = curveFittingBS(dataMerged[0], msg['spaceBounds'], msg['increment'],
                                     msg['storeCategoryBounds'],
                                     float(msg["salesPenetrationThreshold"]), msg['jobType'],
@@ -141,30 +139,19 @@ def run(body):
     preOpt = preoptimizeEnh(optimizationType=msg['optimizationType'], dataMunged=dataMerged[1], mAdjustment=float(msg["metricAdjustment"]),
                             salesPenThreshold=float(msg["salesPenetrationThreshold"]),
                             optimizedMetrics=msg["optimizedMetrics"], increment=msg["increment"])
-# try:
     print('finished preoptimize')
-    print(cfbsArtifact[0].head())
-    print(preOpt.head())
-    optimRes = optimize2(methodology=msg['optimizationType'], jobName=msg['meta']['name'],Stores=Stores, Categories=Categories, tierCounts=msg['tierCounts'],
+    optimRes = optimize2(methodology=msg['optimizationType'], jobName=msg['meta']['name'],Stores=msg['salesStores'], Categories=msg['salesCategories'], tierCounts=msg['tierCounts'],
                         increment=msg['increment'], weights=msg['optimizedMetrics'], cfbsOutput=cfbsArtifact[0],preOpt=preOpt)
     print('New optimization completed')
-    # except:
-        # print('Still using the old optimization')
-        # optimRes = optimize(msg['meta']['name'], Stores, Categories, msg["tierCounts"], msg["spaceBounds"],
-                            # msg["increment"], preOpt)
-        # except:
-        # print(TypeError)
-        # print("Traditional Optimization has Failed")
+
     # Call functions to create output information
     print('Out of the optimization')
     longOutput = createLong(cfbsArtifact[0], optimRes[1])
     print('Created Long Output')
-    # print(longOutput.head())
-    # print(longOutput.columns)
     wideID = str(create_output_artifact_from_dataframe(createWide(longOutput, msg['jobType'], msg['optimizationType'])))
     print('Created Wide Output')
     longID= str(create_output_artifact_from_dataframe(longOutput))
-    analtyticsID = str(create_output_artifact_from_dataframe(cfbsArtifact[1]))
+    analyticsID = str(create_output_artifact_from_dataframe(cfbsArtifact[1]))
     print('Created analytics ID')
 
     if msg['jobType'] == "tiered":
@@ -184,7 +171,7 @@ def run(body):
                     'long_table':longID,
                     'wide_table':wideID,
                     'summary_report': summaryID,
-                    'analytic_data': analtyticsID
+                    'analytic_data': analyticsID
                 }
             }
         }

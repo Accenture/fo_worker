@@ -14,20 +14,35 @@
 curvefitting_boundsetting<-function(master,bound_input,increment,pct_chg_limit,sls_pen_thresh,jobType,methodology){
   library(nloptr) #For running optimization to find unscaled coefficients
   library(pracma) #For error function
-  methodology='tiered'
   # BEGIN curve-fitting
-  
-  #	Minimal Store-Category History Filters
+
+  ##TODO: Create dynamic filters based upon optimization type
+  # numStores=
+  # medianSpace=
+
+#  Minimal Store-Category History Filters
   space_filter <- 0.1
   Sales_filter <- 20
   Profit_filter <- 5
   Units_filter <- 5
-  
-  #	Minimal Category-Climate Group History Filters
+
+#  Minimal Category-Climate Group History Filters
   strcount_filter <- 100
   avgSales_filter <- 200
   avgProfit_filter <- 50
   avgUnits_filter <- 50
+
+#  Minimal Store-Category History Filters
+#  space_filter <- 0
+#  Sales_filter <- 0
+#  Profit_filter <- 0
+#  Units_filter <- 0
+
+#  Minimal Category-Climate Group History Filters
+#  strcount_filter <- 0
+#  avgSales_filter <- 0
+#  avgProfit_filter <- 0
+#  avgUnits_filter <- 0
 
   get_mode <- function(x) {
     ux <- unique(x)
@@ -144,8 +159,7 @@ curvefitting_boundsetting<-function(master,bound_input,increment,pct_chg_limit,s
       
       if(length(unique(cfdata$Space)) == 1){
         ref[k,"Correlation"] <- 0
-      }
-      else{
+      } else {
         ref[k,"Correlation"] <- cor(cfdata[,c(target,"Space")])[1,2]
       }
       

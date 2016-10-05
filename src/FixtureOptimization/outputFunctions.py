@@ -94,7 +94,7 @@ def createWide(long, jobType, optimizationType):
                                                                                                          "R"] - 1] + [
                cols[tot_col["C"]]] + [cols[tot_col["O"]]] + cols[tot_col["R"]:-1]
     wide = wide[cols]
-
+    wide.reset_index(inplace=True)
     return wide
 
 # Create summary for user download that applies to Tiered optimizations (type == "Tiered")
@@ -107,6 +107,7 @@ def createTieredSummary(finalLong) :
     #delete the last row of the pivot, as it is a sum of all the values in the column and has no business value in this context
     tieredSummaryPivot = tieredSummaryPivot.ix[:-1]
     # tieredSummaryPivot.to_excel('outputs.xlsx',sheet_name='Summary_Table')
+    tieredSummaryPivot.reset_index(inplace=True)
     return tieredSummaryPivot
 
 # Create summary for user download that applies to Drill Down optimizations
@@ -123,4 +124,5 @@ def createDrillDownSummary(finalLong) :
     drilldownSummaryPivot.drop('Total Store', axis=1, inplace=True)
     # delete the last row of the pivot, as it is a sum of all the values in the column and has no business value in this context
     drilldownSummaryPivot = drilldownSummaryPivot.ix[:-1]
+    drilldownSummaryPivot.reset_index(inplace=True)
     return drilldownSummaryPivot

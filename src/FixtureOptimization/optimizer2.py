@@ -246,4 +246,4 @@ def optimize2(methodology,jobName,Stores,Categories,tierCounts,increment,weights
     Results=Results.apply(lambda x: pd.to_numeric(x, errors='ignore'))
     mergedPreOptCF.reset_index(inplace=True)
     preOpt=pd.merge(preOpt,Results,on=['Store','Category'])
-    return (LpStatus[NewOptim.status],preOpt) #(longOutput)#,wideOutput)
+    return (LpStatus[NewOptim.status],preOpt)
