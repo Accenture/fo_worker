@@ -95,7 +95,7 @@ def main():
                                                       port=RMQ_PORT))
     ch = mq_conn.channel()
     ch.queue_declare(queue=RMQ_QUEUE_SOURCE, durable=True)
-    ch.queue_declare(queue=RMQ_QUEUE_SINK, durable=True)
+    ch.queue_declare(queue=RMQ_QUEUE_SINK, durable=False)
     ch.basic_qos(prefetch_count=1)
    
     messages = ch.consume(queue=RMQ_QUEUE_SOURCE)
