@@ -27,7 +27,7 @@ def optimize2(methodology,jobName,Stores,Categories,tierCounts,increment,weights
         if 0.0 not in Levels:
             Levels.append(np.abs(0.0))
 
-        print(Levels)  # for unit testing
+        # print(Levels)  # for unit testing
 
         return Levels
 
@@ -74,10 +74,6 @@ def optimize2(methodology,jobName,Stores,Categories,tierCounts,increment,weights
 
     # Helper function for optimize function, to create objective function of error by level for Traditional optimizations
     def createErrorByLevel(Stores, Categories, Levels, mergedCurveFitting):
-        print(type(Stores))
-        print(type(Categories))
-        print(type(Levels))
-        print(mergedCurveFitting.head())
         # Create n-dimensional array to store error by level
         error = np.zeros((len(Stores), len(Categories), len(Levels)))
 
@@ -94,7 +90,6 @@ def optimize2(methodology,jobName,Stores,Categories,tierCounts,increment,weights
 
     print('completed all of the function definitions')
     # Identify the total amount of space to fill in the optimization for each location and for all locations
-    print(mergedPreOptCF.columns)
     locSpaceToFill = pd.Series(mergedPreOptCF.groupby('Store')['Space_to_Fill'].sum())
     aggSpaceToFill = locSpaceToFill.sum()
 

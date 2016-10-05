@@ -47,7 +47,6 @@ def ksMerge(optimizationType,transactions,space,brandExit=None,futureSpace=None)
             storeTotal['Entry Space']=0
             storeTotal['New Space'] = storeTotal['Store Space'] - storeTotal['Entry Space']
             masterData=pd.merge(masterData,storeTotal,on=['Store'])
-            print(masterData.head())
         else:
             print('we have future space')
             futureSpace = futureSpace.sort_values(by='Store').reset_index(drop=True)

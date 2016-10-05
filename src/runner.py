@@ -153,6 +153,7 @@ def run(body):
     longID= str(create_output_artifact_from_dataframe(longOutput))
     analyticsID = str(create_output_artifact_from_dataframe(cfbsArtifact[1]))
     print('Created analytics ID')
+    statusID = optimRes[0]
 
     if msg['jobType'] == "tiered":
         summaryID = str(create_output_artifact_from_dataframe(createTieredSummary(longOutput)))
@@ -167,6 +168,7 @@ def run(body):
         {
             "$set": {
                 'optimization_end_time': end_time,
+                "status": statusID,
                 "artifactResults": {
                     'long_table':longID,
                     'wide_table':wideID,
@@ -177,14 +179,6 @@ def run(body):
         }
     )
 
-    db.jobs.update_one(
-        {'_id': job['_id']},
-        {
-            "$set": {
-                "status": "done"
-            }
-        }
-    )
     print("Job complete")
 
 if __name__ == '__main__':
