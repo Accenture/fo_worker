@@ -122,11 +122,9 @@ def run(body):
                                     float(msg["salesPenetrationThreshold"]), msg['jobType'],
                                     msg['optimizationType'])
     print('finished curve fitting')
-    preOpt = preoptimizeEnh(dataMunged=dataMerged[1], mAdjustment=float(msg["metricAdjustment"]),
+    preOpt = preoptimizeEnh(optimizationType=msg['optimizationType'], dataMunged=dataMerged[1], mAdjustment=float(msg["metricAdjustment"]),
                             salesPenThreshold=float(msg["salesPenetrationThreshold"]),
                             optimizedMetrics=msg["optimizedMetrics"], increment=msg["increment"])
-    # mPreOptCFBS = mergePreOptCF(cfbsArtifact, preOpt[['Store','Category','Penetration','Optimal Space']])
-    # mPreOptCFBS = pd.merge(cfbsArtifact, preOpt[['Store','Category','Penetration','Optimal Space']],on=['Store','Category'])
 # try:
     print('finished preoptimize')
     print(cfbsArtifact[0].head())

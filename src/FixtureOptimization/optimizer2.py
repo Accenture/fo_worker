@@ -56,7 +56,7 @@ def optimize2(methodology,jobName,Stores,Categories,tierCounts,increment,weights
         pU = "Profit"
         uU = "Units"
         sL = "sales"
-        pL = "profit"
+        pL = "profits"
         uL = "units"
 
         # Calculate SPU by level

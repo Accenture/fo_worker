@@ -77,27 +77,28 @@ def roundDF(array, increment):
                 rounded[j].loc[i] = np.around(array[j].loc[i], 3) - np.mod(np.around(array[j].loc[i], 3), increment)
     return rounded
 
-def preoptimizeEnh(dataMunged, salesPenThreshold, mAdjustment, optimizedMetrics, increment):
+def preoptimizeEnh(optimizationType,dataMunged, salesPenThreshold, mAdjustment, optimizedMetrics, increment):
     sales = dataMunged.pivot(index='Store',columns='Category',values='Sales $')
-    boh = dataMunged.pivot(index='Store',columns='Category',values='BOH $')
-    receipt = dataMunged.pivot(index='Store',columns='Category',values='Receipts  $')
     sold_units = dataMunged.pivot(index='Store',columns='Category',values='Sales Units')
-    boh_units = dataMunged.pivot(index='Store',columns='Category',values='BOH Units')
-    receipts_units = dataMunged.pivot(index='Store',columns='Category',values='Receipts Units')
     profit = dataMunged.pivot(index='Store',columns='Category',values='Profit $')
-    gm_perc = dataMunged.pivot(index='Store',columns='Category',values='Profit %')
-    ccCount= dataMunged.pivot(index='Store',columns='Category',values='CC Count w/ BOH')
     newSpace= dataMunged.pivot(index='Store',columns='Category',values='New Space')
     bfc = dataMunged.pivot(index='Store',columns='Category',values='Current Space')
 
-
-
     mAdjustment = float(mAdjustment)
-    adj_p = int(optimizedMetrics['spread']) * spreadCalc(sales, boh, receipt, mAdjustment) + int(
-        optimizedMetrics['salesPenetration']) * calcPen(sales) + int(
-        optimizedMetrics['salesPerSpaceUnit']) * metric_per_fixture(sales, bfc, mAdjustment) + int(
-        optimizedMetrics['grossMargin']) * calcPen(gm_perc) + int(
-        optimizedMetrics['inventoryTurns']) * invTurn_Calc(sold_units, boh_units, receipts_units)
+    if optimizationType=='tiered':
+        boh = dataMunged.pivot(index='Store', columns='Category', values='BOH $')
+        receipt = dataMunged.pivot(index='Store', columns='Category', values='Receipts  $')
+        boh_units = dataMunged.pivot(index='Store', columns='Category', values='BOH Units')
+        receipts_units = dataMunged.pivot(index='Store', columns='Category', values='Receipts Units')
+        gm_perc = dataMunged.pivot(index='Store', columns='Category', values='Profit %')
+        ccCount = dataMunged.pivot(index='Store', columns='Category', values='CC Count w/ BOH')
+        adj_p = int(optimizedMetrics['spread']) * spreadCalc(sales, boh, receipt, mAdjustment) + int(
+            optimizedMetrics['salesPenetration']) * calcPen(sales) + int(
+            optimizedMetrics['salesPerSpaceUnit']) * metric_per_fixture(sales, bfc, mAdjustment) + int(
+            optimizedMetrics['grossMargin']) * calcPen(gm_perc) + int(
+            optimizedMetrics['inventoryTurns']) * invTurn_Calc(sold_units, boh_units, receipts_units)
+    else:
+        adj_p = (optimizedMetrics['sales'] * sales) + (optimizedMetrics['profits'] * profit) + (optimizedMetrics['units'] * sold_units)
 
     # adj_p.fillna(np.float(0))
     # adj_p[np.isnan(adj_p)] = 0
