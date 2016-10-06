@@ -8,18 +8,9 @@ Created on Thu Jun  2 11:33:51 2016
 """
 
 from pulp import *
-# from pulp import LpVariable, LpInteger, LpProblem, LpMinimize, lpSum, LpStatus,PULP_CBC_CMD, pulpTestAll, value, LpBinary
 import numpy as np
 import pandas as pd
-import pymongo as pm
-import gridfs
-import config
 import datetime as dt
-from config import MONGO_HOST, MONGO_PORT, MONGO_NAME
-
-db_conn = pm.MongoClient(host=MONGO_HOST, port=MONGO_PORT)
-db = db_conn[MONGO_NAME]
-fs = gridfs.GridFS(db)
 
 
 def create_output_artifact_from_dataframe(dataframe, *args, **kwargs):
@@ -29,6 +20,68 @@ def create_output_artifact_from_dataframe(dataframe, *args, **kwargs):
     """
     return fs.put(dataframe.to_csv().encode(), **kwargs)
 
+
+def createLevels(mergedPreOptCF, increment):
+    minLevel = mergedPreOptCF.loc[:, 'Lower_Limit'].min()
+    maxLevel = mergedPreOptCF.loc[:, 'Upper_Limit'].max()
+    Levels = list(np.arange(minLevel, maxLevel + increment, increment))
+    if 0.0 not in Levels:
+        Levels.append(np.abs(0.0))
+
+
+    return Levels
+
+
+# Helper function for createSPUByLevel function, to forecast weighted combination of sales, profit, and units
+# str_cat is the row of the curve-fitting output for an individual store and category
+# variable can take on the values of "Sales", "Profit", or "Units"
+def forecast(str_cat, space, variable):
+    if space < str_cat["Scaled_BP_" + variable]:
+        value = space * (str_cat["Scaled_Alpha_" + variable] * (erf(
+            (str_cat["Scaled_BP_" + variable] - str_cat["Scaled_Shift_" + variable]) / (
+                math.sqrt(2) * str_cat["Scaled_Beta_" + variable]))) / str_cat["Scaled_BP_" + variable])
+    else:
+        value = str_cat["Scaled_Alpha_" + variable] * erf(
+            (space - str_cat["Scaled_Shift_" + variable]) / (math.sqrt(2) * str_cat["Scaled_Beta_" + variable]))
+
+    return value
+
+
+# Helper function for optimize function, to create objective function of SPU by level for Enhanced optimizations
+def createNegSPUByLevel(Stores, Categories, Levels, curveFittingOutput, enhMetrics):
+    # Create n-dimensional array to store Estimated SPU by level
+    est_neg_spu_by_lev = np.zeros((len(Stores), len(Categories), len(Levels)))
+
+    sU = "Sales"
+    pU = "Profit"
+    uU = "Units"
+    sL = "sales"
+    pL = "profits"
+
+    # Calculate SPU by level
+    for (i, Store) in enumerate(Stores):
+            for (k, Level) in enumerate(Levels):
+                str_cat = curveFittingOutput.loc[Store, Category]
+                est_neg_spu_by_lev[i][j][k] = - (
+                    (enhMetrics[sL] / 100) * forecast(str_cat, Level, sU) + (enhMetrics[pL] / 100) * forecast(str_cat,
+                                                                                                              Level,
+                                                                                                              pU) + (
+                        enhMetrics[uL] / 100) * forecast(str_cat, Level, uU))
+
+    return est_neg_spu_by_lev
+
+
+# Helper function for optimize function, to create objective function of error by level for Traditional optimizations
+def createErrorByLevel(Stores, Categories, Levels, mergedCurveFitting):
+    # Create n-dimensional array to store error by level
+    error = np.zeros((len(Stores), len(Categories), len(Levels)))
+
+    # Calculate error by level
+    for (i, Store) in enumerate(Stores):
+        for (j, Category) in enumerate(Categories):
+            for (k, Level) in enumerate(Levels):
+                error[i][j][k] = np.absolute(mergedCurveFitting.loc[Store, Category]["Optimal Space"] - Level)
+    return error
 
 def optimize(jobName,Stores,Categories,tierCounts,spaceBound,increment,dataMunged):
     """
@@ -239,8 +292,9 @@ def optimize(jobName,Stores,Categories,tierCounts,spaceBound,increment,dataMunge
     Results = pd.melt(Results.reset_index(), id_vars=['Store'], var_name='Category', value_name='Result Space')
     Results=Results.apply(lambda x: pd.to_numeric(x, errors='ignore'))
     dataMunged=pd.merge(dataMunged,Results,on=['Store','Category'])
+    print(dataMunged.columns)
     return (LpStatus[NewOptim.status],dataMunged) #(longOutput)#,wideOutput)
 
-if __name__ == '__main__':
-    df = pd.DataFrame(np.random.randn(10, 5), columns=['a', 'b', 'c', 'd', 'e'])
-    create_output_artifact_from_dataframe(df, filename='hello.csv')
+# if __name__ == '__main__':
+#     df = pd.DataFrame(np.random.randn(10, 5), columns=['a', 'b', 'c', 'd', 'e'])
+#     create_output_artifact_from_dataframe(df, filename='hello.csv')

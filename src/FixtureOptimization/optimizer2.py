@@ -18,6 +18,7 @@ def optimize2(methodology,jobName,Stores,Categories,tierCounts,increment,weights
     mergedPreOptCF = pd.merge(cfbsOutput, preOpt[['Store', 'Category', 'Optimal Space', 'Penetration']],
                               on=['Store', 'Category'])
 
+    mergedPreOptCF = mergedPreOptCF.apply(lambda x: pd.to_numeric(x, errors='ignore'))
     print('merged the files in the new optimization')
     def createLevels(mergedPreOptCF, increment):
 
@@ -88,6 +89,9 @@ def optimize2(methodology,jobName,Stores,Categories,tierCounts,increment,weights
     def adjustForTwoIncr(row,bound,increment):
         return max(bound,(2*increment)/row)
 
+    def adjustForFiveIncr(row,bound,increment):
+        return max(bound,(5*increment)/row)
+
     print('completed all of the function definitions')
     # Identify the total amount of space to fill in the optimization for each location and for all locations
     locSpaceToFill = pd.Series(mergedPreOptCF.groupby('Store')['Space_to_Fill'].sum())
@@ -109,7 +113,7 @@ def optimize2(methodology,jobName,Stores,Categories,tierCounts,increment,weights
     #locBalBackFreeBound = 0.05 #exploratory, value would have to be determined through exploratory analysis
     #locBalBackPenalty = increment #exploratory, value would have to be determined through exploratory analysis
 
-    locBalBackBoundAdj = locSpaceToFill.apply(lambda row:adjustForTwoIncr(row,locBalBackBound,increment))
+    locBalBackBoundAdj = locSpaceToFill.apply(lambda row:adjustForFiveIncr(row,locBalBackBound,increment))
     print('we have local balance back')
     # EXPLORATORY ONLY: ELASTIC BALANCE BACK
     #locBalBackFreeBoundAdj = locSpaceToFill.apply(lambda row:adjustForTwoIncr(row,locBalBackFreeBound))
@@ -184,8 +188,9 @@ def optimize2(methodology,jobName,Stores,Categories,tierCounts,increment,weights
             NewOptim += lpSum([st[Store][Category][Level] * Level for (k,Level) in enumerate(Levels)] ) >= mergedPreOptCF["Lower_Limit"].loc[Store,Category],"Space Lower Limit: STR " + str(Store) + ", CAT " + str(Category)
             NewOptim += lpSum([st[Store][Category][Level] * Level for (k,Level) in enumerate(Levels)] ) <= mergedPreOptCF["Upper_Limit"].loc[Store,Category],"Space Upper Limit: STR " + str(Store) + ", CAT " + str(Category)
     print('finished first block of constraints')
-    
+    totalTiers=0
     for (j,Category) in enumerate(Categories):
+        totalTiers=totalTiers+tierCounts[Category][1]
         # The number of created tiers must be within the tier count limits for each product.
         NewOptim += lpSum([ct[Category][Level] for (k,Level) in enumerate(Levels)]) >= tierCounts[Category][0], "Tier Count Lower Limit: CAT " + str(Category)
         NewOptim += lpSum([ct[Category][Level] for (k,Level) in enumerate(Levels)]) <= tierCounts[Category][1], "Tier Count Upper Limit: CAT " + str(Category)
@@ -199,6 +204,9 @@ def optimize2(methodology,jobName,Stores,Categories,tierCounts,increment,weights
             # if Level > 0:
             #        NewOptim += lpSum([st[Store][Category][Level] for (i, Store) in enumerate(Stores)]) >= m * ct[Category][Level], "Minimum Stores per Tier: CAT " + Category + ", LEV: " + str(Level)
     print('finished second block of constraints')
+
+    NewOptim += lpSum([ct[Category][Level] for (j, Category) in enumerate(Categories) for (k, Level) in enumerate(Levels)]) <= totalTiers
+    print('finished total tiers constraint')
     
     # The total space allocated to products across all locations must be within the aggregate balance back tolerance limit.
     NewOptim += lpSum([st[Store][Category][Level] * Level for (i, Store) in enumerate(Stores) for (j, Category) in enumerate(Categories) for (k, Level) in enumerate(Levels)]) >= aggSpaceToFill * (1 - aggBalBackBound), "Aggregate Balance Back Lower Limit"
@@ -227,6 +235,66 @@ def optimize2(methodology,jobName,Stores,Categories,tierCounts,increment,weights
     # solve_end_seconds = dt.datetime.today().hour*60*60 + dt.datetime.today().minute*60 + dt.datetime.today().second
     # solve_seconds = solve_end_seconds - start_seconds
     # print("Time taken to solve optimization was:" + str(solve_seconds)) #for unit testing
+
+    # Debugging
+    print("#####################################################################")
+    print(LpStatus[NewOptim.status])
+    print("#####################################################################")
+    # Debugging
+    NegativeCount = 0
+    LowCount = 0
+    TrueCount = 0
+    OneCount = 0
+    for (i, Store) in enumerate(Stores):
+        for (j, Category) in enumerate(Categories):
+            for (k, Level) in enumerate(Levels):
+                if value(st[Store][Category][Level]) == 1:
+                    # print(st[Store][Category][Level]) #These values should only be a one or a zero
+                    OneCount += 1
+                elif value(st[Store][Category][Level]) > 0:
+                    # print(st[Store][Category][Level],"Value is: ",value(st[Store][Category][Level])) #These values should only be a one or a zero
+                    TrueCount += 1
+                elif value(st[Store][Category][Level]) == 0:
+                    # print(value(st[Store][Category][Level])) #These values should only be a one or a zero
+                    LowCount += 1
+                elif value(st[Store][Category][Level]) < 0:
+                    # print(st[Store][Category][Level],"Value is: ",value(st[Store][Category][Level])) #These values should only be a one or a zero
+                    NegativeCount += 1
+
+    ctNegativeCount = 0
+    ctLowCount = 0
+    ctTrueCount = 0
+    ctOneCount = 0
+
+    for (j, Category) in enumerate(Categories):
+        for (k, Level) in enumerate(Levels):
+            if value(ct[Category][Level]) == 1:
+                # print(value(ct[Store][Category][Level])) #These values should only be a one or a zero
+                ctOneCount += 1
+            elif value(ct[Category][Level]) > 0:
+                # print(ct[Store][Category][Level],"Value is: ",value(st[Store][Category][Level])) #These values should only be a one or a zero
+                ctTrueCount += 1
+            elif value(ct[Category][Level]) == 0:
+                # print(value(ct[Category][Level])) #These values should only be a one or a zero
+                ctLowCount += 1
+            elif value(ct[Category][Level]) < 0:
+                # print(ct[Category][Level],"Value is: ",value(st[Store][Category][Level])) #These values should only be a one or a zero
+                ctNegativeCount += 1
+
+    print("Status:", LpStatus[NewOptim.status])
+    print("---------------------------------------------------")
+    print("For Selected Tiers")
+    print("Number of Negatives Count is: ", NegativeCount)
+    print("Number of Zeroes Count is: ", LowCount)
+    print("Number Above 0 and Below 1 Count is: ", TrueCount)
+    print("Number of Selected Tiers: ", OneCount)
+    print("---------------------------------------------------")
+    print("For Created Tiers")
+    print("Number of Negatives Count is: ", ctNegativeCount)
+    print("Number of Zeroes Count is: ", ctLowCount)
+    print("Number Above 0 and Below 1 Count is: ", ctTrueCount)
+    print("Number of Created Tiers: ", ctOneCount)
+    print("Creating Outputs")
 
     Results=pd.DataFrame(index=Stores,columns=Categories)
     for (i,Store) in enumerate(Stores):
