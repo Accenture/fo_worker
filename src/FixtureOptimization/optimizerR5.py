@@ -131,17 +131,17 @@ def optimize(jobName,Stores,Categories,tierCounts,spaceBound,increment,dataMunge
     NewOptim = LpProblem(jobName, LpMinimize)  # Define Optimization Problem/
 
     # Brand Exit Enhancement
-    # if brandExitArtifact is None:
-    #     print("No Brand Exit in the Optimization")
-    # else:
-    #     for (i, Store) in enumerate(Stores):
-    #         for (j, Category) in enumerate(Categories):
-    #             if (brandExitArtifact[Category].loc[Store] != 0):
-    #                 upper_bound[Category].loc[Store] = 0
-    #                 lower_bound[Category].loc[Store] = 0
+    if brandExitArtifact is None:
+        print("No Brand Exit in the Optimization")
+    else:
+        for (i, Store) in enumerate(Stores):
+            for (j, Category) in enumerate(Categories):
+                if (brandExitArtifact[Category].loc[Store] != 0):
+                    # upper_bound[Category].loc[Store] = 0
+                    # lower_bound[Category].loc[Store] = 0
                     # opt_amt[Category].loc[Store] = 0
-                    # NewOptim += st[Store][Category][0.0] == 1
-                    # NewOptim += ct[Category][0.0] == 1
+                    NewOptim += st[Store][Category][0.0] == 1
+                    NewOptim += ct[Category][0.0] == 1
                     # spaceBound[Category][0] = 0
 
 
@@ -292,7 +292,6 @@ def optimize(jobName,Stores,Categories,tierCounts,spaceBound,increment,dataMunge
     Results = pd.melt(Results.reset_index(), id_vars=['Store'], var_name='Category', value_name='Result Space')
     Results=Results.apply(lambda x: pd.to_numeric(x, errors='ignore'))
     dataMunged=pd.merge(dataMunged,Results,on=['Store','Category'])
-    print(dataMunged.columns)
     return (LpStatus[NewOptim.status],dataMunged) #(longOutput)#,wideOutput)
 
 # if __name__ == '__main__':

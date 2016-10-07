@@ -4,54 +4,56 @@ from scipy.special import erf
 import math
 
 # Create long table for user download
-def createLong(cfbs, optimSpace):
+def createLong(optimSpace, cfbs=None):
     print('Inside createLong')
-    # print(cfbs.columns)
-    # print(optimSpace.columns)
-    lOutput = pd.merge(optimSpace[['Store','Climate','VSG','Category','Historical Space','New Space','Penetration','Optimal Space','Result Space']], cfbs,
-                       on=['Store','Climate','Category'])
-    # lOutput.rename(columns={'Sales $': 'Sales', 'Profit $': 'Profit', 'Sales Units': 'Units'}, inplace=True)
-    print('initial merge')
-    # print(lOutput.columns)
     # Merge the optimize output with the curve-fitting output (which was already merged with the preoptimize output)
-    # result_long = pd.DataFrame(Results.unstack()).swaplevel()
-    # result_long.rename(columns={result_long.columns[-1]: "Result Space"}, inplace=True)
-    # lOutput = pd.concat([mergedPreOptCF, result_long], axis=1)
-    # lOutput["Result Space"] = lOutput["Result Space"].astype(float)
-    lOutput = lOutput.apply(lambda x: pd.to_numeric(x, errors='ignore'))
-    variables = ["Sales", "Profit", "Units"]
+    if cfbs is not None:
+        print('initial merge')
+        lOutput = pd.merge(optimSpace[
+                               ['Store', 'Climate', 'VSG', 'Category', 'Historical Space', 'New Space', 'Penetration',
+                                'Optimal Space', 'Result Space']], cfbs,
+                           on=['Store', 'Climate', 'Category'])
 
-    for v in variables:
-        lOutput["Estimated " + v] = np.where(lOutput["Result Space"] < lOutput["Scaled_BP_" + v],
-                                             lOutput["Result Space"] * (lOutput["Scaled_Alpha_" + v] * (erf(
-                                                 (lOutput["Scaled_BP_" + v] - lOutput["Scaled_Shift_" + v]) / (
-                                                 math.sqrt(2) * lOutput["Scaled_Beta_" + v]))) / lOutput[
-                                                                            "Scaled_BP_" + v]),
-                                             lOutput["Scaled_Alpha_" + v] * erf(
-                                                 (lOutput["Result Space"] - lOutput["Scaled_Shift_" + v]) / (
-                                                 math.sqrt(2) * lOutput["Scaled_Beta_" + v])))
-    print("Finished Forecasting")
-    # Reset the index and name the columns
-    # lOutput.rename(columns={'level_0': 'Store', 'level_1': 'Category', 'Space': 'Historical Space'}, inplace=True)
+        lOutput = lOutput.apply(lambda x: pd.to_numeric(x, errors='ignore'))
+        variables = ["Sales", "Profit", "Units"]
+        for v in variables:
+            lOutput["Estimated " + v] = np.where(lOutput["Result Space"] < lOutput["Scaled_BP_" + v],
+                                                 lOutput["Result Space"] * (lOutput["Scaled_Alpha_" + v] * (erf(
+                                                     (lOutput["Scaled_BP_" + v] - lOutput["Scaled_Shift_" + v]) / (
+                                                     math.sqrt(2) * lOutput["Scaled_Beta_" + v]))) / lOutput[
+                                                                                "Scaled_BP_" + v]),
+                                                 lOutput["Scaled_Alpha_" + v] * erf(
+                                                     (lOutput["Result Space"] - lOutput["Scaled_Shift_" + v]) / (
+                                                     math.sqrt(2) * lOutput["Scaled_Beta_" + v])))
+        print("Finished Forecasting")
+        # Reset the index and name the columns
+        # lOutput.rename(columns={'level_0': 'Store', 'level_1': 'Category', 'Space': 'Historical Space'}, inplace=True)
 
-    # Either drop or rename space to fill, lower limit, and upper limit
-    # lOutput.drop((['Space.to.Fill'],['Lower.Limit'],['Upper.Limit']), axis=1, inplace=True)
-    # lOutput.rename(
-    #     columns={'Space_to_Fill': 'Space to Fill', 'Lower_Limit': 'Lower Limit', 'Upper_Limit': 'Upper Limit','Exit_Flag': 'Exit Flag'},
-    #     inplace=True)
-    print('Dropped Columns')
-    # Drop scaled coefficients, can be uncommented to test curve-fitting/forecasting
-    cols = [c for c in lOutput.columns if c[:6] != 'Scaled']
-    lOutput = lOutput[cols]
-    print('Dropped more Columns')
-    lOutput.drop(['Store_Group_Sales','Store_Group_Units','Store_Group_Profit'], axis=1, inplace=True)
-    print('Dropped Group Columns')
-    return lOutput[['Store','Climate','VSG','Category','Result Space','Historical Space','Optimal Space','Penetration','Sales','Profit','Units','Estimated Sales','Estimated Profit','Estimated Units']]
+        # Either drop or rename space to fill, lower limit, and upper limit
+        # lOutput.drop((['Space.to.Fill'],['Lower.Limit'],['Upper.Limit']), axis=1, inplace=True)
+        # lOutput.rename(
+        #     columns={'Space_to_Fill': 'Space to Fill', 'Lower_Limit': 'Lower Limit', 'Upper_Limit': 'Upper Limit','Exit_Flag': 'Exit Flag'},
+        #     inplace=True)
+        print('Dropped Columns')
+        # Drop scaled coefficients, can be uncommented to test curve-fitting/forecasting
+        cols = [c for c in lOutput.columns if c[:6] != 'Scaled']
+        lOutput = lOutput[cols]
+        print('Dropped more Columns')
+        lOutput.drop(['Store_Group_Sales','Store_Group_Units','Store_Group_Profit'], axis=1, inplace=True)
+        print('Dropped Group Columns')
+        lOutput = lOutput[
+            ['Store', 'Climate', 'VSG', 'Category', 'Result Space', 'Historical Space', 'Optimal Space', 'Penetration',
+             'Sales', 'Profit', 'Units', 'Estimated Sales', 'Estimated Profit', 'Estimated Units']]
+    else:
+        lOutput=optimSpace[['Store', 'Climate', 'VSG', 'Category', 'Result Space', 'Historical Space', 'Optimal Space', 'Penetration']]
+    return lOutput
 
 # Create wide table for user download
 def createWide(long, jobType, optimizationType):
 
     # Set up for pivot by renaming metrics and converting blanks to 0's for Enhanced in long table
+    Categories=pd.unique(long['Category'].values)
+    print(Categories)
     adjusted_long = long.rename(
         columns={'Historical Space': 'current', "Optimal Space": "optimal", "Result Space": "result",
                  "Penetration": "penetration"})
@@ -90,9 +92,9 @@ def createWide(long, jobType, optimizationType):
             wide[[i]] = ""
 
     # Reorder columns and drop total penetration
-    cols = cols[:tot_col["C"] - 1] + cols[tot_col["C"] + 1:tot_col["O"] - 1] + cols[tot_col["O"] + 1:tot_col[
-                                                                                                         "R"] - 1] + [
-               cols[tot_col["C"]]] + [cols[tot_col["O"]]] + cols[tot_col["R"]:-1]
+    cols = cols[:tot_col["C"]] + cols[tot_col["C"] + 1:tot_col["O"]] + cols[tot_col["O"] + 1:tot_col[
+                                                                                                         "R"]] + [
+               cols[tot_col["C"]]] + cols[tot_col["R"]:-1]
     wide = wide[cols]
     wide.reset_index(inplace=True)
     return wide
