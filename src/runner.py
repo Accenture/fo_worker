@@ -131,11 +131,6 @@ def run(body):
     dataMerged = ksMerge(msg['jobType'], fetchTransactions(msg["artifacts"]["salesArtifactId"]),
                             fetchSpace(msg["artifacts"]["spaceArtifactId"]),
                             brandExitArtifact, futureSpace)
-    cfbsArtifact = curveFittingBS(dataMerged[0], msg['spaceBounds'], msg['increment'],
-                                    msg['storeCategoryBounds'],
-                                    float(msg["salesPenetrationThreshold"]), msg['jobType'],
-                                    msg['optimizationType'])
-    print('finished curve fitting')
     preOpt = preoptimizeEnh(optimizationType=msg['optimizationType'], dataMunged=dataMerged[1], mAdjustment=float(msg["metricAdjustment"]),
                             salesPenThreshold=float(msg["salesPenetrationThreshold"]),
                             optimizedMetrics=msg["optimizedMetrics"], increment=msg["increment"])
@@ -144,7 +139,14 @@ def run(body):
         optimRes = optimize(jobName=msg['meta']['name'], Stores=msg['salesStores'], Categories=msg['salesCategories'],
                  tierCounts=msg['tierCounts'], spaceBound=msg['spaceBounds'], increment=msg['increment'],
                  dataMunged=preOpt)
+        cfbsArtifact=[None,None]
     else:
+        cfbsArtifact = curveFittingBS(dataMerged[0], msg['spaceBounds'], msg['increment'],
+                                      msg['storeCategoryBounds'],
+                                      float(msg["salesPenetrationThreshold"]), msg['jobType'],
+                                      msg['optimizationType'])
+        print('finished curve fitting')
+        print(msg['optimizationType'])
         optimRes = optimize2(methodology=msg['optimizationType'], jobName=msg['meta']['name'],
                              Stores=msg['salesStores'], Categories=msg['salesCategories'], tierCounts=msg['tierCounts'],
                              increment=msg['increment'], weights=msg['optimizedMetrics'], cfbsOutput=cfbsArtifact[0],
@@ -153,13 +155,16 @@ def run(body):
 
     # Call functions to create output information
     print('Out of the optimization')
-    longOutput = createLong(cfbsArtifact[0], optimRes[1])
+    longOutput = createLong(optimRes[1], cfbsArtifact[0])
     print('Created Long Output')
     wideID = str(create_output_artifact_from_dataframe(createWide(longOutput, msg['jobType'], msg['optimizationType'])))
     print('Created Wide Output')
     longID= str(create_output_artifact_from_dataframe(longOutput))
-    analyticsID = str(create_output_artifact_from_dataframe(cfbsArtifact[1]))
-    print('Created analytics ID')
+    if cfbsArtifact[1] is not None:
+        analyticsID = str(create_output_artifact_from_dataframe(cfbsArtifact[1]))
+        print('Created analytics ID')
+    else:
+        analyticsID=None
     statusID = optimRes[0]
 
     if msg['jobType'] == "tiered":

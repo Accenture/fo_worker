@@ -32,6 +32,13 @@ def optimize2(methodology,jobName,Stores,Categories,tierCounts,increment,weights
 
         return Levels
 
+    def roundValue(cVal, increment):
+        if np.mod(round(cVal, 3), increment) > increment / 2:
+            cVal = round(cVal, 3) + (increment - (np.mod(round(cVal, 3), increment)))
+        else:
+            cVal = round(cVal, 3) - np.mod(round(cVal, 3), increment)
+        return cVal
+
     # Helper function for createSPUByLevel function, to forecast weighted combination of sales, profit, and units
     # str_cat is the row of the curve-fitting output for an individual store and category
     # variable can take on the values of "Sales", "Profit", or "Units"
@@ -60,6 +67,7 @@ def optimize2(methodology,jobName,Stores,Categories,tierCounts,increment,weights
         pL = "profits"
         uL = "units"
 
+        print('forecasting outputs')
         # Calculate SPU by level
         for (i, Store) in enumerate(Stores):
             for (j, Category) in enumerate(Categories):
@@ -70,7 +78,7 @@ def optimize2(methodology,jobName,Stores,Categories,tierCounts,increment,weights
                                                                                                               Level,
                                                                                                               pU) + (
                     enhMetrics[uL] / 100) * forecast(str_cat, Level, uU))
-
+        print('finished forecasting')
         return est_neg_spu_by_lev
 
     # Helper function for optimize function, to create objective function of error by level for Traditional optimizations
@@ -119,6 +127,8 @@ def optimize2(methodology,jobName,Stores,Categories,tierCounts,increment,weights
     #locBalBackFreeBoundAdj = locSpaceToFill.apply(lambda row:adjustForTwoIncr(row,locBalBackFreeBound))
 
     # Create eligible space levels
+    mergedPreOptCF["Upper_Limit"] = mergedPreOptCF["Upper_Limit"].apply(lambda x: roundValue(x,increment))
+    mergedPreOptCF["Lower_Limit"] = mergedPreOptCF["Lower_Limit"].apply(lambda x: roundValue(x,increment))
     Levels = createLevels(mergedPreOptCF, increment)
     print('we have levels')
     # Set up created tier decision variable - has a value of 1 if that space level for that category will be a tier, else 0
@@ -148,13 +158,14 @@ def optimize2(methodology,jobName,Stores,Categories,tierCounts,increment,weights
     NewOptim = LpProblem(jobName, LpMinimize)
     print('initialized problem')
     mergedPreOptCF.set_index(['Store','Category'],inplace=True)
-    
+
     # Create objective function data
     if methodology == "traditional":
         objective = createErrorByLevel(Stores, Categories,Levels,mergedPreOptCF)
         objectivetype = "Total Error"
     else: #since methodology == "enhanced"
         objective = createNegSPUByLevel(Stores, Categories, Levels, mergedPreOptCF, weights)
+        print(objective.head())
         objectivetype = "Total Negative SPU"
     print('created objective function data')
     # Add the objective function to the optimization problem
@@ -181,6 +192,7 @@ def optimize2(methodology,jobName,Stores,Categories,tierCounts,increment,weights
         #NewOptim.extend(cLocBalBackPenalty.makeElasticSubProblem(penalty=locBalBackPenalty,proportionFreeBound=locBalBackFreeBoundAdj[Store]))
 
         for (j,Category) in enumerate(Categories):
+            # print('we got through the first part')
             # Only one selected tier can be turned on for each product at each location.
             NewOptim += lpSum([st[Store][Category][Level] for (k,Level) in enumerate(Levels)]) == 1, "One Tier per Location: STR " + str(Store) + ", CAT " + str(Category)
 
