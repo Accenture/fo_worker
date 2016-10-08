@@ -45,7 +45,9 @@ def createLong(optimSpace, cfbs=None):
             ['Store', 'Climate', 'VSG', 'Category', 'Result Space', 'Historical Space', 'Optimal Space', 'Penetration',
              'Sales', 'Profit', 'Units', 'Estimated Sales', 'Estimated Profit', 'Estimated Units']]
     else:
+        print('went to else')
         lOutput=optimSpace[['Store', 'Climate', 'VSG', 'Category', 'Result Space', 'Historical Space', 'Optimal Space', 'Penetration']]
+    lOutput.sort()
     return lOutput
 
 # Create wide table for user download

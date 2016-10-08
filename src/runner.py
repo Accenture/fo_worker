@@ -146,6 +146,7 @@ def run(body):
                                       float(msg["salesPenetrationThreshold"]), msg['jobType'],
                                       msg['optimizationType'])
         print('finished curve fitting')
+        print(msg['optimizationType'])
         optimRes = optimize2(methodology=msg['optimizationType'], jobName=msg['meta']['name'],
                              Stores=msg['salesStores'], Categories=msg['salesCategories'], tierCounts=msg['tierCounts'],
                              increment=msg['increment'], weights=msg['optimizedMetrics'], cfbsOutput=cfbsArtifact[0],

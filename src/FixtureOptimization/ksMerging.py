@@ -52,6 +52,7 @@ def ksMerge(optimizationType,transactions,space,brandExit=None,futureSpace=None)
             futureSpace = futureSpace.sort_values(by='Store').reset_index(drop=True)
             futureSpace=pd.merge(storeTotal,futureSpace,on=['Store'],how='inner')
             print('in future space loop')
+            futureSpace['Entry Space'].fillna(0,inplace=True)
             for (i,Store) in enumerate(Stores):
                 futureSpace['Future Space'].loc[i] = storeTotal['Store Space'].loc[i] if pd.to_numeric(futureSpace['Future Space']).loc[i] == 0 or pd.isnull(pd.to_numeric(futureSpace['Future Space'])).loc[i] else futureSpace['Future Space'].loc[i]
             futureSpace['New Space'] = futureSpace['Future Space'] - futureSpace['Entry Space']
