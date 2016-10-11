@@ -9,10 +9,12 @@ def createLong(optimSpace, cfbs=None):
     # Merge the optimize output with the curve-fitting output (which was already merged with the preoptimize output)
     if cfbs is not None:
         print('initial merge')
-        lOutput = pd.merge(optimSpace[
-                               ['Store', 'Climate', 'VSG', 'Category', 'Historical Space', 'New Space', 'Penetration',
-                                'Optimal Space', 'Result Space']], cfbs,
-                           on=['Store', 'Climate', 'Category'])
+        lOutput = pd.merge(
+            optimSpace[['Store', 'Climate', 'VSG', 'Category', 'Historical Space', 'New Space', 'Result Space']], cfbs,
+            on=['Store', 'Climate', 'Category'])
+        lOutput['Penetration']=0
+        lOutput['Optimal Space']=0
+        print('Set Optimal & Penetration to 0')
 
         lOutput = lOutput.apply(lambda x: pd.to_numeric(x, errors='ignore'))
         variables = ["Sales", "Profit", "Units"]
@@ -46,7 +48,7 @@ def createLong(optimSpace, cfbs=None):
              'Sales', 'Profit', 'Units', 'Estimated Sales', 'Estimated Profit', 'Estimated Units']]
     else:
         print('went to else')
-        lOutput=optimSpace[['Store', 'Climate', 'VSG', 'Category', 'Result Space', 'Historical Space', 'Penetration']]
+        lOutput=optimSpace[['Store', 'Climate', 'VSG', 'Category', 'Result Space', 'Historical Space','Optimal Space', 'Penetration']]
     lOutput.sort()
     return lOutput
 
@@ -54,16 +56,11 @@ def createLong(optimSpace, cfbs=None):
 def createWide(long, jobType, optimizationType):
 
     # Set up for pivot by renaming metrics and converting blanks to 0's for Enhanced in long table
-    Categories=pd.unique(long['Category'].values)
-    print(Categories)
     adjusted_long = long.rename(
         columns={'Historical Space': 'current', "Optimal Space": "optimal", "Result Space": "result",
                  "Penetration": "penetration"})
-    print('Got past renaming')
-    # if optimizationType == "Enhanced":
-    #     adjusted_long["optimal"] = 0
-    #     adjusted_long["penetration"] = 0
 
+    print('renamed the columns')
     # Pivot to convert long table to wide, including Time in index for drill downs
     if jobType == "tiered":
         wide = pd.pivot_table(adjusted_long, values=["current", "optimal", "result", "penetration"],
@@ -74,30 +71,40 @@ def createWide(long, jobType, optimizationType):
                               index=["Store", "Time", "Climate", "VSG"], columns="Category", aggfunc=np.sum,
                               margins=True, margins_name="Total")
 
+    print('transpose the data')
     # Generate concatenated column titles by swapping levels and merging category name with metric name
     wide = wide.swaplevel(axis=1)
     wide.columns = ['_'.join(col) for col in wide.columns.values]
 
+    print('delete the last row')
     # Delete last row (which is a sum of column values)
     wide = wide.ix[:-1]  # drop last row
 
+    print('deleted last row')
     # Set up for column reordering
     cols = wide.columns.tolist()
     num_categories = int((len(cols)) / 4 - 1)  # find number of categories, for use in finding total column numbers
     tot_col = {"C": num_categories, "O": 2 * num_categories + 1, "R": 3 * num_categories + 2}
 
+    print('reorder columns prep')
     # Convert 0's back to blanks
-    # if optimizationType == "Enhanced":
-    # for i in range(tot_col["C"] + 1, tot_col["O"] + 1):
-    #     wide[[i]] = ""
-    # for i in range(tot_col["R"] + 1, len(cols)):
-    #     wide[[i]] = ""
+    if optimizationType == "Enhanced":
+        for i in range(tot_col["C"] + 1, tot_col["O"] + 1):
+            wide[[i]] = ""
+        for i in range(tot_col["R"] + 1, len(cols)):
+            wide[[i]] = ""
 
     # Reorder columns and drop total penetration
+    # cols = cols[:tot_col["C"]] + cols[tot_col["C"] + 1:tot_col["O"]] + cols[tot_col["O"] + 1:tot_col[
+    #                                                                                                      "R"]] + [
+    #            cols[tot_col["C"]]] + cols[tot_col["R"]:-1]
+    #
     cols = cols[:tot_col["C"]] + cols[tot_col["C"] + 1:tot_col["O"]] + cols[tot_col["O"] + 1:tot_col[
                                                                                                          "R"]] + [
-               cols[tot_col["C"]]] + cols[tot_col["R"]:-1]
+               cols[tot_col["C"]]] + [cols[tot_col["O"]]] + cols[tot_col["R"]:-1]
+    print('reordered columns')
     wide = wide[cols]
+    wide.drop('Total_optimal',axis=1,inplace=True)
     wide.reset_index(inplace=True)
     return wide
 
