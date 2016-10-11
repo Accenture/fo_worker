@@ -46,7 +46,7 @@ def createLong(optimSpace, cfbs=None):
              'Sales', 'Profit', 'Units', 'Estimated Sales', 'Estimated Profit', 'Estimated Units']]
     else:
         print('went to else')
-        lOutput=optimSpace[['Store', 'Climate', 'VSG', 'Category', 'Result Space', 'Historical Space', 'Optimal Space', 'Penetration']]
+        lOutput=optimSpace[['Store', 'Climate', 'VSG', 'Category', 'Result Space', 'Historical Space', 'Penetration']]
     lOutput.sort()
     return lOutput
 
@@ -60,9 +60,9 @@ def createWide(long, jobType, optimizationType):
         columns={'Historical Space': 'current', "Optimal Space": "optimal", "Result Space": "result",
                  "Penetration": "penetration"})
     print('Got past renaming')
-    if optimizationType == "Enhanced":
-        adjusted_long["optimal"] = 0
-        adjusted_long["penetration"] = 0
+    # if optimizationType == "Enhanced":
+    #     adjusted_long["optimal"] = 0
+    #     adjusted_long["penetration"] = 0
 
     # Pivot to convert long table to wide, including Time in index for drill downs
     if jobType == "tiered":
@@ -87,11 +87,11 @@ def createWide(long, jobType, optimizationType):
     tot_col = {"C": num_categories, "O": 2 * num_categories + 1, "R": 3 * num_categories + 2}
 
     # Convert 0's back to blanks
-    if optimizationType == "Enhanced":
-        for i in range(tot_col["C"] + 1, tot_col["O"] + 1):
-            wide[[i]] = ""
-        for i in range(tot_col["R"] + 1, len(cols)):
-            wide[[i]] = ""
+    # if optimizationType == "Enhanced":
+    # for i in range(tot_col["C"] + 1, tot_col["O"] + 1):
+    #     wide[[i]] = ""
+    # for i in range(tot_col["R"] + 1, len(cols)):
+    #     wide[[i]] = ""
 
     # Reorder columns and drop total penetration
     cols = cols[:tot_col["C"]] + cols[tot_col["C"] + 1:tot_col["O"]] + cols[tot_col["O"] + 1:tot_col[

@@ -136,9 +136,10 @@ def run(body):
                             salesPenThreshold=float(msg["salesPenetrationThreshold"]),
                             optimizedMetrics=msg["optimizedMetrics"], increment=msg["increment"])
     print('finished preoptimize')
+    print(msg['optimizationType'])
     if msg['optimizationType'] == 'traditional':
         print('going to the optimization')
-        optimRes = optimize(jobName=msg['meta']['name'],optimizationType=msg['optimizationType'], Stores=msg['salesStores'], Categories=msg['salesCategories'],
+        optimRes = optimize(jobName=msg['meta']['name'], Stores=msg['salesStores'], Categories=msg['salesCategories'],
                  tierCounts=msg['tierCounts'], spaceBound=msg['spaceBounds'], increment=msg['increment'],
                  dataMunged=preOpt)
         cfbsArtifact=[None,None]
