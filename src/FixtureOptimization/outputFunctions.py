@@ -10,10 +10,10 @@ def createLong(optimSpace, cfbs=None):
     if cfbs is not None:
         print('initial merge')
         lOutput = pd.merge(
-            optimSpace[['Store', 'Climate', 'VSG', 'Category', 'Historical Space', 'New Space', 'Result Space']], cfbs,
+            optimSpace[['Store', 'Climate', 'VSG', 'Category', 'Historical Space', 'New Space', 'Result Space', 'Penetration', 'Optimal Space']], cfbs,
             on=['Store', 'Climate', 'Category'])
-        lOutput['Penetration']= ""
-        lOutput['Optimal Space']= ""
+        # lOutput['Penetration']= ""
+        # lOutput['Optimal Space']= ""
         print('Set Optimal & Penetration to 0')
 
         lOutput = lOutput.apply(lambda x: pd.to_numeric(x, errors='ignore'))
@@ -88,7 +88,7 @@ def createWide(long, jobType, optimizationType):
 
     print('reorder columns prep')
     # Convert 0's back to blanks
-    if optimizationType == "Enhanced":
+    if optimizationType == "enhanced":
         for i in range(tot_col["C"] + 1, tot_col["O"] + 1):
             wide[[i]] = ""
         for i in range(tot_col["R"] + 1, len(cols)):

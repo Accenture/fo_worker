@@ -73,11 +73,19 @@ def optimize(jobName,Stores,Categories,tierCounts,spaceBound,increment,dataMunge
     b = .05
     bI = .1
 
+    # Adjust location balance back tolerance limit so that it's at least 2 increments
+    # def adjustForTwoIncr(row,bound,increment):
+    #     return max(bound,(2*increment)/row)
+
     # Create a Vectors & Arrays of required variables
     # Calculate Total fixtures(TotFixt) per store by summing up the individual fixture counts
     W = opt_amt.sum(axis=1).sum(axis=0)
     print(W)
     TFC = opt_amt.sum(axis=1)
+
+    # TFC = TFC.apply(lambda row: adjustForTwoIncr(row, bI, increment))
+    # print(TFC)
+
     print('Balance Back Vector')
     ct = LpVariable.dicts('CT', (Categories, Levels), 0, upBound=1,cat='Binary')
     st = LpVariable.dicts('ST', (Stores, Categories, Levels), 0,upBound=1, cat='Binary')
@@ -121,7 +129,7 @@ def optimize(jobName,Stores,Categories,tierCounts,spaceBound,increment,dataMunge
 #Makes is to that there is only one Selected tier for each Store/ Category Combination
     for (i,Store) in enumerate(Stores):
 #Conditional for Balance Back regarding if in Fixtures || 2 Increment Min & Max instead
-        if TFC[Store] > increment * 5:
+        if TFC[Store] * bI > increment * 2:
             NewOptim += lpSum([(st[Store][Category][Level]) * Level for (j, Category) in enumerate(Categories) for (k, Level) in enumerate(Levels)]) <= TFC[Store] * (1 + bI)#, "Upper Bound for Fixtures per Store"
             NewOptim += lpSum([(st[Store][Category][Level]) * Level for (j, Category) in enumerate(Categories) for (k, Level) in enumerate(Levels)]) >= TFC[Store] * (1 - bI)#, "Lower Bound for Fixtures per Store"
         else:
