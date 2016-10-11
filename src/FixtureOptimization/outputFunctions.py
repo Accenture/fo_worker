@@ -49,7 +49,7 @@ def createLong(optimSpace, cfbs=None):
     else:
         print('went to else')
         lOutput=optimSpace[['Store', 'Climate', 'VSG', 'Category', 'Result Space', 'Historical Space','Optimal Space', 'Penetration']]
-    lOutput.sort()
+    lOutput.sort(columns=['Store'],axis=0,inplace=True)
     return lOutput
 
 # Create wide table for user download
@@ -106,6 +106,7 @@ def createWide(long, jobType, optimizationType):
     wide = wide[cols]
     wide.drop('Total_optimal',axis=1,inplace=True)
     wide.reset_index(inplace=True)
+    wide.sort(columns=['Store'],axis=0,inplace=True)
     return wide
 
 # Create summary for user download that applies to Tiered optimizations (type == "Tiered")
