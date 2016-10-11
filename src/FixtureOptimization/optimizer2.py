@@ -125,7 +125,14 @@ def optimize2(methodology,jobName,Stores,Categories,tierCounts,increment,weights
     #locBalBackFreeBound = 0.05 #exploratory, value would have to be determined through exploratory analysis
     #locBalBackPenalty = increment #exploratory, value would have to be determined through exploratory analysis
 
-    locBalBackBoundAdj = locSpaceToFill.apply(lambda row:adjustForFiveIncr(row,locBalBackBound,increment))
+    # try:
+    #     locBalBackBoundAdj = locSpaceToFill.apply(lambda row:adjustForTwoIncr(row,locBalBackBound,increment))
+    # except:
+    #     print("Divide by 0. \n There is a store that doesn't have any space assigned whatsoever.")
+    #     return False
+
+    locBalBackBoundAdj = locSpaceToFill.apply(lambda row:adjustForTwoIncr(row,locBalBackBound,increment))
+
     print('we have local balance back')
     # EXPLORATORY ONLY: ELASTIC BALANCE BACK
     #locBalBackFreeBoundAdj = locSpaceToFill.apply(lambda row:adjustForTwoIncr(row,locBalBackFreeBound))
