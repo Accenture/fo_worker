@@ -12,8 +12,8 @@ def createLong(optimSpace, cfbs=None):
         lOutput = pd.merge(
             optimSpace[['Store', 'Climate', 'VSG', 'Category', 'Historical Space', 'New Space', 'Result Space']], cfbs,
             on=['Store', 'Climate', 'Category'])
-        lOutput['Penetration']=0
-        lOutput['Optimal Space']=0
+        lOutput['Penetration']= ""
+        lOutput['Optimal Space']= ""
         print('Set Optimal & Penetration to 0')
 
         lOutput = lOutput.apply(lambda x: pd.to_numeric(x, errors='ignore'))
