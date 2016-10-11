@@ -131,12 +131,14 @@ def run(body):
     dataMerged = ksMerge(msg['jobType'], fetchTransactions(msg["artifacts"]["salesArtifactId"]),
                             fetchSpace(msg["artifacts"]["spaceArtifactId"]),
                             brandExitArtifact, futureSpace)
+    print('finished data merging')
     preOpt = preoptimizeEnh(optimizationType=msg['optimizationType'], dataMunged=dataMerged[1], mAdjustment=float(msg["metricAdjustment"]),
                             salesPenThreshold=float(msg["salesPenetrationThreshold"]),
                             optimizedMetrics=msg["optimizedMetrics"], increment=msg["increment"])
     print('finished preoptimize')
     if msg['optimizationType'] == 'traditional':
-        optimRes = optimize(jobName=msg['meta']['name'], Stores=msg['salesStores'], Categories=msg['salesCategories'],
+        print('going to the optimization')
+        optimRes = optimize(jobName=msg['meta']['name'],optimizationType=msg['optimizationType'], Stores=msg['salesStores'], Categories=msg['salesCategories'],
                  tierCounts=msg['tierCounts'], spaceBound=msg['spaceBounds'], increment=msg['increment'],
                  dataMunged=preOpt)
         cfbsArtifact=[None,None]

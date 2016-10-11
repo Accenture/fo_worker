@@ -19,6 +19,8 @@ def optimize2(methodology,jobName,Stores,Categories,tierCounts,increment,weights
                               on=['Store', 'Category'])
 
     mergedPreOptCF = mergedPreOptCF.apply(lambda x: pd.to_numeric(x, errors='ignore'))
+    mergedPreOptCF.set_index(['Store','Category'],inplace=True)
+
     print('merged the files in the new optimization')
     def createLevels(mergedPreOptCF, increment):
 
@@ -102,7 +104,9 @@ def optimize2(methodology,jobName,Stores,Categories,tierCounts,increment,weights
 
     print('completed all of the function definitions')
     # Identify the total amount of space to fill in the optimization for each location and for all locations
-    locSpaceToFill = pd.Series(mergedPreOptCF.groupby('Store')['Space_to_Fill'].sum())
+    # locSpaceToFill = pd.Series(mergedPreOptCF.groupby('Store')['Space_to_Fill'].sum())
+    locSpaceToFill = mergedPreOptCF.groupby(level=0)['Space_to_Fill'].agg(np.mean)
+
     aggSpaceToFill = locSpaceToFill.sum()
 
     # Hard-coded tolerance limits for balance back constraints
@@ -157,7 +161,6 @@ def optimize2(methodology,jobName,Stores,Categories,tierCounts,increment,weights
     # Initialize the optimization problem
     NewOptim = LpProblem(jobName, LpMinimize)
     print('initialized problem')
-    mergedPreOptCF.set_index(['Store','Category'],inplace=True)
 
     # Create objective function data
     if methodology == "traditional":
@@ -165,7 +168,7 @@ def optimize2(methodology,jobName,Stores,Categories,tierCounts,increment,weights
         objectivetype = "Total Error"
     else: #since methodology == "enhanced"
         objective = createNegSPUByLevel(Stores, Categories, Levels, mergedPreOptCF, weights)
-        print(objective.head())
+        # print(objective.head())
         objectivetype = "Total Negative SPU"
     print('created objective function data')
     # Add the objective function to the optimization problem
@@ -235,8 +238,10 @@ def optimize2(methodology,jobName,Stores,Categories,tierCounts,increment,weights
     #Time stamp for optimization solve time
     # start_seconds = dt.datetime.today().hour*60*60+ dt.datetime.today().minute*60 + dt.datetime.today().second
 
+    NewOptim.solve()
+
     # Solve the problem using open source solver
-    NewOptim.solve(pulp.PULP_CBC_CMD(msg=1))
+    # NewOptim.solve(pulp.PULP_CBC_CMD(msg=1))
     # solver = "CBC" #for unit testing
 
     #Solve the problem using Gurobi

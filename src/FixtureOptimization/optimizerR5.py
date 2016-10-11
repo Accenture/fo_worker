@@ -11,71 +11,11 @@ from pulp import *
 import numpy as np
 import pandas as pd
 import datetime as dt
+import math
+from scipy.special import erf
 
 
-def createLevels(mergedPreOptCF, increment):
-    minLevel = mergedPreOptCF.loc[:, 'Lower_Limit'].min()
-    maxLevel = mergedPreOptCF.loc[:, 'Upper_Limit'].max()
-    Levels = list(np.arange(minLevel, maxLevel + increment, increment))
-    if 0.0 not in Levels:
-        Levels.append(np.abs(0.0))
-
-
-    return Levels
-
-
-# Helper function for createSPUByLevel function, to forecast weighted combination of sales, profit, and units
-# str_cat is the row of the curve-fitting output for an individual store and category
-# variable can take on the values of "Sales", "Profit", or "Units"
-def forecast(str_cat, space, variable):
-    if space < str_cat["Scaled_BP_" + variable]:
-        value = space * (str_cat["Scaled_Alpha_" + variable] * (erf(
-            (str_cat["Scaled_BP_" + variable] - str_cat["Scaled_Shift_" + variable]) / (
-                math.sqrt(2) * str_cat["Scaled_Beta_" + variable]))) / str_cat["Scaled_BP_" + variable])
-    else:
-        value = str_cat["Scaled_Alpha_" + variable] * erf(
-            (space - str_cat["Scaled_Shift_" + variable]) / (math.sqrt(2) * str_cat["Scaled_Beta_" + variable]))
-
-    return value
-
-
-# Helper function for optimize function, to create objective function of SPU by level for Enhanced optimizations
-def createNegSPUByLevel(Stores, Categories, Levels, curveFittingOutput, enhMetrics):
-    # Create n-dimensional array to store Estimated SPU by level
-    est_neg_spu_by_lev = np.zeros((len(Stores), len(Categories), len(Levels)))
-
-    sU = "Sales"
-    pU = "Profit"
-    uU = "Units"
-    sL = "sales"
-    pL = "profits"
-
-    # Calculate SPU by level
-    for (i, Store) in enumerate(Stores):
-            for (k, Level) in enumerate(Levels):
-                str_cat = curveFittingOutput.loc[Store, Category]
-                est_neg_spu_by_lev[i][j][k] = - (
-                    (enhMetrics[sL] / 100) * forecast(str_cat, Level, sU) + (enhMetrics[pL] / 100) * forecast(str_cat,
-                                                                                                              Level,
-                                                                                                              pU) + (
-                        enhMetrics[uL] / 100) * forecast(str_cat, Level, uU))
-
-    return est_neg_spu_by_lev
-
-
-# Helper function for optimize function, to create objective function of error by level for Traditional optimizations
-def createErrorByLevel(Stores, Categories, Levels, mergedCurveFitting):
-    # Create n-dimensional array to store error by level
-    error = np.zeros((len(Stores), len(Categories), len(Levels)))
-
-    # Calculate error by level
-    for (i, Store) in enumerate(Stores):
-        for (j, Category) in enumerate(Categories):
-            for (k, Level) in enumerate(Levels):
-                error[i][j][k] = np.absolute(mergedCurveFitting.loc[Store, Category]["Optimal Space"] - Level)
-    return error
-
-def optimize(jobName,Stores,Categories,tierCounts,spaceBound,increment,dataMunged):
+def optimize(jobName,optimizationType,Stores,Categories,tierCounts,spaceBound,increment,dataMunged):
     """
     Run an LP-based optimization
 
@@ -87,6 +27,68 @@ def optimize(jobName,Stores,Categories,tierCounts,spaceBound,increment,dataMunge
     Synopsis:
         I just wrapped the script from Ken in a callable - DCE
     """
+
+    def createLevels(mergedPreOptCF, increment):
+        minLevel = mergedPreOptCF.loc[:, 'Lower_Limit'].min()
+        maxLevel = mergedPreOptCF.loc[:, 'Upper_Limit'].max()
+        Levels = list(np.arange(minLevel, maxLevel + increment, increment))
+        if 0.0 not in Levels:
+            Levels.append(np.abs(0.0))
+
+        return Levels
+
+    def forecast(str_cat, space, variable):
+        if space < str_cat["Scaled_BP_" + variable]:
+            value = space * (str_cat["Scaled_Alpha_" + variable] * (erf(
+                (str_cat["Scaled_BP_" + variable] - str_cat["Scaled_Shift_" + variable]) / (
+                    math.sqrt(2) * str_cat["Scaled_Beta_" + variable]))) / str_cat["Scaled_BP_" + variable])
+        else:
+            value = str_cat["Scaled_Alpha_" + variable] * erf(
+                (space - str_cat["Scaled_Shift_" + variable]) / (math.sqrt(2) * str_cat["Scaled_Beta_" + variable]))
+
+        return value
+
+    # Helper function for optimize function, to create objective function of SPU by level for Enhanced optimizations
+    def createNegSPUByLevel(Stores, Categories, Levels, curveFittingOutput, enhMetrics):
+        # Helper function for createSPUByLevel function, to forecast weighted combination of sales, profit, and units
+        # str_cat is the row of the curve-fitting output for an individual store and category
+        # variable can take on the values of "Sales", "Profit", or "Units"
+
+        # Create n-dimensional array to store Estimated SPU by level
+        est_neg_spu_by_lev = np.zeros((len(Stores), len(Categories), len(Levels)))
+
+        sU = "Sales"
+        pU = "Profit"
+        uU = "Units"
+        sL = "sales"
+        pL = "profits"
+        uL = "units"
+
+        # Calculate SPU by level
+        for (i, Store) in enumerate(Stores):
+            for (j, Category) in enumerate(Categories):
+                for (k, Level) in enumerate(Levels):
+                    str_cat = curveFittingOutput.loc[Store, Category]
+                    est_neg_spu_by_lev[i][j][k] = - (
+                        (enhMetrics[sL] / 100) * forecast(str_cat, Level, sU) + (enhMetrics[pL] / 100) * forecast(str_cat,
+                                                                                                                Level,
+                                                                                                                pU) + (
+                            enhMetrics[uL] / 100) * forecast(str_cat, Level, uU))
+
+        return est_neg_spu_by_lev
+
+    
+    # Helper function for optimize function, to create objective function of error by level for Traditional optimizations
+    def createErrorByLevel(Stores, Categories, Levels, mergedCurveFitting):
+        # Create n-dimensional array to store error by level
+        error = np.zeros((len(Stores), len(Categories), len(Levels)))
+
+        # Calculate error by level
+        for (i, Store) in enumerate(Stores):
+            for (j, Category) in enumerate(Categories):
+                for (k, Level) in enumerate(Levels):
+                    error[i][j][k] = np.absolute(mergedCurveFitting.loc[Store, Category]["Optimal Space"] - Level)
+        return error
 
     def roundValue(cVal, increment):
         if np.mod(round(cVal, 3), increment) > increment / 2:
@@ -168,13 +170,15 @@ def optimize(jobName,Stores,Categories,tierCounts,spaceBound,increment,dataMunge
         #         tier_count["Upper_Bound"][Category] += 1
 
     print('Brand Exit Done')
-    BA = np.zeros((len(Stores), len(Categories), len(Levels)))
-    error = np.zeros((len(Stores), len(Categories), len(Levels)))
-    for (i, Store) in enumerate(Stores):
-        for (j, Category) in enumerate(Categories):
-            for (k, Level) in enumerate(Levels):
-                BA[i][j][k] = opt_amt[Category].iloc[i]
-                error[i][j][k] = np.absolute(BA[i][j][k] - Level)
+    if optimizationType == 'traditional':
+        BA = np.zeros((len(Stores), len(Categories), len(Levels)))
+        error = np.zeros((len(Stores), len(Categories), len(Levels)))
+        for (i, Store) in enumerate(Stores):
+            for (j, Category) in enumerate(Categories):
+                for (k, Level) in enumerate(Levels):
+                    BA[i][j][k] = opt_amt[Category].iloc[i]
+                    error[i][j][k] = np.absolute(BA[i][j][k] - Level)
+
 
     NewOptim += lpSum([(st[Store][Category][Level] * error[i][j][k]) for (i, Store) in enumerate(Stores) for (j, Category) in enumerate(Categories) for (k, Level) in enumerate(Levels)]), ""
     print('created objective function')
