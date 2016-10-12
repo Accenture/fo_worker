@@ -212,7 +212,7 @@ def optimize2(methodology,jobName,Stores,Categories,tierCounts,increment,weights
     print('finished first block of constraints')
     totalTiers=0
     for (j,Category) in enumerate(Categories):
-        totalTiers=totalTiers+tierCounts[Category][1]
+        # totalTiers=totalTiers+tierCounts[Category][1]
         # The number of created tiers must be within the tier count limits for each product.
         NewOptim += lpSum([ct[Category][Level] for (k,Level) in enumerate(Levels)]) >= tierCounts[Category][0], "Tier Count Lower Limit: CAT " + str(Category)
         NewOptim += lpSum([ct[Category][Level] for (k,Level) in enumerate(Levels)]) <= tierCounts[Category][1], "Tier Count Upper Limit: CAT " + str(Category)
@@ -227,8 +227,8 @@ def optimize2(methodology,jobName,Stores,Categories,tierCounts,increment,weights
             #        NewOptim += lpSum([st[Store][Category][Level] for (i, Store) in enumerate(Stores)]) >= m * ct[Category][Level], "Minimum Stores per Tier: CAT " + Category + ", LEV: " + str(Level)
     print('finished second block of constraints')
 
-    NewOptim += lpSum([ct[Category][Level] for (j, Category) in enumerate(Categories) for (k, Level) in enumerate(Levels)]) <= totalTiers
-    print('finished total tiers constraint')
+    # NewOptim += lpSum([ct[Category][Level] for (j, Category) in enumerate(Categories) for (k, Level) in enumerate(Levels)]) <= totalTiers
+    # print('finished total tiers constraint')
     
     # The total space allocated to products across all locations must be within the aggregate balance back tolerance limit.
     NewOptim += lpSum([st[Store][Category][Level] * Level for (i, Store) in enumerate(Stores) for (j, Category) in enumerate(Categories) for (k, Level) in enumerate(Levels)]) >= aggSpaceToFill * (1 - aggBalBackBound), "Aggregate Balance Back Lower Limit"

@@ -8,6 +8,7 @@ import sys
 # brandExit=pd.read_csv('exit_data.csv',header=0,skiprows=[1])
 
 def ksMerge(optimizationType,transactions,space,brandExit=None,futureSpace=None):
+    space.rename(columns={'VSG ': 'VSG'}, inplace=True)
     if optimizationType == 'tiered':
         def brandExitMung(df, Stores, Categories):
             brand_exit = pd.DataFrame(index=Stores, columns=Categories)
