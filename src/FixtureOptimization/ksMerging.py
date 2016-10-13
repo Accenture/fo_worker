@@ -60,7 +60,7 @@ def ksMerge(optimizationType,transactions,space,brandExit=None,futureSpace=None)
             masterData=pd.merge(masterData,futureSpace,on=['Store','VSG','Climate'])
 
         masterData = masterData.sort_values(by=['Store', 'Category']).reset_index(drop=True)
-        mergeTrad = masterData
+        mergeTrad = masterData.copy()
         if brandExit is None:
             masterData['Exit Flag'] = 0
         else:

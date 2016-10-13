@@ -110,8 +110,8 @@ def optimize2(methodology,jobName,Stores,Categories,tierCounts,increment,weights
     aggSpaceToFill = locSpaceToFill.sum()
 
     # Hard-coded tolerance limits for balance back constraints
-    aggBalBackBound = 0.05 #5%
-    locBalBackBound = 0.10 #10%
+    # aggBalBackBound = 0.05 #5%
+    # locBalBackBound = 0.10 #10%
 
     print('now have balance back bounds')
     # EXPLORATORY ONLY: ELASTIC BALANCE BACK
@@ -120,10 +120,10 @@ def optimize2(methodology,jobName,Stores,Categories,tierCounts,increment,weights
     # The penalty is incurred if the filled space goes beyond the free bound % difference from space to fill
     # The tighter the bounds and/or higher the penalties, the slower the optimization run time
     # The penalty incurred should be different for Traditional vs Enhanced as the scale of the objective function differs
-    #aggBalBackFreeBound = 0.01 #exploratory, value would have to be determined through exploratory analysis
-    #aggBalBackPenalty = increment*10 #exploratory, value would have to be determined through exploratory analysis
-    #locBalBackFreeBound = 0.05 #exploratory, value would have to be determined through exploratory analysis
-    #locBalBackPenalty = increment #exploratory, value would have to be determined through exploratory analysis
+    aggBalBackFreeBound = 0.01 #exploratory, value would have to be determined through exploratory analysis
+    aggBalBackPenalty = increment*10 #exploratory, value would have to be determined through exploratory analysis
+    locBalBackFreeBound = 0.05 #exploratory, value would have to be determined through exploratory analysis
+    locBalBackPenalty = increment #exploratory, value would have to be determined through exploratory analysis
 
     # try:
     #     locBalBackBoundAdj = locSpaceToFill.apply(lambda row:adjustForTwoIncr(row,locBalBackBound,increment))
@@ -131,11 +131,11 @@ def optimize2(methodology,jobName,Stores,Categories,tierCounts,increment,weights
     #     print("Divide by 0. \n There is a store that doesn't have any space assigned whatsoever.")
     #     return False
 
-    locBalBackBoundAdj = locSpaceToFill.apply(lambda row:adjustForTwoIncr(row,locBalBackBound,increment))
+    # locBalBackBoundAdj = locSpaceToFill.apply(lambda row:adjustForTwoIncr(row,locBalBackBound,increment))
 
     print('we have local balance back')
     # EXPLORATORY ONLY: ELASTIC BALANCE BACK
-    #locBalBackFreeBoundAdj = locSpaceToFill.apply(lambda row:adjustForTwoIncr(row,locBalBackFreeBound))
+    locBalBackFreeBoundAdj = locSpaceToFill.apply(lambda row:adjustForTwoIncr(row,locBalBackFreeBound,increment))
 
     # Create eligible space levels
     mergedPreOptCF["Upper_Limit"] = mergedPreOptCF["Upper_Limit"].apply(lambda x: roundValue(x,increment))
@@ -188,18 +188,18 @@ def optimize2(methodology,jobName,Stores,Categories,tierCounts,increment,weights
     for (i,Store) in enumerate(Stores):
         # TODO: Exploratory analysis on impact of balance back on financials for Enhanced
         # Store-level balance back constraint: the total space allocated to products at each location must be within the individual location balance back tolerance limit
-        NewOptim += lpSum([(st[Store][Category][Level]) * Level for (j, Category) in enumerate(Categories) for (k, Level) in
-                           enumerate(Levels)]) >= locSpaceToFill[Store] * (1 - locBalBackBoundAdj[Store]), "Location Balance Back Lower Limit: STR " + str(Store)
-        NewOptim += lpSum([(st[Store][Category][Level]) * Level for (j, Category) in enumerate(Categories) for (k, Level) in
-                           enumerate(Levels)]) <= locSpaceToFill[Store] * (1 + locBalBackBoundAdj[Store]), "Location Balance Back Upper Limit: STR " + str(Store)
+        # NewOptim += lpSum([(st[Store][Category][Level]) * Level for (j, Category) in enumerate(Categories) for (k, Level) in
+        #                    enumerate(Levels)]) >= locSpaceToFill[Store] * (1 - locBalBackBoundAdj[Store]), "Location Balance Back Lower Limit: STR " + str(Store)
+        # NewOptim += lpSum([(st[Store][Category][Level]) * Level for (j, Category) in enumerate(Categories) for (k, Level) in
+        #                    enumerate(Levels)]) <= locSpaceToFill[Store] * (1 + locBalBackBoundAdj[Store]), "Location Balance Back Upper Limit: STR " + str(Store)
 
         # EXPLORATORY ONLY: ELASTIC BALANCE BACK
         # Penalize balance back by introducing an elastic subproblem constraint
         # Increases optimization run time
         # makeElasticSubProblem only works on minimize problems, so Enhanced must be written as minimize negative SPU
-        #eLocSpace = lpSum([(st[Store][Category][Level]) * Level for (j, Category) in enumerate(Categories) for (k, Level) in enumerate(Levels)])
-        #cLocBalBackPenalty = LpConstraint(e=eLocSpace, sense=LpConstraintEQ, name="Location Balance Back Penalty: Store " + str(Store),rhs=locSpaceToFill[Store])
-        #NewOptim.extend(cLocBalBackPenalty.makeElasticSubProblem(penalty=locBalBackPenalty,proportionFreeBound=locBalBackFreeBoundAdj[Store]))
+        eLocSpace = lpSum([(st[Store][Category][Level]) * Level for (j, Category) in enumerate(Categories) for (k, Level) in enumerate(Levels)])
+        cLocBalBackPenalty = LpConstraint(e=eLocSpace, sense=LpConstraintEQ, name="Location Balance Back Penalty: Store " + str(Store),rhs=locSpaceToFill[Store])
+        NewOptim.extend(cLocBalBackPenalty.makeElasticSubProblem(penalty=locBalBackPenalty,proportionFreeBound=locBalBackFreeBoundAdj[Store]))
 
         for (j,Category) in enumerate(Categories):
             # print('we got through the first part')
@@ -210,9 +210,9 @@ def optimize2(methodology,jobName,Stores,Categories,tierCounts,increment,weights
             NewOptim += lpSum([st[Store][Category][Level] * Level for (k,Level) in enumerate(Levels)] ) >= mergedPreOptCF["Lower_Limit"].loc[Store,Category],"Space Lower Limit: STR " + str(Store) + ", CAT " + str(Category)
             NewOptim += lpSum([st[Store][Category][Level] * Level for (k,Level) in enumerate(Levels)] ) <= mergedPreOptCF["Upper_Limit"].loc[Store,Category],"Space Upper Limit: STR " + str(Store) + ", CAT " + str(Category)
     print('finished first block of constraints')
-    totalTiers=0
+    # totalTiers=0
     for (j,Category) in enumerate(Categories):
-        totalTiers=totalTiers+tierCounts[Category][1]
+        # totalTiers=totalTiers+tierCounts[Category][1]
         # The number of created tiers must be within the tier count limits for each product.
         NewOptim += lpSum([ct[Category][Level] for (k,Level) in enumerate(Levels)]) >= tierCounts[Category][0], "Tier Count Lower Limit: CAT " + str(Category)
         NewOptim += lpSum([ct[Category][Level] for (k,Level) in enumerate(Levels)]) <= tierCounts[Category][1], "Tier Count Upper Limit: CAT " + str(Category)
@@ -227,20 +227,20 @@ def optimize2(methodology,jobName,Stores,Categories,tierCounts,increment,weights
             #        NewOptim += lpSum([st[Store][Category][Level] for (i, Store) in enumerate(Stores)]) >= m * ct[Category][Level], "Minimum Stores per Tier: CAT " + Category + ", LEV: " + str(Level)
     print('finished second block of constraints')
 
-    NewOptim += lpSum([ct[Category][Level] for (j, Category) in enumerate(Categories) for (k, Level) in enumerate(Levels)]) <= totalTiers
+    # NewOptim += lpSum([ct[Category][Level] for (j, Category) in enumerate(Categories) for (k, Level) in enumerate(Levels)]) <= totalTiers
     print('finished total tiers constraint')
     
     # The total space allocated to products across all locations must be within the aggregate balance back tolerance limit.
-    NewOptim += lpSum([st[Store][Category][Level] * Level for (i, Store) in enumerate(Stores) for (j, Category) in enumerate(Categories) for (k, Level) in enumerate(Levels)]) >= aggSpaceToFill * (1 - aggBalBackBound), "Aggregate Balance Back Lower Limit"
-    NewOptim += lpSum([st[Store][Category][Level] * Level for (i, Store) in enumerate(Stores) for (j, Category) in enumerate(Categories) for (k, Level) in enumerate(Levels)]) <= aggSpaceToFill * (1 + aggBalBackBound), "Aggregate Balance Back Upper Limit"
+    # NewOptim += lpSum([st[Store][Category][Level] * Level for (i, Store) in enumerate(Stores) for (j, Category) in enumerate(Categories) for (k, Level) in enumerate(Levels)]) >= aggSpaceToFill * (1 - aggBalBackBound), "Aggregate Balance Back Lower Limit"
+    # NewOptim += lpSum([st[Store][Category][Level] * Level for (i, Store) in enumerate(Stores) for (j, Category) in enumerate(Categories) for (k, Level) in enumerate(Levels)]) <= aggSpaceToFill * (1 + aggBalBackBound), "Aggregate Balance Back Upper Limit"
 
     # EXPLORATORY ONLY: ELASTIC BALANCE BACK
     # Penalize balance back by introducing an elastic subproblem constraint
     # Increases optimization run time
     # makeElasticSubProblem only works on minimize problems, so Enhanced must be written as minimize negative SPU
-    #eAggSpace = lpSum([st[Store][Category][Level] * Level for (i, Store) in enumerate(Stores) for (j, Category) in enumerate(Categories) for (k, Level) in enumerate(Levels)])
-    #cAggBalBackPenalty = LpConstraint(e=eAggSpace,sense=LpConstraintEQ,name="Aggregate Balance Back Penalty",rhs = aggSpaceToFill)
-    #NewOptim.extend(cAggBalBackPenalty.makeElasticSubProblem(penalty= aggBalBackPenalty,proportionFreeBound = aggBalBackFreeBound))
+    eAggSpace = lpSum([st[Store][Category][Level] * Level for (i, Store) in enumerate(Stores) for (j, Category) in enumerate(Categories) for (k, Level) in enumerate(Levels)])
+    cAggBalBackPenalty = LpConstraint(e=eAggSpace,sense=LpConstraintEQ,name="Aggregate Balance Back Penalty",rhs = aggSpaceToFill)
+    NewOptim.extend(cAggBalBackPenalty.makeElasticSubProblem(penalty= aggBalBackPenalty,proportionFreeBound = aggBalBackFreeBound))
 
     #Time stamp for optimization solve time
     # start_seconds = dt.datetime.today().hour*60*60+ dt.datetime.today().minute*60 + dt.datetime.today().second

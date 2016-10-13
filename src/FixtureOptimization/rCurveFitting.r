@@ -125,7 +125,7 @@ curvefitting_boundsetting<-function(master,bound_input,increment,pct_chg_limit,s
                  ifelse(eligible[q,paste0("BA_Prod_",target)]>prodStats[currCatCG,"x.q3.75."],
                         "High",
                         "Medium"))
-      } else if (prodStats[currCatCG,"x.Str_Count"] >= 300){
+      } else if (prodStats[currCatCG,"x.Str_Count"] >= 400){
         eligible[q,paste0("BA_Prod_Group_",target)] <- 
           ifelse(eligible[q,paste0("BA_Prod_",target)]<prodStats[currCatCG,"x.q2.50."],
                  "Low",
