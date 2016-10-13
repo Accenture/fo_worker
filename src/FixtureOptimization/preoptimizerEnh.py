@@ -134,6 +134,9 @@ def preoptimizeEnh(optimizationType,dataMunged, salesPenThreshold, mAdjustment, 
     adj_p.fillna(0)
     information=pd.merge(dataMunged,pd.melt(adj_p.reset_index(), id_vars=['Store'], var_name='Category', value_name='Penetration'),on=['Store','Category'])
     information['Optimal Space'] = information['New Space'] * information['Penetration']
+    print('attempting to keep sales pen')
+    information = pd.merge(information,pd.melt(calcPen(sales).reset_index(),id_vars=['Store'], var_name='Category',value_name='Sales Penetration'),on=['Store','Category'])
     information = information.apply(lambda x: pd.to_numeric(x, errors='ignore'))
     # information['Optimal Space']=information['Optimal Space'].apply(lambda x: roundValue(x,increment))
+    print(information.columns)
     return information

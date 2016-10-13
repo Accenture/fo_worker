@@ -15,7 +15,7 @@ import datetime as dt
 def optimize2(methodology,jobName,Stores,Categories,tierCounts,increment,weights,cfbsOutput,preOpt,salesPen):
     print('in the new optimization')
     # Helper function for optimize function, to create eligible space levels
-    mergedPreOptCF = pd.merge(cfbsOutput, preOpt[['Store', 'Category', 'Optimal Space', 'Penetration','Exit Flag']],
+    mergedPreOptCF = pd.merge(cfbsOutput, preOpt[['Store', 'Category', 'Optimal Space', 'Penetration','Exit Flag','Sales Penetration']],
                               on=['Store', 'Category'])
 
     mergedPreOptCF = mergedPreOptCF.apply(lambda x: pd.to_numeric(x, errors='ignore'))
@@ -176,7 +176,6 @@ def optimize2(methodology,jobName,Stores,Categories,tierCounts,increment,weights
         objectivetype = "Total Error"
     else: #since methodology == "enhanced"
         objective = createNegSPUByLevel(Stores, Categories, Levels, mergedPreOptCF, weights)
-        # print(objective.head())
         objectivetype = "Total Negative SPU"
     print('created objective function data')
     # Add the objective function to the optimization problem
@@ -210,7 +209,7 @@ def optimize2(methodology,jobName,Stores,Categories,tierCounts,increment,weights
             # The space allocated to each product at each location must be between the minimum and the maximum allowed for that product at the location.
             NewOptim += lpSum([st[Store][Category][Level] * Level for (k,Level) in enumerate(Levels)] ) >= mergedPreOptCF["Lower_Limit"].loc[Store,Category],"Space Lower Limit: STR " + str(Store) + ", CAT " + str(Category)
             NewOptim += lpSum([st[Store][Category][Level] * Level for (k,Level) in enumerate(Levels)] ) <= mergedPreOptCF["Upper_Limit"].loc[Store,Category],"Space Upper Limit: STR " + str(Store) + ", CAT " + str(Category)
-            if mergedPreOptCF['Penetration'].loc[Store,Category] < salesPen:
+            if mergedPreOptCF['Sales Penetration'].loc[Store,Category] < salesPen:
                 NewOptim += lpSum(st[Store][Category][0]) == 1
 
     print('finished first block of constraints')
