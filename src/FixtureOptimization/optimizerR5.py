@@ -64,10 +64,8 @@ def optimize(jobName,Stores,Categories,tierCounts,spaceBound,increment,dataMunge
     Levels = list(np.arange(minLevel, maxLevel + increment, increment))
     if 0.0 not in Levels:
         Levels.insert(0,0.0)
-    print(Levels)
     print("created levels")
     spaceBound = spaceBound.set_index('Category')
-    print(spaceBound.head())
 
 
     b = .05
@@ -80,7 +78,6 @@ def optimize(jobName,Stores,Categories,tierCounts,spaceBound,increment,dataMunge
     # Create a Vectors & Arrays of required variables
     # Calculate Total fixtures(TotFixt) per store by summing up the individual fixture counts
     W = opt_amt.sum(axis=1).sum(axis=0)
-    print(W)
     TFC = opt_amt.sum(axis=1)
 
     # TFC = TFC.apply(lambda row: adjustForTwoIncr(row, bI, increment))

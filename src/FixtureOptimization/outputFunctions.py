@@ -10,7 +10,7 @@ def createLong(optimSpace, cfbs=None):
     if cfbs is not None:
         print('initial merge')
         lOutput = pd.merge(
-            optimSpace[['Store', 'Climate', 'VSG', 'Category', 'Historical Space', 'New Space', 'Result Space', 'Penetration', 'Optimal Space']], cfbs,
+            optimSpace[['Store', 'Climate', 'VSG', 'Category', 'Current Space', 'New Space', 'Result Space', 'Penetration', 'Optimal Space']], cfbs,
             on=['Store', 'Climate', 'Category'])
         # lOutput['Penetration']= ""
         # lOutput['Optimal Space']= ""
@@ -21,11 +21,11 @@ def createLong(optimSpace, cfbs=None):
         for v in variables:
             lOutput["Estimated " + v] = np.where(lOutput["Result Space"] < lOutput["Scaled_BP_" + v],
                                                  lOutput["Result Space"] * (lOutput["Scaled_Alpha_" + v] * (erf(
-                                                     (lOutput["Scaled_BP_" + v] - lOutput["Scaled_Shift_" + v]) / (
+                                                     (lOutput["Scaled_BP_" + v] - lOutput["Scaled_Shift_" + v]).div(
                                                      math.sqrt(2) * lOutput["Scaled_Beta_" + v]))) / lOutput[
                                                                                 "Scaled_BP_" + v]),
                                                  lOutput["Scaled_Alpha_" + v] * erf(
-                                                     (lOutput["Result Space"] - lOutput["Scaled_Shift_" + v]) / (
+                                                     (lOutput["Result Space"] - lOutput["Scaled_Shift_" + v]).div(
                                                      math.sqrt(2) * lOutput["Scaled_Beta_" + v])))
         print("Finished Forecasting")
         # Reset the index and name the columns
@@ -43,12 +43,16 @@ def createLong(optimSpace, cfbs=None):
         print('Dropped more Columns')
         lOutput.drop(['Store_Group_Sales','Store_Group_Units','Store_Group_Profit'], axis=1, inplace=True)
         print('Dropped Group Columns')
+        lOutput = lOutput.rename(
+            columns={'Sales': 'Current Sales $', 'Profit': 'Current Profit $', 'Units': 'Current Sales Units',
+                     'Estimated Sales': 'Estimated Sales $', 'Estimated Profit': 'Estimated Profit $',
+                     'Estimated Units': 'Estimated Sales Units'})
         lOutput = lOutput[
-            ['Store', 'Climate', 'VSG', 'Category', 'Result Space', 'Historical Space', 'Optimal Space', 'Penetration',
-             'Sales', 'Profit', 'Units', 'Estimated Sales', 'Estimated Profit', 'Estimated Units']]
+            ['Store', 'Climate', 'VSG', 'Category', 'Result Space', 'Current Space', 'Optimal Space', 'Penetration',
+             'Current Sales $', 'Current Profit $', 'Current Sales Units', 'Estimated Sales $', 'Estimated Profit $', 'Estimated Sales Units']]
     else:
         print('went to else')
-        lOutput=optimSpace[['Store', 'Climate', 'VSG', 'Category', 'Result Space', 'Historical Space','Optimal Space', 'Penetration']]
+        lOutput=optimSpace[['Store', 'Climate', 'VSG', 'Category', 'Result Space', 'Current Space','Optimal Space', 'Penetration']]
     lOutput.sort(columns=['Store'],axis=0,inplace=True)
     return lOutput
 
@@ -57,7 +61,7 @@ def createWide(long, jobType, optimizationType):
 
     # Set up for pivot by renaming metrics and converting blanks to 0's for Enhanced in long table
     adjusted_long = long.rename(
-        columns={'Historical Space': 'current', "Optimal Space": "optimal", "Result Space": "result",
+        columns={'Current Space': 'current', "Optimal Space": "optimal", "Result Space": "result",
                  "Penetration": "penetration"})
 
     print('renamed the columns')

@@ -99,7 +99,6 @@ def roundDF(array, increment):
     return rounded
 
 def preoptimizeEnh(optimizationType,dataMunged, salesPenThreshold, mAdjustment, optimizedMetrics, increment):
-    print(dataMunged.dtypes)
 
     sales = dataMunged.pivot(index='Store',columns='Category',values='Sales $')
     sold_units = dataMunged.pivot(index='Store',columns='Category',values='Sales Units')
@@ -136,8 +135,5 @@ def preoptimizeEnh(optimizationType,dataMunged, salesPenThreshold, mAdjustment, 
     information=pd.merge(dataMunged,pd.melt(adj_p.reset_index(), id_vars=['Store'], var_name='Category', value_name='Penetration'),on=['Store','Category'])
     information['Optimal Space'] = information['New Space'] * information['Penetration']
     information = information.apply(lambda x: pd.to_numeric(x, errors='ignore'))
-    print(information.head())
-    print(information.tail())
-    print(information.dtypes)
     # information['Optimal Space']=information['Optimal Space'].apply(lambda x: roundValue(x,increment))
     return information

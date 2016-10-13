@@ -1,4 +1,4 @@
-from scipy.special import erf
+# from scipy.special import erf
 # from gurobipy import *
 import math
 from pulp import *
@@ -47,11 +47,11 @@ def optimize2(methodology,jobName,Stores,Categories,tierCounts,increment,weights
     def forecast(str_cat, space, variable):
 
         if space < str_cat["Scaled_BP_" + variable]:
-            value = space * (str_cat["Scaled_Alpha_" + variable] * (erf(
+            value = space * (str_cat["Scaled_Alpha_" + variable] * (math.erf(
                 (str_cat["Scaled_BP_" + variable] - str_cat["Scaled_Shift_" + variable]) / ((
                 math.sqrt(2) * str_cat["Scaled_Beta_" + variable])))) / str_cat["Scaled_BP_" + variable])
         else:
-            value = str_cat["Scaled_Alpha_" + variable] * erf(
+            value = str_cat["Scaled_Alpha_" + variable] * math.erf(
                 (space - str_cat["Scaled_Shift_" + variable]) / (math.sqrt(2) * str_cat["Scaled_Beta_" + variable]))
 
         return value

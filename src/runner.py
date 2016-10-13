@@ -162,8 +162,13 @@ def run(body):
     print('Created Long Output')
     wideID = str(create_output_artifact_from_dataframe(createWide(longOutput, msg['jobType'], msg['optimizationType'])))
     print('Created Wide Output')
-    longID= str(create_output_artifact_from_dataframe(longOutput))
+    longID= str(create_output_artifact_from_dataframe(longOutput[['Store','Category', 'Climate', 'VSG', 'Result Space', 'Current Space', 'Optimal Space']]))
     if cfbsArtifact[1] is not None:
+        longID = str(create_output_artifact_from_dataframe(longOutput[
+                                                               ['Store', 'Climate', 'VSG', 'Category', 'Result Space',
+                                                                'Current Space', 'Current Sales $', 'Current Profit $', 'Current Sales Units',
+                                                                'Estimated Sales $', 'Estimated Profit $',
+                                                                'Estimated Sales Units']]))
         analyticsID = str(create_output_artifact_from_dataframe(cfbsArtifact[1]))
         print('Created analytics ID')
     else:
