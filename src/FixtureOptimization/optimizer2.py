@@ -12,14 +12,15 @@ import config
 import datetime as dt
 
 # Run tiered optimization algorithm
-def optimize2(methodology,jobName,Stores,Categories,tierCounts,increment,weights,cfbsOutput,preOpt):
+def optimize2(methodology,jobName,Stores,Categories,tierCounts,increment,weights,cfbsOutput,preOpt,salesPen):
     print('in the new optimization')
     # Helper function for optimize function, to create eligible space levels
-    mergedPreOptCF = pd.merge(cfbsOutput, preOpt[['Store', 'Category', 'Optimal Space', 'Penetration']],
+    mergedPreOptCF = pd.merge(cfbsOutput, preOpt[['Store', 'Category', 'Optimal Space', 'Penetration','Exit Flag']],
                               on=['Store', 'Category'])
 
     mergedPreOptCF = mergedPreOptCF.apply(lambda x: pd.to_numeric(x, errors='ignore'))
     mergedPreOptCF.set_index(['Store','Category'],inplace=True)
+    print(mergedPreOptCF.columns)
 
     print('merged the files in the new optimization')
     def createLevels(mergedPreOptCF, increment):
@@ -209,6 +210,9 @@ def optimize2(methodology,jobName,Stores,Categories,tierCounts,increment,weights
             # The space allocated to each product at each location must be between the minimum and the maximum allowed for that product at the location.
             NewOptim += lpSum([st[Store][Category][Level] * Level for (k,Level) in enumerate(Levels)] ) >= mergedPreOptCF["Lower_Limit"].loc[Store,Category],"Space Lower Limit: STR " + str(Store) + ", CAT " + str(Category)
             NewOptim += lpSum([st[Store][Category][Level] * Level for (k,Level) in enumerate(Levels)] ) <= mergedPreOptCF["Upper_Limit"].loc[Store,Category],"Space Upper Limit: STR " + str(Store) + ", CAT " + str(Category)
+            if mergedPreOptCF['Penetration'].loc[Store,Category] < salesPen:
+                NewOptim += lpSum(st[Store][Category][0]) == 1
+
     print('finished first block of constraints')
     totalTiers=0
     for (j,Category) in enumerate(Categories):

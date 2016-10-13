@@ -148,12 +148,13 @@ def run(body):
                                       msg['storeCategoryBounds'],
                                       float(msg["salesPenetrationThreshold"]), msg['jobType'],
                                       msg['optimizationType'])
+        print(cfbsArtifact[0].columns)
         print('finished curve fitting')
         print(msg['optimizationType'])
         optimRes = optimize2(methodology=msg['optimizationType'], jobName=msg['meta']['name'],
                              Stores=msg['salesStores'], Categories=msg['salesCategories'], tierCounts=msg['tierCounts'],
                              increment=msg['increment'], weights=msg['optimizedMetrics'], cfbsOutput=cfbsArtifact[0],
-                             preOpt=preOpt)
+                             preOpt=preOpt,salesPen=msg['salesPenetrationThreshold'])
     print('New optimization completed')
 
     # Call functions to create output information
