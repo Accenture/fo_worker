@@ -51,7 +51,7 @@ def optimize(jobName,Stores,Categories,tierCounts,spaceBound,increment,dataMunge
     print("start_time complete")
     opt_amt=dataMunged.pivot(index='Store', columns='Category', values='Optimal Space') #preOpt[1]
     print("dataMunged.pivot complete")
-    brandExitArtifact = dataMunged.pivot(index='Store', columns='Category', values='Exit Flag')
+    #brandExitArtifact = dataMunged.pivot(index='Store', columns='Category', values='Exit Flag')
 
     print("HEY I'M IN THE OPTIMIZATION!!!!!!!")
     ###############################################################################################
