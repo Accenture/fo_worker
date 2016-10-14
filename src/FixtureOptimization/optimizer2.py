@@ -15,10 +15,16 @@ import datetime as dt
 def optimize2(methodology,jobName,Stores,Categories,tierCounts,increment,weights,cfbsOutput,preOpt,salesPen):
     print('in the new optimization')
     # Helper function for optimize function, to create eligible space levels
+    print("cfbsOutput columns:")
+    print(cfbsOutput.columns)
+    print("preOpt columns:")
+    print(preOpt.columns)
     mergedPreOptCF = pd.merge(cfbsOutput, preOpt[['Store', 'Category', 'Optimal Space', 'Penetration','Exit Flag','Sales Penetration']],
                               on=['Store', 'Category'])
+    print('pd.merge complete')
 
     mergedPreOptCF = mergedPreOptCF.apply(lambda x: pd.to_numeric(x, errors='ignore'))
+    print('mergedPreOptCF.apply complete')
     mergedPreOptCF.set_index(['Store','Category'],inplace=True)
     print(mergedPreOptCF.columns)
 
