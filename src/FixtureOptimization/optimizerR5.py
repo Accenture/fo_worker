@@ -39,9 +39,18 @@ def optimize(jobName,Stores,Categories,tierCounts,spaceBound,increment,dataMunge
     spaceBound['Space Upper Limit'] = spaceBound['Space Upper Limit'].apply(lambda x: roundValue(x, increment))
     spaceBound=spaceBound[[0,1,2]]
     print('set up new space bounds')
+    print('dataMunged.columns')
+    print(dataMunged.columns)
+    print('dataMunged.dtypes')
+    print(dataMunged.dtypes)
+    print('dataMunged.head()')
+    print(dataMunged.head())
     dataMunged = dataMunged.apply(lambda x: pd.to_numeric(x, errors='ignore'))
+    print("dataMunged.apply complete")
     start_time = dt.datetime.today().hour*60*60+ dt.datetime.today().minute*60 + dt.datetime.today().second
+    print("start_time complete")
     opt_amt=dataMunged.pivot(index='Store', columns='Category', values='Optimal Space') #preOpt[1]
+    print("dataMunged.pivot complete")
     brandExitArtifact = dataMunged.pivot(index='Store', columns='Category', values='Exit Flag')
 
     print("HEY I'M IN THE OPTIMIZATION!!!!!!!")
