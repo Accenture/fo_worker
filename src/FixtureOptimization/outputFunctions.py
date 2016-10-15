@@ -41,24 +41,20 @@ def createLong(jobType, optimizationType, lOutput):
         print('Dropped more Columns')
         lOutput.drop(['Store_Group_Sales','Store_Group_Units','Store_Group_Profit'], axis=1, inplace=True)
         print('Dropped Group Columns')
-        print('\n\n\n\n\n\n\n')
-        print(lOutput.columns)
-        print('\n\n\n\n\n\n\n')
         lOutput.rename(
             columns={'Sales': 'Current Sales $', 'Profit': 'Current Profit $', 'Units': 'Current Sales Units',
                      'Space': 'Current Space', 'Estimated Sales': 'Estimated Sales $',
                      'Estimated Profit': 'Estimated Profit $', 'Estimated Units': 'Estimated Sales Units',
                      'Optimal Estimated Sales': 'Optimal Estimated Sales $',
                      'Optimal Estimated Profit': 'Optimal Estimated Profit $',
-                     'Optimal Estimated Units': 'Optimal Estimated Sales Units'},
+                     'Optimal Estimated Units': 'Optimal Estimated Sales Units', 'Space_to_Fill': 'Total Store Space'},
             inplace=True)
-        print(lOutput.columns)
         print('finished renaming')
         lOutput = lOutput[
             ['Store', 'Climate', 'VSG', 'Category', 'Result Space', 'Current Space', 'Optimal Space',
-             'Sales Penetration', 'Exit Flag', 'Estimated Sales $', 'Estimated Profit $', 'Estimated Sales Units',
+             'Sales Penetration', 'Estimated Sales $', 'Estimated Profit $', 'Estimated Sales Units',
              'Current Sales $', 'Current Profit $', 'Current Sales Units', 'Optimal Estimated Sales $',
-             'Optimal Estimated Profit $', 'Optimal Estimated Sales Units']]
+             'Optimal Estimated Profit $', 'Optimal Estimated Sales Units','Total Store Space', 'Exit Flag']]
     else:
         print('went to else')
         lOutput = lOutput[
@@ -123,8 +119,6 @@ def createWide(long, jobType, optimizationType):
     wide.reset_index(inplace=True)
     wide.sort(columns=['Store'],axis=0,inplace=True)
     return wide
-
-
 
 # Create summary for user download that applies to Tiered optimizations (type == "Tiered")
 # Calculates store counts by tier and by climate
