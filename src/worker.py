@@ -76,6 +76,16 @@ def main():
             }
         )
         print('RECONCILE DB')
+    def divByZero(db, id):
+        db.jobs.update_one(
+            {'_id': ObjectId(id)},
+            {
+                "$set": {
+                    "status": "Unbounded"
+                }
+            }
+        )
+        print('RECONCILE DB')
 
     def send_notification(ch, id, status):
         res = dict(user_id=id, status=status)
@@ -107,9 +117,17 @@ def main():
                 process_job(run, body)
                 userId = json.loads(body.decode('utf-8'))['userId']
                 send_notification(ch, userId, 'done')
+            except (ZeroDivisionError):
+                LOGGER.error('Division by Zero Error')
+                ch.basic_reject(delivery_tag=method.delivery_tag,
+                                requeue=False)
+                _id = json.loads(body.decode('utf-8'))['_id']
+                userId = json.loads(body.decode('utf-8'))['userId']
+                divByZero(db, _id)
+                send_notification(ch, userId, 'failed')
             except (TimeoutError, ProcessError):
                 print("Job has failed")
-                LOGGER.error('Proecess exited unexpectedly')
+                LOGGER.error('Process exited unexpectedly')
                 ch.basic_reject(delivery_tag=method.delivery_tag,
                                 requeue=False)
                 _id = json.loads(body.decode('utf-8'))['_id']

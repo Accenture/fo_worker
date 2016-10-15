@@ -4,14 +4,12 @@ from scipy.special import erf
 import math
 
 # Create long table for user download
-def createLong(optimSpace, cfbs=None):
+def createLong(jobType, optimizationType, lOutput):
     print('Inside createLong')
+    print(lOutput.columns)
     # Merge the optimize output with the curve-fitting output (which was already merged with the preoptimize output)
-    if cfbs is not None:
+    if optimizationType == 'enhanced':
         print('initial merge')
-        lOutput = pd.merge(
-            optimSpace[['Store', 'Climate', 'VSG', 'Category', 'Current Space', 'New Space', 'Result Space', 'Penetration', 'Optimal Space']], cfbs,
-            on=['Store', 'Climate', 'Category'])
         # lOutput['Penetration']= ""
         # lOutput['Optimal Space']= ""
         print('Set Optimal & Penetration to 0')
@@ -43,16 +41,29 @@ def createLong(optimSpace, cfbs=None):
         print('Dropped more Columns')
         lOutput.drop(['Store_Group_Sales','Store_Group_Units','Store_Group_Profit'], axis=1, inplace=True)
         print('Dropped Group Columns')
-        lOutput = lOutput.rename(
+        print('\n\n\n\n\n\n\n')
+        print(lOutput.columns)
+        print('\n\n\n\n\n\n\n')
+        lOutput.rename(
             columns={'Sales': 'Current Sales $', 'Profit': 'Current Profit $', 'Units': 'Current Sales Units',
-                     'Estimated Sales': 'Estimated Sales $', 'Estimated Profit': 'Estimated Profit $',
-                     'Estimated Units': 'Estimated Sales Units'})
+                     'Space': 'Current Space', 'Estimated Sales': 'Estimated Sales $',
+                     'Estimated Profit': 'Estimated Profit $', 'Estimated Units': 'Estimated Sales Units',
+                     'Optimal Estimated Sales': 'Optimal Estimated Sales $',
+                     'Optimal Estimated Profit': 'Optimal Estimated Profit $',
+                     'Optimal Estimated Units': 'Optimal Estimated Sales Units'},
+            inplace=True)
+        print(lOutput.columns)
+        print('finished renaming')
         lOutput = lOutput[
-            ['Store', 'Climate', 'VSG', 'Category', 'Result Space', 'Current Space', 'Optimal Space', 'Penetration',
-             'Current Sales $', 'Current Profit $', 'Current Sales Units', 'Estimated Sales $', 'Estimated Profit $', 'Estimated Sales Units']]
+            ['Store', 'Climate', 'VSG', 'Category', 'Result Space', 'Current Space', 'Optimal Space',
+             'Sales Penetration', 'Exit Flag', 'Estimated Sales $', 'Estimated Profit $', 'Estimated Sales Units',
+             'Current Sales $', 'Current Profit $', 'Current Sales Units', 'Optimal Estimated Sales $',
+             'Optimal Estimated Profit $', 'Optimal Estimated Sales Units']]
     else:
         print('went to else')
-        lOutput=optimSpace[['Store', 'Climate', 'VSG', 'Category', 'Result Space', 'Current Space','Optimal Space', 'Penetration']]
+        lOutput = lOutput[
+            ['Store', 'Climate', 'VSG', 'Category', 'Sales Penetration', 'Exit Flag', 'Result Space', 'Current Space',
+             'Optimal Space', 'New Space']]
     lOutput.sort(columns=['Store'],axis=0,inplace=True)
     return lOutput
 
@@ -61,17 +72,17 @@ def createWide(long, jobType, optimizationType):
 
     # Set up for pivot by renaming metrics and converting blanks to 0's for Enhanced in long table
     adjusted_long = long.rename(
-        columns={'Current Space': 'current', "Optimal Space": "optimal", "Result Space": "result",
-                 "Penetration": "penetration"})
+        columns={ "Result Space": "result", "Optimal Space": "optimal",'Current Space': 'current',
+                 "Sales Penetration": "penetration"})
 
     print('renamed the columns')
     # Pivot to convert long table to wide, including Time in index for drill downs
     if jobType == "tiered":
-        wide = pd.pivot_table(adjusted_long, values=["current", "optimal", "result", "penetration"],
+        wide = pd.pivot_table(adjusted_long, values=["result", "current", "optimal", "penetration"],
                               index=["Store", "Climate", "VSG"], columns="Category", aggfunc=np.sum, margins=True,
                               margins_name="Total")
     else:  # since type == Drill Down
-        wide = pd.pivot_table(adjusted_long, values=["current", "optimal", "result", "penetration"],
+        wide = pd.pivot_table(adjusted_long, values=["result", "current", "optimal", "penetration"],
                               index=["Store", "Time", "Climate", "VSG"], columns="Category", aggfunc=np.sum,
                               margins=True, margins_name="Total")
 
@@ -112,6 +123,8 @@ def createWide(long, jobType, optimizationType):
     wide.reset_index(inplace=True)
     wide.sort(columns=['Store'],axis=0,inplace=True)
     return wide
+
+
 
 # Create summary for user download that applies to Tiered optimizations (type == "Tiered")
 # Calculates store counts by tier and by climate

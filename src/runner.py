@@ -20,6 +20,7 @@ from FixtureOptimization.optimizer2 import optimize2
 from FixtureOptimization.outputFunctions import createLong, createWide, createDrillDownSummary, createTieredSummary
 # from FixtureOptimization.SingleStoreOptimization import optimizeSingleStore
 from pika import BlockingConnection, ConnectionParameters
+from FixtureOptimization.SingleStoreOptimization import optimizeSingleStore
 
 # from TierKey import tierKeyCreate
 # from TierOptim import tierDef
@@ -132,12 +133,14 @@ def run(body):
                             fetchSpace(msg["artifacts"]["spaceArtifactId"]),
                             brandExitArtifact, futureSpace)
     print('finished data merging')
-    preOpt = preoptimizeEnh(optimizationType=msg['optimizationType'], dataMunged=dataMerged[1], mAdjustment=float(msg["metricAdjustment"]),
+    print(msg['optimizationType'])
+    preOpt = preoptimizeEnh(optimizationType=msg['optimizationType'], dataMunged=dataMerged[1],
+                            mAdjustment=float(msg["metricAdjustment"]),
                             salesPenThreshold=float(msg["salesPenetrationThreshold"]),
                             optimizedMetrics=msg["optimizedMetrics"], increment=msg["increment"])
     print('finished preoptimize')
-    print(msg['optimizationType'])
     if msg['optimizationType'] == 'traditional':
+        print('finished preoptimize')
         print('going to the optimization')
         optimRes = optimize(jobName=msg['meta']['name'], Stores=msg['salesStores'], Categories=msg['salesCategories'],
                  tierCounts=msg['tierCounts'], spaceBound=msg['spaceBounds'], increment=msg['increment'],
@@ -148,31 +151,33 @@ def run(body):
                                       msg['storeCategoryBounds'],
                                       float(msg["salesPenetrationThreshold"]), msg['jobType'],
                                       msg['optimizationType'])
-        print(cfbsArtifact[0].columns)
         print('finished curve fitting')
+        cfbsOptimal = optimizeSingleStore(cfbsArtifact[0].set_index(['Store','Category']), msg['increment'], msg['optimizedMetrics'])
+        # preOpt = optimizeSingleStore(cfbsArtifact[0],msg['increment'],msg['optimizerMetrics'])
         print(msg['optimizationType'])
         optimRes = optimize2(methodology=msg['optimizationType'], jobName=msg['meta']['name'],
                              Stores=msg['salesStores'], Categories=msg['salesCategories'], tierCounts=msg['tierCounts'],
-                             increment=msg['increment'], weights=msg['optimizedMetrics'], cfbsOutput=cfbsArtifact[0],
+                             increment=msg['increment'], weights=msg['optimizedMetrics'], cfbsOutput=cfbsOptimal[1],
                              preOpt=preOpt,salesPen=msg['salesPenetrationThreshold'])
-    print('New optimization completed')
+        print('New optimization completed')
+    if msg['optimizationType'] == 'drillDown':
+        cfbsOptimal = optimizeSingleStore(cfbsArtifact[0],msg['increment'],msg['optimizedMetrics'])
+
+
 
     # Call functions to create output information
     print('Out of the optimization')
-    longOutput = createLong(optimRes[1], cfbsArtifact[0])
+    longOutput = createLong(msg['jobType'],msg['optimizationType'], optimRes[1])
     print('Created Long Output')
     wideID = str(create_output_artifact_from_dataframe(createWide(longOutput, msg['jobType'], msg['optimizationType'])))
     print('Created Wide Output')
-    longID= str(create_output_artifact_from_dataframe(longOutput[['Store','Category', 'Climate', 'VSG', 'Result Space', 'Current Space', 'Optimal Space']]))
     if cfbsArtifact[1] is not None:
-        longID = str(create_output_artifact_from_dataframe(longOutput[
-                                                               ['Store', 'Climate', 'VSG', 'Category', 'Result Space',
-                                                                'Current Space', 'Current Sales $', 'Current Profit $', 'Current Sales Units',
-                                                                'Estimated Sales $', 'Estimated Profit $',
-                                                                'Estimated Sales Units']]))
+        longID = str(create_output_artifact_from_dataframe(longOutput))
         analyticsID = str(create_output_artifact_from_dataframe(cfbsArtifact[1]))
         print('Created analytics ID')
     else:
+        longID = str(create_output_artifact_from_dataframe(
+            longOutput[['Store', 'Category', 'Climate', 'VSG', 'Sales Penetration', 'Result Space', 'Current Space', 'Optimal Space']]))
         analyticsID=None
     statusID = optimRes[0]
 

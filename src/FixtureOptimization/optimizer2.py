@@ -15,10 +15,22 @@ import datetime as dt
 def optimize2(methodology,jobName,Stores,Categories,tierCounts,increment,weights,cfbsOutput,preOpt,salesPen):
     print('in the new optimization')
     # Helper function for optimize function, to create eligible space levels
-    mergedPreOptCF = pd.merge(cfbsOutput, preOpt[['Store', 'Category', 'Optimal Space', 'Penetration','Exit Flag','Sales Penetration']],
-                              on=['Store', 'Category'])
+    # print(cfbsOutput.columns)
+    # print(preOpt.columns)
+    # preOpt.set_index(['Store','Category'],inplace=True)
+    # print(preOpt.index)
+    # mergedPreOptCF = pd.merge(cfbsOutput, preOpt[['Penetration','Exit Flag','Sales Penetration']])
 
+
+    cfbsOutput.reset_index(inplace=True)
+    cfbsOutput.rename(columns={'level_0': 'Store', 'level_1': 'Category'}, inplace=True)
+    # print(cfbsOutput.columns)
+    print(preOpt.columns)
+    mergedPreOptCF = pd.merge(cfbsOutput, preOpt[['Store', 'Category', 'VSG', 'Penetration','Exit Flag','Sales Penetration']],
+                              on=['Store', 'Category'])
+    print('just finished merge')
     mergedPreOptCF = mergedPreOptCF.apply(lambda x: pd.to_numeric(x, errors='ignore'))
+    print('set the index')
     mergedPreOptCF.set_index(['Store','Category'],inplace=True)
     print(mergedPreOptCF.columns)
 
@@ -210,7 +222,7 @@ def optimize2(methodology,jobName,Stores,Categories,tierCounts,increment,weights
             NewOptim += lpSum([st[Store][Category][Level] * Level for (k,Level) in enumerate(Levels)] ) >= mergedPreOptCF["Lower_Limit"].loc[Store,Category],"Space Lower Limit: STR " + str(Store) + ", CAT " + str(Category)
             NewOptim += lpSum([st[Store][Category][Level] * Level for (k,Level) in enumerate(Levels)] ) <= mergedPreOptCF["Upper_Limit"].loc[Store,Category],"Space Upper Limit: STR " + str(Store) + ", CAT " + str(Category)
             if mergedPreOptCF['Sales Penetration'].loc[Store,Category] < salesPen:
-                NewOptim += lpSum(st[Store][Category][0]) == 1
+                NewOptim += st[Store][Category][0] == 1
 
     print('finished first block of constraints')
     # totalTiers=0
@@ -332,8 +344,12 @@ def optimize2(methodology,jobName,Stores,Categories,tierCounts,increment,weights
 
     Results.reset_index(inplace=True)
     Results.columns.values[0]='Store'
+    # Results.rename(
+    #     columns={'level_0': 'Store'},
+    #     inplace=True)
     Results = pd.melt(Results.reset_index(), id_vars=['Store'], var_name='Category', value_name='Result Space')
     Results=Results.apply(lambda x: pd.to_numeric(x, errors='ignore'))
     mergedPreOptCF.reset_index(inplace=True)
-    preOpt=pd.merge(preOpt,Results,on=['Store','Category'])
-    return (LpStatus[NewOptim.status],preOpt)
+    mergedPreOptCF.rename(columns={'level_0': 'Store', 'level_1': 'Category'}, inplace=True)
+    mergedPreOptCF=pd.merge(mergedPreOptCF,Results,on=['Store','Category'])
+    return (LpStatus[NewOptim.status],mergedPreOptCF)
