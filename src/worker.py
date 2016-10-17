@@ -11,6 +11,7 @@ from pymongo import MongoClient
 from pika import BlockingConnection, ConnectionParameters
 from runner import run
 import config as env
+import datetime as dt
 
 #
 # ENV VARS
@@ -76,6 +77,18 @@ def main():
             }
         )
         print('RECONCILE DB')
+
+    def updateEnd(db, id):
+        end_time = dt.datetime.utcnow()
+        db.jobs.update_one(
+            {'_id': ObjectId(id)},
+            {
+                "$set": {
+                    'optimization_end_time': end_time
+                }
+            }
+        )
+        print('update failed time')
     def divByZero(db, id):
         db.jobs.update_one(
             {'_id': ObjectId(id)},
@@ -132,6 +145,7 @@ def main():
                                 requeue=False)
                 _id = json.loads(body.decode('utf-8'))['_id']
                 userId = json.loads(body.decode('utf-8'))['userId']
+                updateEnd(db, _id)
                 reconcile_db(db, _id)
                 send_notification(ch, userId, 'failed')
             else:

@@ -155,10 +155,16 @@ def run(body):
         cfbsOptimal = optimizeSingleStore(cfbsArtifact[0].set_index(['Store','Category']), msg['increment'], msg['optimizedMetrics'])
         # preOpt = optimizeSingleStore(cfbsArtifact[0],msg['increment'],msg['optimizerMetrics'])
         print(msg['optimizationType'])
-        optimRes = optimize2(methodology=msg['optimizationType'], jobName=msg['meta']['name'],
-                             Stores=msg['salesStores'], Categories=msg['salesCategories'], tierCounts=msg['tierCounts'],
-                             increment=msg['increment'], weights=msg['optimizedMetrics'], cfbsOutput=cfbsOptimal[1],
-                             preOpt=preOpt,salesPen=msg['salesPenetrationThreshold'])
+        if msg['jobType'] == 'tiered':
+            optimRes = optimize2(methodology=msg['optimizationType'], jobName=msg['meta']['name'],
+                                 Stores=msg['salesStores'], Categories=msg['salesCategories'], tierCounts=msg['tierCounts'],
+                                 increment=msg['increment'], weights=msg['optimizedMetrics'], cfbsOutput=cfbsOptimal[1],
+                                 preOpt=preOpt,salesPen=msg['salesPenetrationThreshold'])
+        else:
+            try:
+                ddRes = drillDownOptim()
+            except:
+                print("We aren't ready for Drill Down")
         print('New optimization completed')
     if msg['optimizationType'] == 'drillDown':
         cfbsOptimal = optimizeSingleStore(cfbsArtifact[0],msg['increment'],msg['optimizedMetrics'])
