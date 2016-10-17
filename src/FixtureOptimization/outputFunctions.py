@@ -120,7 +120,7 @@ def createWide(long, jobType, optimizationType):
     wide = wide[cols]
     wide.drop('Total_optimal',axis=1,inplace=True)
     wide.reset_index(inplace=True)
-    wide.sort(columns=['Store'],axis=0,inplace=True)
+    wide.sort(columns=['Store','Category'],axis=0,inplace=True)
     return wide
 
 # Create summary for user download that applies to Tiered optimizations (type == "Tiered")
