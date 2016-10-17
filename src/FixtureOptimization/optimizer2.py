@@ -260,10 +260,10 @@ def optimize2(methodology,jobName,Stores,Categories,tierCounts,increment,weights
     #Time stamp for optimization solve time
     # start_seconds = dt.datetime.today().hour*60*60+ dt.datetime.today().minute*60 + dt.datetime.today().second
     print("to the solver we go")
-    NewOptim.solve()
+    # NewOptim.solve()
 
     # Solve the problem using open source solver
-    # NewOptim.solve(pulp.PULP_CBC_CMD(msg=1))
+    NewOptim.solve(pulp.PULP_CBC_CMD(msg=2,maxSeconds=86000,threads=4))
     # solver = "CBC" #for unit testing
 
     #Solve the problem using Gurobi
