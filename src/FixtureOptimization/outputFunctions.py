@@ -51,16 +51,17 @@ def createLong(jobType, optimizationType, lOutput):
             inplace=True)
         print('finished renaming')
         lOutput = lOutput[
-            ['Store', 'Climate', 'VSG', 'Category', 'Result Space', 'Current Space', 'Optimal Space',
-             'Sales Penetration', 'Estimated Sales $', 'Estimated Profit $', 'Estimated Sales Units',
-             'Current Sales $', 'Current Profit $', 'Current Sales Units', 'Optimal Estimated Sales $',
-             'Optimal Estimated Profit $', 'Optimal Estimated Sales Units','Total Store Space', 'Exit Flag']]
+            ['Store', 'Category', 'Climate', 'VSG', 'Result Space', 'Current Space', 'Optimal Space',
+             'Current Sales $', 'Current Profit $', 'Current Sales Units', 'Estimated Sales $', 'Estimated Profit $',
+             'Estimated Sales Units', 'Optimal Estimated Sales $',
+             'Optimal Estimated Profit $', 'Optimal Estimated Sales Units', 'Total Store Space', 'Sales Penetration',
+             'Exit Flag']]
     else:
         print('went to else')
         lOutput = lOutput[
-            ['Store', 'Climate', 'VSG', 'Category', 'Sales Penetration', 'Exit Flag', 'Result Space', 'Current Space',
+            ['Store', 'Category', 'Climate', 'VSG', 'Sales Penetration', 'Exit Flag', 'Result Space', 'Current Space',
              'Optimal Space', 'New Space']]
-    lOutput.sort(columns=['Store'],axis=0,inplace=True)
+    lOutput.sort(columns=['Store','Category'],axis=0,inplace=True)
     return lOutput
 
 # Create wide table for user download
@@ -100,7 +101,9 @@ def createWide(long, jobType, optimizationType):
     print('reorder columns prep')
     # Convert 0's back to blanks
     if optimizationType == "enhanced":
-        for i in range(tot_col["C"] + 1, tot_col["O"] + 1):
+        # for i in range(tot_col["C"] + 1, tot_col["O"] + 1):
+        #     wide[[i]] = ""
+        for i in range(tot_col["O"] + 1,tot_col["R"] + 1):
             wide[[i]] = ""
         for i in range(tot_col["R"] + 1, len(cols)):
             wide[[i]] = ""
