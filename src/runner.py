@@ -116,6 +116,10 @@ def run(body):
     # Stores = msg['salesStores']
     # Categories = msg['salesCategories']
 
+    print("#####################################################################")
+    print('beginning of ' + msg['meta']['name'] + 'at ' + str(dt.datetime.utcnow()))
+    print("#####################################################################")
+
     try:
         futureSpace = fetchSpace(msg["artifacts"]["futureSpaceId"])
         print("Future Space was Uploaded")
@@ -210,7 +214,9 @@ def run(body):
             }
         }
     )
-
+    print("#####################################################################")
+    print('end of ' + msg['meta']['name'] + 'at ' + str(dt.datetime.utcnow()))
+    print("#####################################################################")
     print("Job complete")
 
 if __name__ == '__main__':
