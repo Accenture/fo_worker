@@ -83,7 +83,7 @@ def run(body):
 
     # current_user = job['userId']
     # job_status = job['status']
-    worker_start_time = dt.datetime.today()
+    worker_start_time = dt.datetime.utcnow()
     db.jobs.update_one(
         {'_id': job['_id']},
         {
@@ -117,7 +117,7 @@ def run(body):
     # Categories = msg['salesCategories']
 
     print("#####################################################################")
-    print('beginning of ' + msg['meta']['name'] + 'at ' + str(dt.datetime.utcnow()))
+    print('beginning of ' + msg['meta']['name'] + ' at ' + str(dt.datetime.utcnow()))
     print("#####################################################################")
 
     try:
@@ -215,7 +215,7 @@ def run(body):
         }
     )
     print("#####################################################################")
-    print('end of ' + msg['meta']['name'] + 'at ' + str(dt.datetime.utcnow()))
+    print('end of ' + msg['meta']['name'] + ' at ' + str(dt.datetime.utcnow()))
     print("#####################################################################")
     print("Job complete")
 
