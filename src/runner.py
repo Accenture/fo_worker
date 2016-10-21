@@ -185,6 +185,7 @@ def run(body):
     print('Created Long Output')
     wideID = str(create_output_artifact_from_dataframe(createWide(longOutput, msg['jobType'], msg['optimizationType'])))
     print('Created Wide Output')
+
     if cfbsArtifact[1] is not None:
         longID = str(create_output_artifact_from_dataframe(longOutput))
         analyticsID = str(create_output_artifact_from_dataframe(cfbsArtifact[1]))
@@ -193,16 +194,22 @@ def run(body):
         longID = str(create_output_artifact_from_dataframe(
             longOutput[['Store', 'Category', 'Climate', 'VSG', 'Sales Penetration', 'Result Space', 'Current Space', 'Optimal Space']]))
         analyticsID=None
+        print('Set analytics ID to None')
+    
     statusID = optimRes[0]
-
+    print('Set the Status')
+    
     if msg['jobType'] == "tiered":
         summaryID = str(create_output_artifact_from_dataframe(createTieredSummary(longOutput)))
     else:  # since type == "Drill Down"
         summaryID = str(create_output_artifact_from_dataframe(createDrillDownSummary(longOutput)))
+    print('Set the summary IDs')
 
-    outputValidation(longOutput,tierCounts=msg['tierCounts'],increment=msg['increment'])
     invalids = outputValidation(df=longOutput, tierCounts=msg['tierCounts'], increment=msg['increment'])
+    print('set the invalids')
+
     end_time = dt.datetime.utcnow()
+    print('created the end time')
 
     print("Adding end time and output ids")
     db.jobs.find_one_and_update(
