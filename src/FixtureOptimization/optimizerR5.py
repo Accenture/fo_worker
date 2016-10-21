@@ -99,10 +99,10 @@ def optimize(jobName,Stores,Categories,tierCounts,spaceBound,increment,dataMunge
                 if (brandExitArtifact[Category].loc[Store] != 0):
                     # upper_bound[Category].loc[Store] = 0
                     # lower_bound[Category].loc[Store] = 0
-                    # opt_amt[Category].loc[Store] = 0
+                    opt_amt[Category].loc[Store] = 0
                     NewOptim += st[Store][Category][0.0] == 1
                     NewOptim += ct[Category][0.0] == 1
-                    # spaceBound[Category][0] = 0
+                    spaceBound['Space Lower Limit'].loc[Category] = 0
 
 
         # for (j, Category) in enumerate(Categories):
