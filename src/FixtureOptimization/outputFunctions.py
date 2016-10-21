@@ -152,3 +152,60 @@ def createDrillDownSummary(finalLong) :
     drilldownSummaryPivot = drilldownSummaryPivot.ix[:-1]
     drilldownSummaryPivot.reset_index(inplace=True)
     return drilldownSummaryPivot
+
+
+def outputValidation(df, tierCounts, increment):
+    nullTest = 0
+    tcValidation = 0
+    exitValidation = 0
+    spValidation = 0
+    Categories = pd.unique(df['Category'])
+    Stores = pd.unique(df['Store'])
+
+    # Is Null
+    if df.isnull().values.any():
+        nullTest = 1
+
+    # Tier Counts
+    # Take a vector of numbers and append 0 or 1 for each Category
+    tierCountValidation = pd.Series(data=0, index=Categories)
+    for (j, Product) in enumerate(Categories):
+        if len(pd.unique(df[df.Category == Product]['Result Space'])) > tierCounts[Product][1]:
+            tierCountValidation[Product] = 1
+    if sum(tierCountValidation) > 0:
+        tcValidation = 1
+
+    # TODO Might be able to make this faster with an apply function and an 'any'
+    exitVector = pd.Series(index=df.index, name='ExitVector')
+    spVector = pd.Series(index=df.index, name='SalesPenetrationVector')
+    bbVector = pd.Series(index=df.index, name='BalanceBackVector')
+    for i in df.index:
+        # Brand Exit
+        exitVector.iloc[i] = 1 if df['Exit Flag'].iloc[i] == 1 and df['Result Space'].iloc[i] > 0 else 0
+        # Sales Penetration
+        spVector.iloc[i] = 1 if df['Sales Penetration'].iloc[i] == 1 and df['Result Space'].iloc[i] > 0 else 0
+        # Balance Back
+
+    for (i, Store) in enumerate(Stores):
+        if df.groupby('Store')['Result Space'].sum().iloc[i] < max(df['Total Store Space'].iloc[i] * 1.1,
+                                                                   df['Total Store Space'].iloc[i] + increment * 2) and \
+                        df.groupby('Store')['Result Space'].sum().iloc[i] > min(df['Total Store Space'].iloc[i] * 0.9,
+                                                                                df['Total Store Space'].iloc[
+                                                                                    i] - increment * 2):
+            bbVector.iloc[i] = 0
+        else:
+            bbVector.iloc[i] = 1
+
+    exitValidation = 1 if sum(exitVector) > 0 else 0
+    spValidation = 1 if sum(spVector) > 0 else 0
+    bbValidation = 1 if sum(bbVector) > 0 else 0
+
+    # if df['Result Space'] > min(df['Future Space'] * 1.1, df['Future Space'] + increment * 2) and df[
+
+    #     'Result Space'] < max(df['Future Space'] * 0, 9, df['Future Space'] - increment * 2):
+    #     bbVector=0
+    # else:
+    #     bbVector=1
+
+
+    return (nullTest, tcValidation, exitValidation, spValidation, bbValidation)
