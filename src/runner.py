@@ -17,7 +17,7 @@ from FixtureOptimization.ksMerging import ksMerge
 from FixtureOptimization.preoptimizerEnh import preoptimizeEnh
 from FixtureOptimization.optimizerR5 import optimize
 from FixtureOptimization.optimizer2 import optimize2
-from FixtureOptimization.outputFunctions import createLong, createWide, createDrillDownSummary, createTieredSummary
+from FixtureOptimization.outputFunctions import createLong, createWide, createDrillDownSummary, createTieredSummary, outputValidation
 # from FixtureOptimization.SingleStoreOptimization import optimizeSingleStore
 from pika import BlockingConnection, ConnectionParameters
 from FixtureOptimization.SingleStoreOptimization import optimizeSingleStore
@@ -164,6 +164,10 @@ def run(body):
                                  Stores=msg['salesStores'], Categories=msg['salesCategories'], tierCounts=msg['tierCounts'],
                                  increment=msg['increment'], weights=msg['optimizedMetrics'], cfbsOutput=cfbsOptimal[1],
                                  preOpt=preOpt,salesPen=msg['salesPenetrationThreshold'])
+            # optimRes = optimize3(jobName=msg['meta']['name'], Stores=msg['salesStores'],
+            #                     Categories=msg['salesCategories'],
+            #                     tierCounts=msg['tierCounts'], spaceBound=msg['spaceBounds'], increment=msg['increment'],
+            #                     dataMunged=optimRes)
         else:
             try:
                 ddRes = drillDownOptim()
@@ -196,6 +200,7 @@ def run(body):
     else:  # since type == "Drill Down"
         summaryID = str(create_output_artifact_from_dataframe(createDrillDownSummary(longOutput)))
 
+    outputValidation(longOutput,tierCounts=msg['tierCounts'],increment=msg['increment'])
     end_time = dt.datetime.utcnow()
 
     print("Adding end time and output ids")
