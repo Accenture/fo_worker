@@ -181,7 +181,7 @@ def optimize(jobName,Stores,Categories,tierCounts,spaceBound,increment,dataMunge
     # NewOptim.writeMPS("Fixture_Optimization.mps")
     # NewOptim.msg=1
     # NewOptim.solve(pulp.PULP_CBC_CMD(msg=1))
-    NewOptim.solve(pulp.PULP_CBC_CMD(msg=2,threads=4))
+    NewOptim.solve(pulp.PULP_CBC_CMD(msg=2,threads=4,maxSeconds=115200))
     # NewOptim.solve(pulp.COIN_CMD(msg=1))
     
 #Debugging
