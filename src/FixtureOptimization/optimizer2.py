@@ -262,8 +262,11 @@ def optimize2(methodology,jobName,Stores,Categories,tierCounts,increment,weights
     print("to the solver we go")
     # NewOptim.solve()
 
+
+    mergedPreOptCF.to_csv('test.csv',index=False,sep=',')
+
     # Solve the problem using open source solver
-    NewOptim.solve(pulp.PULP_CBC_CMD(msg=2,threads=4))
+    NewOptim.solve(pulp.PULP_CBC_CMD(msg=2,threads=8))
     # solver = "CBC" #for unit testing
 
     #Solve the problem using Gurobi
