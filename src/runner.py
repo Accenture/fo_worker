@@ -215,6 +215,13 @@ def run(body):
                     'wide_table':wideID,
                     'summary_report': summaryID,
                     'analytic_data': analyticsID
+                },
+                "outputErrors":{
+                    'invalidValues': invalids[0],
+                    'invalidTierCounts': invalids[1],
+                    'invalidBrandExit': invalids[2],
+                    'invalidSalesPenetration': invalids[3],
+                    'invalidBalanceBack': invalids[4]
                 }
             }
         }
