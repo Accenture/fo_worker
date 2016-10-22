@@ -58,7 +58,8 @@ def createLong(jobType, optimizationType, lOutput):
              'Exit Flag']]
     else:
         print('went to else')
-        lOutput.rename(columns={'New Space': 'Total Store Space'},inplace=True)
+        lOutput.drop('Current Space', axis=1, inplace=True)
+        lOutput.rename(columns={'New Space': 'Total Store Space','Historical Space': 'Current Space'},inplace=True)
         lOutput = lOutput[
             ['Store', 'Category', 'Climate', 'VSG', 'Sales Penetration', 'Exit Flag', 'Result Space', 'Current Space',
              'Optimal Space', 'Total Store Space']]
