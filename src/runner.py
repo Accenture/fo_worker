@@ -201,6 +201,7 @@ def run(body):
         summaryID = str(create_output_artifact_from_dataframe(createDrillDownSummary(longOutput)))
 
     outputValidation(longOutput,tierCounts=msg['tierCounts'],increment=msg['increment'])
+    invalids = outputValidation(df=longOutput, tierCounts=msg['tierCounts'], increment=msg['increment'])
     end_time = dt.datetime.utcnow()
 
     print("Adding end time and output ids")
