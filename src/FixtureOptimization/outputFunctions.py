@@ -61,8 +61,8 @@ def createLong(jobType, optimizationType, lOutput):
         lOutput.drop('Current Space', axis=1, inplace=True)
         lOutput.rename(columns={'New Space': 'Total Store Space','Historical Space': 'Current Space'},inplace=True)
         lOutput = lOutput[
-            ['Store', 'Category', 'Climate', 'VSG', 'Sales Penetration', 'Exit Flag', 'Result Space', 'Current Space',
-             'Optimal Space', 'Total Store Space']]
+            ['Store', 'Category', 'Climate', 'VSG', 'Result Space', 'Current Space',
+             'Optimal Space', 'Sales Penetration', 'Exit Flag', 'Total Store Space']]
     lOutput.sort(columns=['Store','Category'],axis=0,inplace=True)
     return lOutput
 
