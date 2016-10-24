@@ -263,9 +263,9 @@ def optimize2(methodology,jobName,Stores,Categories,tierCounts,increment,weights
     # NewOptim.solve()
 
 
-    # mergedPreOptCF.to_csv(str(jobName)+'.csv',index=False,sep=',')
+    # mergedPreOptCF.to_csv(str(jobName)+'.csv',index=True,sep=',')
     NewOptim.writeMPS(str(jobName)+".mps")
-
+    return
     # Solve the problem using open source solver
     NewOptim.solve(pulp.PULP_CBC_CMD(msg=2,threads=4,maxSeconds=115200))
     # solver = "CBC" #for unit testing
