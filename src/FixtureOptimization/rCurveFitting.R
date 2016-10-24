@@ -57,7 +57,7 @@ curvefitting_boundsetting<-function(master,bound_input,increment,pct_chg_limit,s
   growth_factor <- 0.1
   
   # Rename column titles where column title contains blanks and drop irrelevant columns
-  names(master)[names(master) == "Current.Space"] <- "Space"
+  names(master)[names(master) == "Historical.Space"] <- "Space"
   names(master)[names(master) == "Sales.."] <- "Sales"
   names(master)[names(master) == "Profit.."] <- "Profit"
   names(master)[names(master) == "Sales.Units"] <- "Units"

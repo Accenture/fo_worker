@@ -17,9 +17,10 @@ from FixtureOptimization.ksMerging import ksMerge
 from FixtureOptimization.preoptimizerEnh import preoptimizeEnh
 from FixtureOptimization.optimizerR5 import optimize
 from FixtureOptimization.optimizer2 import optimize2
-from FixtureOptimization.outputFunctions import createLong, createWide, createDrillDownSummary, createTieredSummary
+from FixtureOptimization.outputFunctions import createLong, createWide, createDrillDownSummary, createTieredSummary, outputValidation
 # from FixtureOptimization.SingleStoreOptimization import optimizeSingleStore
 from pika import BlockingConnection, ConnectionParameters
+from FixtureOptimization.SingleStoreOptimization import optimizeSingleStore
 
 # from TierKey import tierKeyCreate
 # from TierOptim import tierDef
@@ -82,7 +83,7 @@ def run(body):
 
     # current_user = job['userId']
     # job_status = job['status']
-    worker_start_time = dt.datetime.today()
+    worker_start_time = dt.datetime.utcnow()
     db.jobs.update_one(
         {'_id': job['_id']},
         {
@@ -115,6 +116,10 @@ def run(body):
     # Stores = msg['salesStores']
     # Categories = msg['salesCategories']
 
+    print("#####################################################################")
+    print('beginning of ' + msg['meta']['name'] + ' at ' + str(dt.datetime.utcnow()))
+    print("#####################################################################")
+
     try:
         futureSpace = fetchSpace(msg["artifacts"]["futureSpaceId"])
         print("Future Space was Uploaded")
@@ -131,36 +136,80 @@ def run(body):
     dataMerged = ksMerge(msg['jobType'], fetchTransactions(msg["artifacts"]["salesArtifactId"]),
                             fetchSpace(msg["artifacts"]["spaceArtifactId"]),
                             brandExitArtifact, futureSpace)
-    cfbsArtifact = curveFittingBS(dataMerged[0], msg['spaceBounds'], msg['increment'],
-                                    msg['storeCategoryBounds'],
-                                    float(msg["salesPenetrationThreshold"]), msg['jobType'],
-                                    msg['optimizationType'])
-    print('finished curve fitting')
-    preOpt = preoptimizeEnh(optimizationType=msg['optimizationType'], dataMunged=dataMerged[1], mAdjustment=float(msg["metricAdjustment"]),
+    print('finished data merging')
+    print(msg['optimizationType'])
+    preOpt = preoptimizeEnh(optimizationType=msg['optimizationType'], dataMunged=dataMerged[1],
+                            mAdjustment=float(msg["metricAdjustment"]),
                             salesPenThreshold=float(msg["salesPenetrationThreshold"]),
                             optimizedMetrics=msg["optimizedMetrics"], increment=msg["increment"])
     print('finished preoptimize')
-    optimRes = optimize2(methodology=msg['optimizationType'], jobName=msg['meta']['name'],Stores=msg['salesStores'], Categories=msg['salesCategories'], tierCounts=msg['tierCounts'],
-                        increment=msg['increment'], weights=msg['optimizedMetrics'], cfbsOutput=cfbsArtifact[0],preOpt=preOpt)
-    print('New optimization completed')
+    if msg['optimizationType'] == 'traditional':
+        print('finished preoptimize')
+        print('going to the optimization')
+        optimRes = optimize(jobName=msg['meta']['name'], Stores=msg['salesStores'], Categories=msg['salesCategories'],
+                 tierCounts=msg['tierCounts'], spaceBound=msg['spaceBounds'], increment=msg['increment'],
+                 dataMunged=preOpt)
+        cfbsArtifact=[None,None]
+    else:
+        cfbsArtifact = curveFittingBS(dataMerged[0], msg['spaceBounds'], msg['increment'],
+                                      msg['storeCategoryBounds'],
+                                      float(msg["salesPenetrationThreshold"]), msg['jobType'],
+                                      msg['optimizationType'])
+        print('finished curve fitting')
+        cfbsOptimal = optimizeSingleStore(cfbsArtifact[0].set_index(['Store','Category']), msg['increment'], msg['optimizedMetrics'])
+        # preOpt = optimizeSingleStore(cfbsArtifact[0],msg['increment'],msg['optimizerMetrics'])
+        print(msg['optimizationType'])
+        if msg['jobType'] == 'tiered':
+            optimRes = optimize2(methodology=msg['optimizationType'], jobName=msg['meta']['name'],
+                                 Stores=msg['salesStores'], Categories=msg['salesCategories'], tierCounts=msg['tierCounts'],
+                                 increment=msg['increment'], weights=msg['optimizedMetrics'], cfbsOutput=cfbsOptimal[1],
+                                 preOpt=preOpt,salesPen=msg['salesPenetrationThreshold'])
+            # optimRes = optimize3(jobName=msg['meta']['name'], Stores=msg['salesStores'],
+            #                     Categories=msg['salesCategories'],
+            #                     tierCounts=msg['tierCounts'], spaceBound=msg['spaceBounds'], increment=msg['increment'],
+            #                     dataMunged=optimRes)
+        else:
+            try:
+                ddRes = drillDownOptim()
+            except:
+                print("We aren't ready for Drill Down")
+        print('New optimization completed')
+    if msg['optimizationType'] == 'drillDown':
+        cfbsOptimal = optimizeSingleStore(cfbsArtifact[0],msg['increment'],msg['optimizedMetrics'])
+
+
 
     # Call functions to create output information
     print('Out of the optimization')
-    longOutput = createLong(cfbsArtifact[0], optimRes[1])
+    longOutput = createLong(msg['jobType'],msg['optimizationType'], optimRes[1])
     print('Created Long Output')
     wideID = str(create_output_artifact_from_dataframe(createWide(longOutput, msg['jobType'], msg['optimizationType'])))
     print('Created Wide Output')
-    longID= str(create_output_artifact_from_dataframe(longOutput))
-    analyticsID = str(create_output_artifact_from_dataframe(cfbsArtifact[1]))
-    print('Created analytics ID')
-    statusID = optimRes[0]
 
+    if cfbsArtifact[1] is not None:
+        longID = str(create_output_artifact_from_dataframe(longOutput))
+        analyticsID = str(create_output_artifact_from_dataframe(cfbsArtifact[1]))
+        print('Created analytics ID')
+    else:
+        longID = str(create_output_artifact_from_dataframe(
+            longOutput[['Store', 'Category', 'Climate', 'VSG', 'Sales Penetration', 'Result Space', 'Current Space', 'Optimal Space']]))
+        analyticsID=None
+        print('Set analytics ID to None')
+    
+    statusID = optimRes[0]
+    print('Set the Status')
+    
     if msg['jobType'] == "tiered":
         summaryID = str(create_output_artifact_from_dataframe(createTieredSummary(longOutput)))
     else:  # since type == "Drill Down"
         summaryID = str(create_output_artifact_from_dataframe(createDrillDownSummary(longOutput)))
+    print('Set the summary IDs')
+
+    invalids = outputValidation(df=longOutput, tierCounts=msg['tierCounts'], increment=msg['increment'])
+    print('set the invalids')
 
     end_time = dt.datetime.utcnow()
+    print('created the end time')
 
     print("Adding end time and output ids")
     db.jobs.find_one_and_update(
@@ -174,11 +223,20 @@ def run(body):
                     'wide_table':wideID,
                     'summary_report': summaryID,
                     'analytic_data': analyticsID
+                },
+                "outputErrors":{
+                    'invalidValues': invalids[0],
+                    'invalidTierCounts': invalids[1],
+                    'invalidBrandExit': invalids[2],
+                    'invalidSalesPenetration': invalids[3],
+                    'invalidBalanceBack': invalids[4]
                 }
             }
         }
     )
-
+    print("#####################################################################")
+    print('end of ' + msg['meta']['name'] + ' at ' + str(dt.datetime.utcnow()))
+    print("#####################################################################")
     print("Job complete")
 
 if __name__ == '__main__':

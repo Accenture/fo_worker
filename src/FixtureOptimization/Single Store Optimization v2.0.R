@@ -1,21 +1,21 @@
-  rm(list=ls())
-
-  #Set working directory here
-  setwd("C:/Users/saurabh.a.trivedi/Desktop/Protyping Code/Misses Data Testing/")
-    
-  #Run library for erf() function call
-  library(pracma)
-
-  #Import Raw data file
-  dataimprt<-read.csv("Output_Data.csv",header=TRUE,sep=",")
-  
-  #Set increment size
-  incsize=0.5
-  #parameters for metric weights
-  Sales_weight<-0.4
-  Profit_weight<-0.3
-  Units_weight<-0.3
-  
+#  rm(list=ls())
+#
+#  #Set working directory here
+#  setwd("C:/Users/saurabh.a.trivedi/Desktop/Protyping Code/Misses Data Testing/")
+#
+#  #Run library for erf() function call
+#  library(pracma)
+#
+#  #Import Raw data file
+#  dataimprt<-read.csv("Output_Data.csv",header=TRUE,sep=",")
+#
+#  #Set increment size
+#  incsize=0.5
+#  #parameters for metric weights
+#  Sales_weight<-0.4
+#  Profit_weight<-0.3
+#  Units_weight<-0.3
+#
   Store_Optimization<-function(dataimprt,incsize,Sales_weight,Profit_weight,Units_weight){
   dataimprt$Trgt_BA_Space_Less_Brnd_Entry<-dataimprt$Space_to_Fill
 
@@ -198,5 +198,5 @@
   return(final)
   }
   
-  output<-Store_Optimization(dataimprt,incsize,Sales_weight,Profit_weight,Units_weight)
-  write.csv(output,"Optimization_Result.csv",row.names=FALSE)
+#  output<-Store_Optimization(dataimprt,incsize,Sales_weight,Profit_weight,Units_weight)
+#  write.csv(output,"Optimization_Result.csv",row.names=FALSE)

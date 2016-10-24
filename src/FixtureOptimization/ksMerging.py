@@ -8,6 +8,7 @@ import sys
 # brandExit=pd.read_csv('exit_data.csv',header=0,skiprows=[1])
 
 def ksMerge(optimizationType,transactions,space,brandExit=None,futureSpace=None):
+    space.rename(columns={'VSG ': 'VSG'}, inplace=True)
     if optimizationType == 'tiered':
         def brandExitMung(df, Stores, Categories):
             brand_exit = pd.DataFrame(index=Stores, columns=Categories)
@@ -52,16 +53,18 @@ def ksMerge(optimizationType,transactions,space,brandExit=None,futureSpace=None)
             futureSpace = futureSpace.sort_values(by='Store').reset_index(drop=True)
             futureSpace=pd.merge(storeTotal,futureSpace,on=['Store'],how='inner')
             print('in future space loop')
+            futureSpace['Entry Space'].fillna(0,inplace=True)
             for (i,Store) in enumerate(Stores):
                 futureSpace['Future Space'].loc[i] = storeTotal['Store Space'].loc[i] if pd.to_numeric(futureSpace['Future Space']).loc[i] == 0 or pd.isnull(pd.to_numeric(futureSpace['Future Space'])).loc[i] else futureSpace['Future Space'].loc[i]
             futureSpace['New Space'] = futureSpace['Future Space'] - futureSpace['Entry Space']
             masterData=pd.merge(masterData,futureSpace,on=['Store','VSG','Climate'])
 
         masterData = masterData.sort_values(by=['Store', 'Category']).reset_index(drop=True)
-        mergeTrad = masterData
         if brandExit is None:
             masterData['Exit Flag'] = 0
+            mergeTrad = masterData.copy()
         else:
+            mergeTrad = masterData.copy()
             brandExit=pd.melt(brandExitMung(brandExit,Stores,Categories).reset_index(),id_vars=['Store'],var_name='Category',value_name='Exit Flag')
             brandExit=brandExit.sort_values(by=['Store','Category']).reset_index(drop=True)
             for i in range(0,len(mergeTrad)):

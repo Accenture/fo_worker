@@ -44,6 +44,6 @@ def curveFittingBS(big_master_data,bound_input,increment_size,PCT_Space_Change_L
     # cfbs_id = str(create_output_artifact_from_dataframe(pandas2ri.ri2py(r_list_output[0]).reset_index(drop=True)))
     analyticsData = pandas2ri.ri2py(r_list_output[1]).reset_index(drop=True)
     # print(cfbsArtifact.head())
-    # cfbsArtifact.to_csv('macroCFBS.csv',sep=',')
+    # cfbsArtifact.to_csv('testCFBS.csv',sep=',')
     # analyticsData.to_csv('macroAnalytics.csv',sep=',')
     return (cfbsArtifact,analyticsData)

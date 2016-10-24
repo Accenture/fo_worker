@@ -65,6 +65,27 @@ def roundArray(array, increment):
                 rounded[i][j] = np.around(array[i][j], 0) - np.mod(np.around(array[i][j], 0), increment)
     return rounded
 
+def roundColumn(array,increment):
+    for i in range(len(array)):
+        if np.mod(np.around(array[i], 3), increment) > increment / 2:
+            array[i] = np.around(array[i], 3) + (
+                increment - (np.mod(np.around(array[i], 3), increment)))
+        else:
+            array[i] = np.around(array[i], 3) - np.mod(np.around(array[i], 3), increment)
+
+def roundValue(cVal,increment):
+    if np.mod(round(cVal, 3), increment) > increment / 2:
+        cVal = round(cVal, 3) + (increment - (np.mod(round(cVal, 3), increment)))
+    else:
+        cVal = round(cVal, 3) - np.mod(round(cVal, 3), increment)
+    return cVal
+
+# def roundValue(cVal,increment):
+#    if np.mod(round(cVal, 3), increment) > increment / 2:
+#        cVal = round(cVal, 3) + (increment - (pd.mod(round(cVal, 3), increment)))
+#    else:
+#        cVal = round(cVal, 3) - pd.mod(round(cVal, 3), increment)
+#    return cVal
 
 def roundDF(array, increment):
     rounded = array.copy(True)
@@ -93,11 +114,12 @@ def preoptimizeEnh(optimizationType,dataMunged, salesPenThreshold, mAdjustment, 
         receipts_units = dataMunged.pivot(index='Store', columns='Category', values='Receipts Units')
         gm_perc = dataMunged.pivot(index='Store', columns='Category', values='Profit %')
         ccCount = dataMunged.pivot(index='Store', columns='Category', values='CC Count w/ BOH')
-        adj_p = int(optimizedMetrics['spread']) * spreadCalc(sales, boh, receipt, mAdjustment) + int(
-            optimizedMetrics['salesPenetration']) * calcPen(sales) + int(
-            optimizedMetrics['salesPerSpaceUnit']) * metric_per_fixture(sales, bfc, mAdjustment) + int(
-            optimizedMetrics['grossMargin']) * calcPen(gm_perc) + int(
-            optimizedMetrics['inventoryTurns']) * invTurn_Calc(sold_units, boh_units, receipts_units)
+        adj_p = (optimizedMetrics['spread'] * spreadCalc(sales, boh, receipt, mAdjustment) + optimizedMetrics[
+            'salesPenetration']) * calcPen(sales) + optimizedMetrics['salesPerSpaceUnit'] * metric_per_fixture(sales,
+                                                                                                               bfc,
+                                                                                                               mAdjustment) + \
+                optimizedMetrics['grossMargin'] * calcPen(gm_perc) + optimizedMetrics['inventoryTurns'] * invTurn_Calc(
+            sold_units, boh_units, receipts_units)
     else:
         adj_p = (optimizedMetrics['sales'] * sales) + (optimizedMetrics['profits'] * profit) + (optimizedMetrics['units'] * sold_units)
 
@@ -110,14 +132,11 @@ def preoptimizeEnh(optimizationType,dataMunged, salesPenThreshold, mAdjustment, 
                 adj_p[j].loc[i] = 0
     adj_p = calcPen(adj_p)
     adj_p.fillna(0)
-    # adj_p[np.isnan(adj_p)] = 0
-    # Create Code to make adjustments to adj_p
-    opt_amt = roundDF(adj_p.multiply(newSpace, axis='index'), increment)
-    penetration = pd.melt(adj_p.reset_index(), id_vars=['Store'], var_name='Category',
-                          value_name='Penetration')
-    opt_amt2 = pd.melt(opt_amt.reset_index(), id_vars=['Store'], var_name='Category',
-                      value_name='Optimal Space')
-    longPre=pd.merge(penetration,opt_amt2,on=['Store','Category'])
-    information=pd.merge(dataMunged,longPre,on=['Store','Category'])
-    # return (adj_p, opt_amt)
-    return (information)
+    information=pd.merge(dataMunged,pd.melt(adj_p.reset_index(), id_vars=['Store'], var_name='Category', value_name='Penetration'),on=['Store','Category'])
+    information['Optimal Space'] = information['New Space'] * information['Penetration']
+    print('attempting to keep sales pen')
+    information = pd.merge(information,pd.melt(calcPen(sales).reset_index(),id_vars=['Store'], var_name='Category',value_name='Sales Penetration'),on=['Store','Category'])
+    information = information.apply(lambda x: pd.to_numeric(x, errors='ignore'))
+    # information['Optimal Space']=information['Optimal Space'].apply(lambda x: roundValue(x,increment))
+    print(information.columns)
+    return information
