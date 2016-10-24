@@ -17,6 +17,7 @@ from FixtureOptimization.ksMerging import ksMerge
 from FixtureOptimization.preoptimizerEnh import preoptimizeEnh
 from FixtureOptimization.optimizerR5 import optimize
 from FixtureOptimization.optimizer2 import optimize2
+from FixtureOptimization.optimizer3 import optimize3
 from FixtureOptimization.outputFunctions import createLong, createWide, createDrillDownSummary, createTieredSummary, outputValidation
 # from FixtureOptimization.SingleStoreOptimization import optimizeSingleStore
 from pika import BlockingConnection, ConnectionParameters
@@ -164,10 +165,7 @@ def run(body):
                                  Stores=msg['salesStores'], Categories=msg['salesCategories'], tierCounts=msg['tierCounts'],
                                  increment=msg['increment'], weights=msg['optimizedMetrics'], cfbsOutput=cfbsOptimal[1],
                                  preOpt=preOpt,salesPen=msg['salesPenetrationThreshold'])
-            # optimRes = optimize3(jobName=msg['meta']['name'], Stores=msg['salesStores'],
-            #                     Categories=msg['salesCategories'],
-            #                     tierCounts=msg['tierCounts'], spaceBound=msg['spaceBounds'], increment=msg['increment'],
-            #                     dataMunged=optimRes)
+            # optimRes = optimize3(jobName=msg['meta']['name'], Stores=msg['salesStores'],Categories=msg['salesCategories'],tierCounts=msg['tierCounts'], spaceBound=msg['spaceBounds'], increment=msg['increment'],dataMunged=optimRes)
         else:
             try:
                 ddRes = drillDownOptim()
