@@ -11,18 +11,7 @@ import pandas as pd
 # Need to create a max & min for category level informaiton to be passed as bounds in a long table format // Matching format to Bounding Info that is added to job context
 
 # import os
-''''
-class SampleFile(object):
 
-    src_path = os.path.dirname(__file__)
-    test_files_path = os.path.join(os.path.dirname(src_path),
-                                   'test/test_optimizer_files')
-
-    @classmethod
-    def get(cls, filename):
-        return os.path.join(cls.test_files_path, filename)
-
-'''
 def calcPen(metric):
     return metric.div(metric.sum(axis=1),axis='index')
     
@@ -132,21 +121,17 @@ def brandExitTransac(Transactions,brandExit,Stores,Categories):
 
 def preoptimize(Stores,Categories,spaceData,data,salesPenThreshold,mAdjustment,optimizedMetrics,increment,newSpace=None,brandExitArtifact=None):
     fixture_data=spaceData.drop(spaceData.columns[[0,1]],axis=1)
-    # spaceData.drop(spaceData.columns[[0,1]],axis=1,inplace=True) 
+    # spaceData.drop(spaceData.columns[[0,1]],axis=1,inplace=True)
     # fixture_data.drop(fixture_data.columns[[0,1]],axis=1,inplace=True) # Access Columns dynamically
-    bfc = fixture_data[[ *np.arange(len(fixture_data.columns))[0::1] ]].convert_objects(convert_numeric=True)
-    if brandExitArtifact is not None:
-        print("We have brandExitArtifact in preoptimize!")    
-        fixture_data = brandExitSpace(fixture_data,brandExitArtifact,Stores,Categories)
-        sales = brandExitTransac(data[[ *np.arange(len(data.columns))[0::9] ]].convert_objects(convert_numeric=True),brandExitArtifact,Stores,Categories)
-        boh = brandExitTransac(data[[ *np.arange(len(data.columns))[1::9] ]].convert_objects(convert_numeric=True),brandExitArtifact,Stores,Categories)
-        receipt = brandExitTransac(data[[ *np.arange(len(data.columns))[2::9] ]].convert_objects(convert_numeric=True),brandExitArtifact,Stores,Categories)
-        sold_units = brandExitTransac(data[[ *np.arange(len(data.columns))[3::9] ]].convert_objects(convert_numeric=True),brandExitArtifact,Stores,Categories)
-        boh_units = brandExitTransac(data[[ *np.arange(len(data.columns))[4::9] ]].convert_objects(convert_numeric=True),brandExitArtifact,Stores,Categories)
-        receipts_units = brandExitTransac(data[[ *np.arange(len(data.columns))[5::9] ]].convert_objects(convert_numeric=True),brandExitArtifact,Stores,Categories)
-        profit = brandExitTransac(data[[ *np.arange(len(data.columns))[6::9] ]].convert_objects(convert_numeric=True),brandExitArtifact,Stores,Categories)
-        gm_perc = brandExitTransac(data[[ *np.arange(len(data.columns))[7::9] ]].convert_objects(convert_numeric=True),brandExitArtifact,Stores,Categories)
-    else:
+    #TODO Verify that this works correctly after changes in what is commented anch
+    # Was previously not commented, see other changes
+    # bfc = fixture_data[[ *np.arange(len(fixture_data.columns))[0::1] ]].convert_objects(convert_numeric=True)
+    if brandExitArtifact is None:
+        print("We don't have brandExitArtifact in preoptimize")
+        #### New, may or may not work correctly after switching the order
+        bfc = fixture_data[[*np.arange(len(fixture_data.columns))[0::1]]].convert_objects(convert_numeric=True)
+        #### bfc was previously not recreated for Brand Exit... should verify if this is an issue
+
         sales = data[[ *np.arange(len(data.columns))[0::9] ]].convert_objects(convert_numeric=True)
         boh = data[[ *np.arange(len(data.columns))[1::9] ]].convert_objects(convert_numeric=True)
         receipt = data[[ *np.arange(len(data.columns))[2::9] ]].convert_objects(convert_numeric=True)
@@ -155,7 +140,28 @@ def preoptimize(Stores,Categories,spaceData,data,salesPenThreshold,mAdjustment,o
         receipts_units = data[[ *np.arange(len(data.columns))[5::9] ]].convert_objects(convert_numeric=True)
         profit = data[[ *np.arange(len(data.columns))[6::9] ]].convert_objects(convert_numeric=True)
         gm_perc = data[[ *np.arange(len(data.columns))[7::9] ]].convert_objects(convert_numeric=True)
-        print("We don't have brandExitArtifact in preoptimize")   
+    else:
+        print("We have brandExitArtifact in preoptimize!")
+        fixture_data = brandExitSpace(fixture_data, brandExitArtifact, Stores, Categories)
+        #### New, may or may not work correctly after switching the order
+        bfc=fixture_data[[ *np.arange(len(fixture_data.columns))[0::1] ]].convert_objects(convert_numeric=True)
+        #### bfc was previously not recreated for Brand Exit... should verify if this is an issue
+        sales = brandExitTransac(data[[*np.arange(len(data.columns))[0::9]]].convert_objects(convert_numeric=True),
+                                 brandExitArtifact, Stores, Categories)
+        boh = brandExitTransac(data[[*np.arange(len(data.columns))[1::9]]].convert_objects(convert_numeric=True),
+                               brandExitArtifact, Stores, Categories)
+        receipt = brandExitTransac(data[[*np.arange(len(data.columns))[2::9]]].convert_objects(convert_numeric=True),
+                                   brandExitArtifact, Stores, Categories)
+        sold_units = brandExitTransac(data[[*np.arange(len(data.columns))[3::9]]].convert_objects(convert_numeric=True),
+                                      brandExitArtifact, Stores, Categories)
+        boh_units = brandExitTransac(data[[*np.arange(len(data.columns))[4::9]]].convert_objects(convert_numeric=True),
+                                     brandExitArtifact, Stores, Categories)
+        receipts_units = brandExitTransac(data[[*np.arange(len(data.columns))[5::9]]].convert_objects(convert_numeric=True),
+                                          brandExitArtifact, Stores, Categories)
+        profit = brandExitTransac(data[[*np.arange(len(data.columns))[6::9]]].convert_objects(convert_numeric=True),
+                                  brandExitArtifact, Stores, Categories)
+        gm_perc = brandExitTransac(data[[*np.arange(len(data.columns))[7::9]]].convert_objects(convert_numeric=True),
+                                   brandExitArtifact, Stores, Categories)
 
     if newSpace is None:
         newSpace=bfc.sum(axis=1)
