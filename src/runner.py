@@ -50,7 +50,7 @@ LOGGER = logging.getLogger(__name__)
 
 
 def run(body):
-
+    # import pdb; pdb.set_trace()
     db = MongoClient(host=MONGO_HOST,
                      port=MONGO_PORT)[MONGO_NAME]
     fs = gridfs.GridFS(db)
