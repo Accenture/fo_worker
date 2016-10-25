@@ -189,6 +189,8 @@ def optimize2(methodology,jobName,Stores,Categories,tierCounts,increment,weights
     else: #since methodology == "enhanced"
         objective = createNegSPUByLevel(Stores, Categories, Levels, mergedPreOptCF, weights)
         objectivetype = "Total Negative SPU"
+
+    # pd.DataFrame(objective).to_csv(str(jobName)+'objective.csv',sep=",")
     print('created objective function data')
     # Add the objective function to the optimization problem
     NewOptim += lpSum(
@@ -262,12 +264,13 @@ def optimize2(methodology,jobName,Stores,Categories,tierCounts,increment,weights
     print("to the solver we go")
     # NewOptim.solve()
 
-
-    # mergedPreOptCF.to_csv(str(jobName)+'.csv',index=True,sep=',')
+    mergedPreOptCF.reset_index(inplace=True)
+    # mergedPreOptCF.to_csv(str(jobName)+'.csv',sep=',')
     # NewOptim.writeMPS(str(jobName)+".mps")
     # return
     # Solve the problem using open source solver
-    NewOptim.solve(pulp.PULP_CBC_CMD(msg=2,threads=4,maxSeconds=259200))
+    NewOptim.solve(pulp.PULP_CBC_CMD(msg=2,threads=4))
+    # NewOptim.solve(pulp.PULP_CBC_CMD(msg=2,threads=4,options=['sec','500']))
     # solver = "CBC" #for unit testing
 
     #Solve the problem using Gurobi

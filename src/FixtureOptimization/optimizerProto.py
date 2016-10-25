@@ -13,7 +13,7 @@ import datetime as dt
 
 
 # Run tiered optimization algorithm
-def optimize2(methodology, jobName, Stores, Categories, tierCounts, increment, weights, cfbsOutput, preOpt, salesPen):
+def optimizeProto(methodology, jobName, Stores, Categories, tierCounts, increment, weights, cfbsOutput, preOpt, salesPen):
     print('in the new optimization')
     # Helper function for optimize function, to create eligible space levels
     # print(cfbsOutput.columns)
@@ -34,8 +34,7 @@ def optimize2(methodology, jobName, Stores, Categories, tierCounts, increment, w
     mergedPreOptCF = mergedPreOptCF.apply(lambda x: pd.to_numeric(x, errors='ignore'))
     print('set the index')
     mergedPreOptCF.set_index(['Store', 'Category'], inplace=True)
-    print(mergedPreOptCF.columns)
-
+    mergedPreOptCF['Increment Size'] = increment
     print('merged the files in the new optimization')
 
     def createLevels(mergedPreOptCF, increment):
@@ -56,6 +55,42 @@ def optimize2(methodology, jobName, Stores, Categories, tierCounts, increment, w
         else:
             cVal = round(cVal, 3) - np.mod(round(cVal, 3), increment)
         return cVal
+
+
+    # Create eligible space levels
+    mergedPreOptCF["Upper_Limit"] = mergedPreOptCF["Upper_Limit"].apply(lambda x: roundValue(x, increment))
+    mergedPreOptCF["Lower_Limit"] = mergedPreOptCF["Lower_Limit"].apply(lambda x: roundValue(x, increment))
+    Levels = createLevels(mergedPreOptCF, increment)
+    print('we have levels')
+
+    mergedPreOptCF['Num Indeces'] = (mergedPreOptCF["Upper_Limit"] - mergedPreOptCF["Lower_Limit"]) / mergedPreOptCF[
+        "Increment Size"] + 1
+    kMax = max(mergedPreOptCF['Num Indeces'])
+
+    def createIndexDict(df, k_max, Stores, Categories):
+        kvals = dict()
+        opal = 0
+        for (j, Category) in enumerate(Categories):
+            for (i, Store) in enumerate(Stores):
+                # Get Parameters
+                min_val = df['Lower_Limit'].loc[Store, Category]
+                max_val = df['Upper_Limit'].loc[Store, Category]
+                increment = df['Increment Size'].loc[Store, Category]
+
+                c = min_val  # Initialize First Index Value
+
+                for k in range(int(k_max)):
+                    if c > max_val:
+                        kvals[Category, Store, k] = 10000
+                    else:
+                        kvals[Category, Store, k] = c
+                        c = c + increment
+                    if opal % 10000 == 0:
+                        print(opal)
+                    opal = opal + 1
+        return kvals
+
+    indexDict=createIndexDict(mergedPreOptCF,int(kMax),Stores,Categories)
 
     # Helper function for createSPUByLevel function, to forecast weighted combination of sales, profit, and units
     # str_cat is the row of the curve-fitting output for an individual store and category
@@ -98,6 +133,7 @@ def optimize2(methodology, jobName, Stores, Categories, tierCounts, increment, w
                             pU) + (
                             enhMetrics[uL] / 100) * forecast(str_cat, Level, uU))
         print('finished forecasting')
+        # np.savetxt('spuMatrix.csv',est_neg_spu_by_lev,delimiter=",")
         return est_neg_spu_by_lev
 
     # Helper function for optimize function, to create objective function of error by level for Traditional optimizations
@@ -123,7 +159,6 @@ def optimize2(methodology, jobName, Stores, Categories, tierCounts, increment, w
     # Identify the total amount of space to fill in the optimization for each location and for all locations
     # locSpaceToFill = pd.Series(mergedPreOptCF.groupby('Store')['Space_to_Fill'].sum())
     locSpaceToFill = mergedPreOptCF.groupby(level=0)['Space_to_Fill'].agg(np.mean)
-
     aggSpaceToFill = locSpaceToFill.sum()
 
     # Hard-coded tolerance limits for balance back constraints
@@ -149,21 +184,18 @@ def optimize2(methodology, jobName, Stores, Categories, tierCounts, increment, w
     #     return False
 
     locBalBackBoundAdj = locSpaceToFill.apply(lambda row: adjustForTwoIncr(row, locBalBackBound, increment))
+    # locBalBackBoundAdj.to_csv(str(jobName)+'balanceBackVector.csv',sep=",")
+
 
     print('we have local balance back')
     # EXPLORATORY ONLY: ELASTIC BALANCE BACK
     # locBalBackFreeBoundAdj = locSpaceToFill.apply(lambda row:adjustForTwoIncr(row,locBalBackFreeBound,increment))
 
-    # Create eligible space levels
-    mergedPreOptCF["Upper_Limit"] = mergedPreOptCF["Upper_Limit"].apply(lambda x: roundValue(x, increment))
-    mergedPreOptCF["Lower_Limit"] = mergedPreOptCF["Lower_Limit"].apply(lambda x: roundValue(x, increment))
-    Levels = createLevels(mergedPreOptCF, increment)
-    print('we have levels')
     # Set up created tier decision variable - has a value of 1 if that space level for that category will be a tier, else 0
-    ct = LpVariable.dicts('CT', (Categories, Levels), 0, upBound=1, cat='Binary')
+    ct = LpVariable.dicts('CT', (Categories, range(int(kMax))), 0, upBound=1, cat='Binary')
     print('we have created tiers')
     # Set up selected tier decision variable - has a value of 1 if a store will be assigned to the tier at that space level for that category, else 0
-    st = LpVariable.dicts('ST', (Stores, Categories, Levels), 0, upBound=1, cat='Binary')
+    st = LpVariable.dicts('ST', (Stores, Categories, range(int(kMax))), 0, upBound=1, cat='Binary')
     print('we have selected tiers')
     # EXPLORATORY ONLY: MINIMUM STORES PER TIER
     # m = 50 #minimum stores per tier
@@ -196,8 +228,8 @@ def optimize2(methodology, jobName, Stores, Categories, tierCounts, increment, w
     print('created objective function data')
     # Add the objective function to the optimization problem
     NewOptim += lpSum(
-        [(st[Store][Category][Level] * objective[i][j][k]) for (i, Store) in enumerate(Stores) for (j, Category)
-         in enumerate(Categories) for (k, Level) in enumerate(Levels)]), objectivetype
+        [(st[Store][Category][k] * objective[i][j][k]) for (i, Store) in enumerate(Stores) for (j, Category)
+         in enumerate(Categories) for k in range(int(kMax))]), objectivetype
     print('created objective function')
     # Begin CONSTRAINT SETUP
 
@@ -205,12 +237,12 @@ def optimize2(methodology, jobName, Stores, Categories, tierCounts, increment, w
         # TODO: Exploratory analysis on impact of balance back on financials for Enhanced
         # Store-level balance back constraint: the total space allocated to products at each location must be within the individual location balance back tolerance limit
         NewOptim += lpSum(
-            [(st[Store][Category][Level]) * Level for (j, Category) in enumerate(Categories) for (k, Level) in
-             enumerate(Levels)]) >= locSpaceToFill[Store] * (
+            [(st[Store][Category][k]) * indexDict[Category,Store,k] for (j, Category) in enumerate(Categories) for k in
+             range(int(kMax))]) >= locSpaceToFill[Store] * (
                     1 - locBalBackBoundAdj[Store]), "Location Balance Back Lower Limit: STR " + str(Store)
         NewOptim += lpSum(
-            [(st[Store][Category][Level]) * Level for (j, Category) in enumerate(Categories) for (k, Level) in
-             enumerate(Levels)]) <= locSpaceToFill[Store] * (
+            [(st[Store][Category][k]) * indexDict[Category,Store,k] for (j, Category) in enumerate(Categories) for k in
+             range(int(kMax))]) <= locSpaceToFill[Store] * (
                     1 + locBalBackBoundAdj[Store]), "Location Balance Back Upper Limit: STR " + str(Store)
 
         # EXPLORATORY ONLY: ELASTIC BALANCE BACK
@@ -224,17 +256,10 @@ def optimize2(methodology, jobName, Stores, Categories, tierCounts, increment, w
         for (j, Category) in enumerate(Categories):
             # print('we got through the first part')
             # Only one selected tier can be turned on for each product at each location.
-            NewOptim += lpSum([st[Store][Category][Level] for (k, Level) in
-                               enumerate(Levels)]) == 1, "One Tier per Location: STR " + str(Store) + ", CAT " + str(
+            NewOptim += lpSum([st[Store][Category][k] for k in
+                               range(int(kMax))]) == 1, "One Tier per Location: STR " + str(Store) + ", CAT " + str(
                 Category)
 
-            # The space allocated to each product at each location must be between the minimum and the maximum allowed for that product at the location.
-            NewOptim += lpSum([st[Store][Category][Level] * Level for (k, Level) in enumerate(Levels)]) >= \
-                        mergedPreOptCF["Lower_Limit"].loc[Store, Category], "Space Lower Limit: STR " + str(
-                Store) + ", CAT " + str(Category)
-            NewOptim += lpSum([st[Store][Category][Level] * Level for (k, Level) in enumerate(Levels)]) <= \
-                        mergedPreOptCF["Upper_Limit"].loc[Store, Category], "Space Upper Limit: STR " + str(
-                Store) + ", CAT " + str(Category)
             if mergedPreOptCF['Sales Penetration'].loc[Store, Category] < salesPen:
                 NewOptim += st[Store][Category][0] == 1
 
@@ -243,16 +268,23 @@ def optimize2(methodology, jobName, Stores, Categories, tierCounts, increment, w
     for (j, Category) in enumerate(Categories):
         # totalTiers=totalTiers+tierCounts[Category][1]
         # The number of created tiers must be within the tier count limits for each product.
-        NewOptim += lpSum([ct[Category][Level] for (k, Level) in enumerate(Levels)]) >= tierCounts[Category][
-            0], "Tier Count Lower Limit: CAT " + str(Category)
-        NewOptim += lpSum([ct[Category][Level] for (k, Level) in enumerate(Levels)]) <= tierCounts[Category][
-            1], "Tier Count Upper Limit: CAT " + str(Category)
-
-        for (k, Level) in enumerate(Levels):
+        try:
+            NewOptim += lpSum([ct[Category][k] for k in range(int(kMax))]) >= tierCounts[Category][
+                0], "Tier Count Lower Limit: CAT " + str(Category)
+            NewOptim += lpSum([ct[Category][k] for k in range(int(kMax))]) <= tierCounts[Category][
+                1], "Tier Count Upper Limit: CAT " + str(Category)
+        except:
+            print(Category)
+        print('end of first')
+        for k in range(int(kMax)):
             # A selected tier can be turned on if and only if the created tier at that level for that product is turned on.
-            NewOptim += lpSum([st[Store][Category][Level] for (i, Store) in enumerate(Stores)]) / len(Stores) <= \
-                        ct[Category][Level], "Selected-Created Tier Relationship: CAT " + str(
-                Category) + ", LEV: " + str(Level)
+            try:
+                NewOptim += lpSum([st[Store][Category][k] for (i, Store) in enumerate(Stores)]) / len(Stores) <= \
+                            ct[Category][k], "Selected-Created Tier Relationship: CAT " + str(
+                    Category) + ", LEV: "
+            except:
+                print(k)
+            print('end of second')
 
             # EXPLORATORY ONLY: MINIMUM STORES PER TIER
             # Increases optimization run time
@@ -264,11 +296,11 @@ def optimize2(methodology, jobName, Stores, Categories, tierCounts, increment, w
     # print('finished total tiers constraint')
 
     # The total space allocated to products across all locations must be within the aggregate balance back tolerance limit.
-    NewOptim += lpSum([st[Store][Category][Level] * Level for (i, Store) in enumerate(Stores) for (j, Category) in
-                       enumerate(Categories) for (k, Level) in enumerate(Levels)]) >= aggSpaceToFill * (
+    NewOptim += lpSum([st[Store][Category][k] * indexDict[Category,Store,k] for (i, Store) in enumerate(Stores) for (j, Category) in
+                       enumerate(Categories) for k in range(int(kMax))]) >= aggSpaceToFill * (
                 1 - aggBalBackBound), "Aggregate Balance Back Lower Limit"
-    NewOptim += lpSum([st[Store][Category][Level] * Level for (i, Store) in enumerate(Stores) for (j, Category) in
-                       enumerate(Categories) for (k, Level) in enumerate(Levels)]) <= aggSpaceToFill * (
+    NewOptim += lpSum([st[Store][Category][k] * indexDict[Category,Store,k] for (i, Store) in enumerate(Stores) for (j, Category) in
+                       enumerate(Categories) for k in range(int(kMax))]) <= aggSpaceToFill * (
                 1 + aggBalBackBound), "Aggregate Balance Back Upper Limit"
 
     # EXPLORATORY ONLY: ELASTIC BALANCE BACK
@@ -285,10 +317,11 @@ def optimize2(methodology, jobName, Stores, Categories, tierCounts, increment, w
     # NewOptim.solve()
 
 
-    # mergedPreOptCF.to_csv('test.csv',index=False,sep=',')
-
+    # mergedPreOptCF.to_csv(str(jobName) + '.csv', index=True, sep=',')
+    # NewOptim.writeMPS(str(jobName)+".mps")
+    # return
     # Solve the problem using open source solver
-    NewOptim.solve(pulp.PULP_CBC_CMD(msg=2, threads=4, maxSeconds=115200))
+    NewOptim.solve(pulp.PULP_CBC_CMD(msg=2, threads=4, maxSeconds=115200))#,fracGap=.5))
     # solver = "CBC" #for unit testing
 
     # Solve the problem using Gurobi

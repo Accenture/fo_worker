@@ -25,6 +25,16 @@ def createLong(jobType, optimizationType, lOutput):
                                                  lOutput["Scaled_Alpha_" + v] * erf(
                                                      (lOutput["Result Space"] - lOutput["Scaled_Shift_" + v]).div(
                                                      math.sqrt(2) * lOutput["Scaled_Beta_" + v])))
+
+        for v in variables:
+            lOutput["Current Estimated " + v] = np.where(lOutput["Space"] < lOutput["Scaled_BP_" + v],
+                                                 lOutput["Space"] * (lOutput["Scaled_Alpha_" + v] * (erf(
+                                                     (lOutput["Scaled_BP_" + v] - lOutput["Scaled_Shift_" + v]).div(
+                                                     math.sqrt(2) * lOutput["Scaled_Beta_" + v]))) / lOutput[
+                                                                                "Scaled_BP_" + v]),
+                                                 lOutput["Scaled_Alpha_" + v] * erf(
+                                                     (lOutput["Space"] - lOutput["Scaled_Shift_" + v]).div(
+                                                     math.sqrt(2) * lOutput["Scaled_Beta_" + v])))
         print("Finished Forecasting")
         # Reset the index and name the columns
         # lOutput.rename(columns={'level_0': 'Store', 'level_1': 'Category', 'Space': 'Historical Space'}, inplace=True)
@@ -43,17 +53,21 @@ def createLong(jobType, optimizationType, lOutput):
         print('Dropped Group Columns')
         lOutput.rename(
             columns={'Sales': 'Current Sales $', 'Profit': 'Current Profit $', 'Units': 'Current Sales Units',
-                     'Space': 'Current Space', 'Estimated Sales': 'Estimated Sales $',
-                     'Estimated Profit': 'Estimated Profit $', 'Estimated Units': 'Estimated Sales Units',
+                     'Space': 'Current Space', 'Current Estimated Sales': 'Current Estimated Sales $',
+                     'Current Estimated Profit': 'Current Estimated Profit $',
+                     'Current Estimated Units': 'Current Estimated Sales Units',
+                     'Estimated Sales': 'Result Estimated Sales $',
+                     'Estimated Profit': 'Result Estimated Profit $', 'Estimated Units': 'Result Estimated Sales Units',
                      'Optimal Estimated Sales': 'Optimal Estimated Sales $',
                      'Optimal Estimated Profit': 'Optimal Estimated Profit $',
                      'Optimal Estimated Units': 'Optimal Estimated Sales Units', 'Space_to_Fill': 'Total Store Space'},
             inplace=True)
         print('finished renaming')
+        print(lOutput.columns)
         lOutput = lOutput[
             ['Store', 'Category', 'Climate', 'VSG', 'Result Space', 'Current Space', 'Optimal Space',
-             'Current Sales $', 'Current Profit $', 'Current Sales Units', 'Estimated Sales $', 'Estimated Profit $',
-             'Estimated Sales Units', 'Optimal Estimated Sales $',
+             'Current Sales $', 'Current Profit $', 'Current Sales Units', 'Current Estimated Sales $', 'Current Estimated Profit $', 'Current Estimated Sales Units', 'Result Estimated Sales $', 'Result Estimated Profit $',
+             'Result Estimated Sales Units', 'Optimal Estimated Sales $',
              'Optimal Estimated Profit $', 'Optimal Estimated Sales Units', 'Total Store Space', 'Sales Penetration',
              'Exit Flag']]
     else:

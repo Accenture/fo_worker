@@ -17,6 +17,7 @@ from FixtureOptimization.ksMerging import ksMerge
 from FixtureOptimization.preoptimizerEnh import preoptimizeEnh
 from FixtureOptimization.optimizerR5 import optimize
 from FixtureOptimization.optimizer2 import optimize2
+from FixtureOptimization.optimizerProto import optimizeProto
 from FixtureOptimization.optimizer3 import optimize3
 from FixtureOptimization.outputFunctions import createLong, createWide, createDrillDownSummary, createTieredSummary, outputValidation
 # from FixtureOptimization.SingleStoreOptimization import optimizeSingleStore
@@ -134,7 +135,7 @@ def run(body):
         print("Brand Exit was not Uploaded")
         brandExitArtifact = None
 
-    dataMerged = ksMerge(msg['jobType'], fetchTransactions(msg["artifacts"]["salesArtifactId"]),
+    dataMerged = ksMerge(msg['meta']['name'],msg['jobType'], fetchTransactions(msg["artifacts"]["salesArtifactId"]),
                             fetchSpace(msg["artifacts"]["spaceArtifactId"]),
                             brandExitArtifact, futureSpace)
     print('finished data merging')
