@@ -25,7 +25,7 @@ def optimize2(methodology,jobName,Stores,Categories,tierCounts,increment,weights
     cfbsOutput.reset_index(inplace=True)
     cfbsOutput.rename(columns={'level_0': 'Store', 'level_1': 'Category'}, inplace=True)
     # print(cfbsOutput.columns)
-    print(preOpt.columns)
+    # print(preOpt.columns)
     mergedPreOptCF = pd.merge(cfbsOutput, preOpt[['Store', 'Category', 'VSG', 'Penetration','Exit Flag','Sales Penetration']],
                               on=['Store', 'Category'])
     print('just finished merge')
@@ -264,10 +264,10 @@ def optimize2(methodology,jobName,Stores,Categories,tierCounts,increment,weights
 
 
     # mergedPreOptCF.to_csv(str(jobName)+'.csv',index=True,sep=',')
-    NewOptim.writeMPS(str(jobName)+".mps")
-    return
+    # NewOptim.writeMPS(str(jobName)+".mps")
+    # return
     # Solve the problem using open source solver
-    NewOptim.solve(pulp.PULP_CBC_CMD(msg=2,threads=4,maxSeconds=115200))
+    NewOptim.solve(pulp.PULP_CBC_CMD(msg=2,threads=4,maxSeconds=691200))
     # solver = "CBC" #for unit testing
 
     #Solve the problem using Gurobi
