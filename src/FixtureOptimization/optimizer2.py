@@ -267,7 +267,7 @@ def optimize2(methodology,jobName,Stores,Categories,tierCounts,increment,weights
     # NewOptim.writeMPS(str(jobName)+".mps")
     # return
     # Solve the problem using open source solver
-    NewOptim.solve(pulp.PULP_CBC_CMD(msg=2,threads=4,maxSeconds=691200))
+    NewOptim.solve(pulp.PULP_CBC_CMD(msg=2,threads=4,maxSeconds=259200))
     # solver = "CBC" #for unit testing
 
     #Solve the problem using Gurobi
