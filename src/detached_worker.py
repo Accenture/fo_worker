@@ -1,30 +1,32 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import logging
+
 import datetime as dt
 from pulp import *
-import config as env
-import json
 import pandas as pd
-from bson.objectid import ObjectId
-import config
 # from FixtureOptimization.CurveFitting import curveFittingBS
 from FixtureOptimization.ksMerging import ksMerge
 from FixtureOptimization.preoptimizerEnh import preoptimizeEnh
 from FixtureOptimization.optimizerR5 import optimize
 from FixtureOptimization.optimizer2 import optimize2
-from FixtureOptimization.outputFunctions import createLong, createWide, createDrillDownSummary, createTieredSummary, outputValidation
+from FixtureOptimization.outputFunctions import createLong, createWide, createDrillDownSummary, createTieredSummary, \
+    outputValidation
 from FixtureOptimization.SingleStoreOptimization import optimizeSingleStore
+import logging
+
+LOG_FORMAT = ('%(levelname) -7s %(asctime) -25s Filename: %(filename) -20s'
+              ' MFL: %(module)s:%(funcName)s:%(lineno) -20s %(message)s')
+DATE_FORMAT = '%m/%d/%Y %I:%M:%S %p'
+LOG_FILE = 'mylogs.log'
+LOGGER = logging.getLogger(__name__)
+logging.basicConfig(filename=LOG_FILE,
+                    level=logging.INFO,
+                    format=LOG_FORMAT,
+                    datefmt=DATE_FORMAT)
 
 
-# import pdb; pdb.set_trace()
 def run(msg):
-    logging.basicConfig(filename='detached_worker.log',
-                        level=logging.INFO,
-                        format="%(levelname) -10s %(asctime) -10s %(filename)s%(module)s:%(lineno)s %(funcName)s %(message)s",
-                        datefmt='%m/%d/%Y %I:%M:%S %p')
-
     def create_output_artifact_from_dataframe(dataframe, *args, **kwargs):
         """
         Returns: file to csv inside detached_worker_output directory
@@ -62,10 +64,8 @@ def run(msg):
         file = pd.read_csv(artifact_id, header=0, skiprows=[1])
         return file
 
-    print("#####################################################################")
-    print('beginning of ' + msg['meta']['name'] + ' at ' + str(dt.datetime.utcnow()))
-    print("#####################################################################")
-    logging.debug('here!')
+    print(LOGGER.info('beginning of ' + msg['meta']['name']))
+
     try:
         futureSpace = fetchSpace(msg["artifacts"]["futureSpaceId"])
         print("Future Space was Uploaded")
@@ -89,6 +89,7 @@ def run(msg):
                             salesPenThreshold=float(msg["salesPenetrationThreshold"]),
                             optimizedMetrics=msg["optimizedMetrics"], increment=msg["increment"])
     print('finished preoptimize')
+
     if msg['optimizationType'] == 'traditional':
         print('finished preoptimize')
         print('going to the optimization')
@@ -98,10 +99,10 @@ def run(msg):
         cfbsArtifact = [None, None]
     else:
         print('curveFittingBS will not work in debugger')
-        # cfbsArtifact = curveFittingBS(dataMerged[0], msg['spaceBounds'], msg['increment'],
-        #                               msg['storeCategoryBounds'],
-        #                               float(msg["salesPenetrationThreshold"]), msg['jobType'],
-        #                               msg['optimizationType'])
+        cfbsArtifact = curveFittingBS(dataMerged[0], msg['spaceBounds'], msg['increment'],
+                                      msg['storeCategoryBounds'],
+                                      float(msg["salesPenetrationThreshold"]), msg['jobType'],
+                                      msg['optimizationType'])
         print('finished curve fitting')
         cfbsOptimal = optimizeSingleStore(cfbsArtifact[0].set_index(['Store', 'Category']), msg['increment'],
                                           msg['optimizedMetrics'])
@@ -152,9 +153,8 @@ def run(msg):
     else:  # since type == "Drill Down"
         summaryID = str(create_output_artifact_from_dataframe(createDrillDownSummary(longOutput)))
 
-    print("#####################################################################")
-    print('end of ' + msg['meta']['name'] + ' at ' + str(dt.datetime.utcnow()))
-    print("#####################################################################")
+    LOGGER.info('end of ' + msg['meta']['name'])
+
     print("Job complete")
 
 
