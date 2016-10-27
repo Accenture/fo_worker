@@ -12,7 +12,7 @@ import config
 import datetime as dt
 
 # Run tiered optimization algorithm
-def optimize2(methodology,jobName,Stores,Categories,tierCounts,increment,weights,cfbsOutput,preOpt,salesPen,threadCount,fractGap):
+def optimize2(methodology,jobName,Stores,Categories,tierCounts,increment,weights,cfbsOutput,preOpt,salesPen,threadCount=None,fractGap=None):
     print('in the new optimization')
     # Helper function for optimize function, to create eligible space levels
     # print(cfbsOutput.columns)
@@ -275,6 +275,10 @@ def optimize2(methodology,jobName,Stores,Categories,tierCounts,increment,weights
     #             fractGap.append(char)
     #     fractGap=int(jobName[4:6])
     # Solve the problem using open source solver
+    if threadCount == None:
+        threadCount = 4
+    if fractGap == None:
+        fractGap = 0
     if jobName[0:4] == 'flag':
         fractGap=int(jobName[4:6])/100
     NewOptim.solve(pulp.PULP_CBC_CMD(msg=2,threads=threadCount,fracGap=fractGap))
