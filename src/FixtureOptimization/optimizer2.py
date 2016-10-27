@@ -268,7 +268,15 @@ def optimize2(methodology,jobName,Stores,Categories,tierCounts,increment,weights
     # mergedPreOptCF.to_csv(str(jobName)+'.csv',sep=',')
     # NewOptim.writeMPS(str(jobName)+".mps")
     # return
+
+    # if jobName[0:4] == 'flag':
+    #     for char in jobName[4::]:
+    #         if char in range(0,10,1):
+    #             fractGap.append(char)
+    #     fractGap=int(jobName[4:6])
     # Solve the problem using open source solver
+    if jobName[0:4] == 'flag':
+        fractGap=int(jobName[4:6])/100
     NewOptim.solve(pulp.PULP_CBC_CMD(msg=2,threads=threadCount,fracGap=fractGap))
     # NewOptim.solve(pulp.PULP_CBC_CMD(msg=2,threads=4,cuts=100,options=['sec','600'],fracGap=.1))
     # solver = "CBC" #for unit testing
