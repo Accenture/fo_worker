@@ -162,11 +162,9 @@ def run(body):
         # preOpt = optimizeSingleStore(cfbsArtifact[0],msg['increment'],msg['optimizerMetrics'])
         print(msg['optimizationType'])
         if msg['jobType'] == 'tiered':
-            optimRes = optimize2(methodology=msg['optimizationType'], jobName=msg['meta']['name'],
-                                 Stores=msg['salesStores'], Categories=msg['salesCategories'], tierCounts=msg['tierCounts'],
-                                 increment=msg['increment'], weights=msg['optimizedMetrics'], cfbsOutput=cfbsOptimal[1],
-                                 preOpt=preOpt,salesPen=msg['salesPenetrationThreshold'],threadCount=msg['threads'],fractGap=msg['fracGap'])
+            optimRes = optimize2(methodology=msg['optimizationType'], jobName=msg['meta']['name'],Stores=msg['salesStores'], Categories=msg['salesCategories'], tierCounts=msg['tierCounts'],increment=msg['increment'], weights=msg['optimizedMetrics'], cfbsOutput=cfbsOptimal[1],preOpt=preOpt,salesPen=msg['salesPenetrationThreshold'],threadCount=msg['threads'],fractGap=msg['fracGap'])
             # optimRes = optimize3(jobName=msg['meta']['name'], Stores=msg['salesStores'],Categories=msg['salesCategories'],tierCounts=msg['tierCounts'], spaceBound=msg['spaceBounds'], increment=msg['increment'],dataMunged=optimRes)
+            print('we just did the optimization')
         else:
             try:
                 ddRes = drillDownOptim()
