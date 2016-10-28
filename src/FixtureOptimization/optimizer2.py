@@ -279,11 +279,29 @@ def optimize2(methodology,jobName,Stores,Categories,tierCounts,increment,weights
         threadCount = 4
     if fractGap == None:
         fractGap = 0
+    if jobName[0:4] == 'deci':
+        fractGap=float(jobName[4:6])/100
     if jobName[0:4] == 'flag':
-        fractGap=int(jobName[4:6])/100
-    #NewOptim.solve(pulp.PULP_CBC_CMD(msg=2,threads=threadCount,fracGap=fractGap))
-    NewOptim.solve(pulp.CPLEX_CMD(msg=2))
-    # NewOptim.solve(pulp.PULP_CBC_CMD(msg=2,threads=4,cuts=100,options=['sec','600'],fracGap=.1))
+        fractGap=float(jobName[4:6])
+    if 'PreSolve' in jobName:
+        preSolving = True
+    else:
+        preSolving = False
+
+
+        # try:
+        # NewOptim.solve(pulp.PULP_CBC_CMD(msg=2,threads=threadCount,options=["maxSolutions 1"]))
+    # except:
+        # print("maxSolutions didn't work'")
+
+    # try:
+        # NewOptim.solve(pulp.PULP_CBC_CMD(msg=2,threads=threadCount,options=["allowableGap 90"]))
+    # except:
+        # print("allowableGap didn't work'")
+
+    # NewOptim.solve(pulp.PULP_CBC_CMD(msg=2,threads=threadCount))
+                            
+    NewOptim.solve(pulp.PULP_CBC_CMD(msg=2,threads=4,fracGap=fractGap,presolve=preSolving))
     # solver = "CBC" #for unit testing
 
     #Solve the problem using Gurobi
