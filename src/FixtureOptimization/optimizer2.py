@@ -266,8 +266,8 @@ def optimize2(methodology,jobName,Stores,Categories,tierCounts,increment,weights
 
     mergedPreOptCF.reset_index(inplace=True)
     # mergedPreOptCF.to_csv(str(jobName)+'.csv',sep=',')
-    # NewOptim.writeMPS(str(jobName)+".mps")
-    # return
+    NewOptim.writeMPS(str(jobName)+".mps")
+    return
 
     # if jobName[0:4] == 'flag':
     #     for char in jobName[4::]:
@@ -299,11 +299,8 @@ def optimize2(methodology,jobName,Stores,Categories,tierCounts,increment,weights
     # except:
         # print("allowableGap didn't work'")
 
-    # NewOptim.solve(pulp.PULP_CBC_CMD(msg=2,threads=threadCount))
-                            
-    NewOptim.solve(pulp.PULP_CBC_CMD(msg=2,threads=4,fracGap=fractGap,presolve=preSolving))
-    # solver = "CBC" #for unit testing
 
+    # NewOptim.solve(pulp.PULP_CBC_CMD(msg=2,threads=4,fracGap=fractGap,presolve=preSolving))
     #Solve the problem using Gurobi
     # NewOptim.solve(pulp.GUROBI())
     #solver = "Gurobi" #for unit testing
