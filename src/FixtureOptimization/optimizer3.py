@@ -220,7 +220,10 @@ def optimize3(methodology,jobName,Stores,Categories,tierCounts,increment,weights
     # mergedPreOptCF.to_csv('test.csv',index=False,sep=',')
 
     # Solve the problem using open source solver
-    NewOptim.solve(pulp.PULP_CBC_CMD(msg=2,threads=4,maxSeconds=115200))
+    if jobName[0:4] == 'flag':
+        fractGap = int(jobName[4:9])
+
+    NewOptim.solve(pulp.PULP_CBC_CMD(msg=2, threads=4, fracGap=fractGap))
     # solver = "CBC" #for unit testing
 
     #Solve the problem using Gurobi

@@ -67,8 +67,28 @@ def optimize2(methodology,jobName,Stores,Categories,tierCounts,increment,weights
             value = str_cat["Scaled_Alpha_" + variable] * math.erf(
                 (space - str_cat["Scaled_Shift_" + variable]) / (math.sqrt(2) * str_cat["Scaled_Beta_" + variable]))
 
-        return value
+        return round(value,2)
 
+    def forecast2(str_cat, space, variable,increment):
+        def roundValue(cVal, increment):
+            if np.mod(round(cVal, 3), increment) > increment / 2:
+                cVal = round(cVal, 3) + (increment - (np.mod(round(cVal, 3), increment)))
+            else:
+                cVal = round(cVal, 3) - np.mod(round(cVal, 3), increment)
+            return cVal
+
+        if space < str_cat["Scaled_BP_" + variable]:
+            value = space * (str_cat["Scaled_Alpha_" + variable] * (math.erf(
+                (str_cat["Scaled_BP_" + variable] - str_cat["Scaled_Shift_" + variable]) / ((
+                math.sqrt(2) * str_cat["Scaled_Beta_" + variable])))) / str_cat["Scaled_BP_" + variable])
+        else:
+            value = str_cat["Scaled_Alpha_" + variable] * math.erf(
+                (space - str_cat["Scaled_Shift_" + variable]) / (math.sqrt(2) * str_cat["Scaled_Beta_" + variable]))
+
+        value=roundValue(value,increment)
+
+        return value
+    
     # Helper function for optimize function, to create objective function of SPU by level for Enhanced optimizations
     def createNegSPUByLevel(Stores, Categories, Levels, curveFittingOutput, enhMetrics):
 
@@ -188,6 +208,7 @@ def optimize2(methodology,jobName,Stores,Categories,tierCounts,increment,weights
         objectivetype = "Total Error"
     else: #since methodology == "enhanced"
         objective = createNegSPUByLevel(Stores, Categories, Levels, mergedPreOptCF, weights)
+        # objective2 = createNegSPUByLevel(Stores, Categories, Levels, mergedPreOptCF, weights,increment)
         objectivetype = "Total Negative SPU"
 
     # pd.DataFrame(objective).to_csv(str(jobName)+'objective.csv',sep=",")
@@ -261,7 +282,6 @@ def optimize2(methodology,jobName,Stores,Categories,tierCounts,increment,weights
 
     #Time stamp for optimization solve time
     # start_seconds = dt.datetime.today().hour*60*60+ dt.datetime.today().minute*60 + dt.datetime.today().second
-    print("to the solver we go")
     # NewOptim.solve()
 
     mergedPreOptCF.reset_index(inplace=True)
@@ -275,18 +295,46 @@ def optimize2(methodology,jobName,Stores,Categories,tierCounts,increment,weights
     #             fractGap.append(char)
     #     fractGap=int(jobName[4:6])
     # Solve the problem using open source solver
+    print('optional hidden parameters')
+    
     if threadCount == None:
         threadCount = 4
-    if fractGap == None:
-        fractGap = 0
-    if jobName[0:4] == 'flag':
-        fractGap=int(jobName[4:6])/100
-    NewOptim.solve(pulp.PULP_CBC_CMD(msg=2,threads=threadCount,fracGap=fractGap))
-    # NewOptim.solve(pulp.PULP_CBC_CMD(msg=2,threads=4,cuts=100,options=['sec','600'],fracGap=.1))
-    # solver = "CBC" #for unit testing
+    if 'PreSolve' in jobName:
+        preSolving = True
+    else:
+        preSolving = False
+    def searchParam(string,search):
+        if search in something:
+            begin=something.find(search)
+            length=0
+            for char in something[(len(search)+begin)::]:
+                try:
+                    int(char)
+                    length=length+1
+                except:
+                    break
+            searchParam=int(something[(len(search)+begin):(len(search)+begin+length)])/100
+        else:
+            searchParam=None
+    return int(searchParam)
 
+    print("to the solver we go")
+
+
+    # try:
+        # NewOptim.solve(pulp.PULP_CBC_CMD(msg=2,threads=threadCount,options=["maxSolutions","1"]))
+    # except:
+        # print("maxSolutions didn't work'")
+
+    # try:
+        # NewOptim.solve(pulp.PULP_CBC_CMD(msg=2,threads=threadCount,options=["allowableGap","90"]))
+    # except:
+        # print("allowableGap didn't work'")
+
+
+    # NewOptim.solve(pulp.PULP_CBC_CMD(msg=2,threads=4,fracGap=fractGap,presolve=preSolving))
     #Solve the problem using Gurobi
-    # NewOptim.solve(pulp.GUROBI())
+    NewOptim.solve(pulp.GUROBI_CMD())
     #solver = "Gurobi" #for unit testing
 
     #Time stamp for optimization solve time
