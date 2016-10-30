@@ -6,7 +6,6 @@ import math
 # Create long table for user download
 def createLong(jobType, optimizationType, lOutput):
     print('Inside createLong')
-    print(lOutput.columns)
     # Merge the optimize output with the curve-fitting output (which was already merged with the preoptimize output)
     if optimizationType == 'enhanced':
         print('initial merge')
@@ -63,7 +62,6 @@ def createLong(jobType, optimizationType, lOutput):
                      'Optimal Estimated Units': 'Optimal Estimated Sales Units', 'Space_to_Fill': 'Total Store Space'},
             inplace=True)
         print('finished renaming')
-        print(lOutput.columns)
         lOutput = lOutput[
             ['Store', 'Category', 'Climate', 'VSG', 'Result Space', 'Current Space', 'Optimal Space',
              'Current Sales $', 'Current Profit $', 'Current Sales Units', 'Current Estimated Sales $', 'Current Estimated Profit $', 'Current Estimated Sales Units', 'Result Estimated Sales $', 'Result Estimated Profit $',
