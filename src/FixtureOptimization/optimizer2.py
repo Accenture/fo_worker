@@ -10,7 +10,6 @@ import pymongo as pm
 import gridfs
 import config
 import datetime as dt
-import traceback
 
 # Run tiered optimization algorithm
 def optimizeNoNames(methodology,jobName,Stores,Categories,tierCounts,increment,weights,cfbsOutput,preOpt,salesPen,threadCount=None,fractGap=None):
@@ -341,10 +340,8 @@ def optimizeNoNames(methodology,jobName,Stores,Categories,tierCounts,increment,w
     #Solve the problem using Gurobi
     try:
         NewOptim.solve(pulp.CPLEX_CMD())
-
-    except Exception:
-        print('in except')
-        traceback.print_exc(file=sys.stdout)
+    except Exception as ex:
+        print('Solver failure: ', ex)
         return
         # print(traceback.print_stack())
         # print(repr(traceback.format_stack()))        
