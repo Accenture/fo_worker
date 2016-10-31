@@ -12,7 +12,7 @@ import config
 import datetime as dt
 
 # Run tiered optimization algorithm
-def optimizeNoNames(methodology,jobName,Stores,Categories,tierCounts,increment,weights,cfbsOutput,preOpt,salesPen,threadCount=None,fractGap=None):
+def optimize2(methodology,jobName,Stores,Categories,tierCounts,increment,weights,cfbsOutput,preOpt,salesPen,threadCount=None,fractGap=None):
     print('in the new optimization')
     # Helper function for optimize function, to create eligible space levels
     # print(cfbsOutput.columns)
