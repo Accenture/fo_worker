@@ -339,7 +339,7 @@ def optimize2(methodology,jobName,Stores,Categories,tierCounts,increment,weights
     # NewOptim.solve(pulp.PULP_CBC_CMD(msg=2,threads=4,fracGap=fractGap,presolve=preSolving))
     #Solve the problem using Gurobi
     try:
-        NewOptim.solve(pulp.CPLEX_CMD())
+        NewOptim.solve(pulp.CPLEX_CMD(msg=2))
     except Exception as ex:
         print('Solver failure: ', ex)
         return
