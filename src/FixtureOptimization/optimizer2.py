@@ -305,6 +305,12 @@ def optimize2(methodology,jobName,Stores,Categories,tierCounts,increment,weights
     # NewOptim.solve(pulp.GUROBI())
     #solver = "Gurobi" #for unit testing
 
+    # CPLex
+    try:
+        NewOptim.solve(pulp.CPLEX_CMD(msg=2))
+    except Exception as ex:
+        print("CPlex error: ", ex)
+
     #Time stamp for optimization solve time
     # solve_end_seconds = dt.datetime.today().hour*60*60 + dt.datetime.today().minute*60 + dt.datetime.today().second
     # solve_seconds = solve_end_seconds - start_seconds
