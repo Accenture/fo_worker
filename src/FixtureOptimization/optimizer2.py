@@ -267,7 +267,6 @@ def optimize2(methodology,jobName,Stores,Categories,tierCounts,increment,weights
     mergedPreOptCF.reset_index(inplace=True)
     # mergedPreOptCF.to_csv(str(jobName)+'.csv',sep=',')
     NewOptim.writeMPS(str(jobName)+".mps")
-    return
 
     # if jobName[0:4] == 'flag':
     #     for char in jobName[4::]:
