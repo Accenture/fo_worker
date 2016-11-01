@@ -38,7 +38,7 @@ TASK_TIMEOUT = 3600 * 48
 # LOGGING
 #
 
-fileConfig('logging_config.ini')
+fileConfig('src/logging_config.ini')
 
 logging = logging.getLogger(__name__)
 
