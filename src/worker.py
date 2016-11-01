@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 
 import json
-import logging
 from multiprocessing import Pool, ProcessError
 from time import time
 from os import getpid
@@ -12,6 +11,9 @@ from pika import BlockingConnection, ConnectionParameters
 from runner import run
 import config as env
 import datetime as dt
+import socket
+import logging
+from logging.config import fileConfig
 
 #
 # ENV VARS
@@ -36,10 +38,9 @@ TASK_TIMEOUT = 3600 * 48
 # LOGGING
 #
 
-LOG_FORMAT = ('%(levelname) -10s %(asctime)s %(name) -30s %(funcName) '
-              '-35s %(lineno) -5d: %(message)s')
-LOG_FILE = None
-LOGGER = logging.getLogger(__name__)
+fileConfig('logging_config.ini')
+
+logger = logging.getLogger(__name__)
 
 def main():
 
@@ -55,7 +56,7 @@ def main():
                 raise TimeoutError
 
             if not result.ready():
-                LOGGER.info('Sleeping...')
+                logging.info('Sleeping...')
                 mq_conn.sleep(RMQ_SLEEP)
                 continue
 
@@ -106,11 +107,11 @@ def main():
                  routing_key=RMQ_QUEUE_SINK,
                  body=json.dumps(res))
 
-    logging.basicConfig(level=logging.INFO,
-                        format=LOG_FORMAT,
-                        filename=LOG_FILE)
-
-    LOGGER.info('main thread pid: %s', getpid())
+    # logging.basicConfig(level=logging.INFO,
+    #                     format=LOG_FORMAT,
+    #                     filename=LOG_FILE)
+    #
+    # LOGGER.info('main thread pid: %s', getpid())
 
     db_conn = MongoClient(host=MONGO_HOST, port=MONGO_PORT)
     db = db_conn[MONGO_NAME]
@@ -121,7 +122,7 @@ def main():
     ch.queue_declare(queue=RMQ_QUEUE_SINK, durable=False)
     ch.basic_qos(prefetch_count=1)
    
-    messages = ch.consume(queue=RMQ_QUEUE_SOURCE)
+    messages = ch.consume(queue=RMQ_QUEUE_SOURCE, arguments={'server': socket.gethostname(), 'pid': getpid()})
 
     try:
         for method, properties, body in messages:
@@ -131,7 +132,7 @@ def main():
                 userId = json.loads(body.decode('utf-8'))['userId']
                 send_notification(ch, userId, 'done')
             except (ZeroDivisionError):
-                LOGGER.error('Division by Zero Error')
+                logging.error('Division by Zero Error')
                 ch.basic_reject(delivery_tag=method.delivery_tag,
                                 requeue=False)
                 _id = json.loads(body.decode('utf-8'))['_id']
@@ -140,7 +141,7 @@ def main():
                 send_notification(ch, userId, 'failed')
             except (TimeoutError, ProcessError):
                 print("Job has failed")
-                LOGGER.error('Process exited unexpectedly')
+                logging.error('Process exited unexpectedly')
                 ch.basic_reject(delivery_tag=method.delivery_tag,
                                 requeue=False)
                 _id = json.loads(body.decode('utf-8'))['_id']

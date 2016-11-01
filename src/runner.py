@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import logging
+
 import datetime as dt
 from pulp import *
 import config as env
@@ -12,7 +12,7 @@ import pika
 from bson.objectid import ObjectId
 from pymongo import MongoClient
 import config
-from FixtureOptimization.CurveFitting import curveFittingBS
+# from FixtureOptimization.CurveFitting import curveFittingBS
 from FixtureOptimization.ksMerging import ksMerge
 from FixtureOptimization.preoptimizerEnh import preoptimizeEnh
 from FixtureOptimization.optimizerR5 import optimize
@@ -23,6 +23,8 @@ from FixtureOptimization.outputFunctions import createLong, createWide, createDr
 # from FixtureOptimization.SingleStoreOptimization import optimizeSingleStore
 from pika import BlockingConnection, ConnectionParameters
 from FixtureOptimization.SingleStoreOptimization import optimizeSingleStore
+import logging
+from logging.config import fileConfig
 
 # from TierKey import tierKeyCreate
 # from TierOptim import tierDef
@@ -44,11 +46,9 @@ RMQ_QUEUE_SINK = 'notify_queue'
 #
 # LOGGING
 #
+fileConfig('logging_config.ini')
 
-LOG_FORMAT = ('%(levelname) -10s %(asctime)s %(name) -30s %(funcName) '
-              '-35s %(lineno) -5d: %(message)s')
-LOG_FILE = None
-LOGGER = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 
 def run(body):
@@ -243,4 +243,5 @@ def run(body):
     print("Job complete")
 
 if __name__ == '__main__':
-    LOGGER.debug('hello from {}'.format(__name__))
+    # LOGGER.debug('hello from {}'.format(__name__))
+    logging.debug('hello from {}'.format(__name__))
