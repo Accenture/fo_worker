@@ -24,6 +24,8 @@ from FixtureOptimization.outputFunctions import createLong, createWide, createDr
 from pika import BlockingConnection, ConnectionParameters
 from FixtureOptimization.SingleStoreOptimization import optimizeSingleStore
 import logging
+import socket
+from os import getpid
 # from logging.config import fileConfig
 
 # from TierKey import tierKeyCreate

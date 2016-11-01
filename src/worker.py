@@ -73,7 +73,11 @@ def main():
             {'_id': ObjectId(id)},
             {
                 "$set": {
-                    "status": "failed"
+                    "status": "failed",
+                    'logging':{
+                        'server':socket.gethostname(),
+                        'pid':getpid()
+                    }
                 }
             }
         )
@@ -85,7 +89,11 @@ def main():
             {'_id': ObjectId(id)},
             {
                 "$set": {
-                    'optimization_end_time': end_time
+                    'optimization_end_time': end_time,
+                    'logging':{
+                        'server':socket.gethostname(),
+                        'pid':getpid()
+                    }
                 }
             }
         )
@@ -95,7 +103,11 @@ def main():
             {'_id': ObjectId(id)},
             {
                 "$set": {
-                    "status": "Unbounded"
+                    "status": "Unbounded",
+                    'logging':{
+                        'server':socket.gethostname(),
+                        'pid':getpid()
+                    }
                 }
             }
         )
