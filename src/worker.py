@@ -40,7 +40,7 @@ TASK_TIMEOUT = 3600 * 48
 
 fileConfig('logging_config.ini')
 
-logger = logging.getLogger(__name__)
+logging = logging.getLogger(__name__)
 
 def main():
 
@@ -111,7 +111,7 @@ def main():
     #                     format=LOG_FORMAT,
     #                     filename=LOG_FILE)
     #
-    # LOGGER.info('main thread pid: %s', getpid())
+    logging.info('main thread pid: %s', getpid())
 
     db_conn = MongoClient(host=MONGO_HOST, port=MONGO_PORT)
     db = db_conn[MONGO_NAME]

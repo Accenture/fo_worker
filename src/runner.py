@@ -24,7 +24,7 @@ from FixtureOptimization.outputFunctions import createLong, createWide, createDr
 from pika import BlockingConnection, ConnectionParameters
 from FixtureOptimization.SingleStoreOptimization import optimizeSingleStore
 import logging
-from logging.config import fileConfig
+# from logging.config import fileConfig
 
 # from TierKey import tierKeyCreate
 # from TierOptim import tierDef
@@ -46,9 +46,7 @@ RMQ_QUEUE_SINK = 'notify_queue'
 #
 # LOGGING
 #
-fileConfig('logging_config.ini')
 
-logger = logging.getLogger(__name__)
 
 
 def run(body):
@@ -118,9 +116,9 @@ def run(body):
     # Stores = msg['salesStores']
     # Categories = msg['salesCategories']
 
-    print("#####################################################################")
-    print('beginning of ' + msg['meta']['name'] + ' at ' + str(dt.datetime.utcnow()))
-    print("#####################################################################")
+    # print(logger.info("#####################################################################"))
+    logging.error('beginning of ' + msg['meta']['name'])
+    # print(logger.info("#####################################################################"))
 
     try:
         futureSpace = fetchSpace(msg["artifacts"]["futureSpaceId"])
@@ -237,11 +235,11 @@ def run(body):
             }
         }
     )
-    print("#####################################################################")
-    print('end of ' + msg['meta']['name'] + ' at ' + str(dt.datetime.utcnow()))
-    print("#####################################################################")
+    # print("#####################################################################")
+    logging.info('end of ' + msg['meta']['name'])
+    # print("#####################################################################")
     print("Job complete")
 
 if __name__ == '__main__':
     # LOGGER.debug('hello from {}'.format(__name__))
-    logging.debug('hello from {}'.format(__name__))
+    logger.debug('hello from {}'.format(__name__))
