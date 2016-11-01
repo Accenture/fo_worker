@@ -12,7 +12,7 @@ import pika
 from bson.objectid import ObjectId
 from pymongo import MongoClient
 import config
-# from FixtureOptimization.CurveFitting import curveFittingBS
+from FixtureOptimization.CurveFitting import curveFittingBS
 from FixtureOptimization.ksMerging import ksMerge
 from FixtureOptimization.preoptimizerEnh import preoptimizeEnh
 from FixtureOptimization.optimizerR5 import optimize
