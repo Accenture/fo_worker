@@ -42,6 +42,7 @@ fileConfig('logging_config.ini')
 
 logging = logging.getLogger(__name__)
 
+
 def main():
 
     def process_job(func, *args):
@@ -68,15 +69,29 @@ def main():
             else:
                 raise ProcessError
 
+    def logging_db(db,id):
+        db.jobs.update_one(
+            {'_id': ObjectId(id)},
+            {
+                "$set": {
+                    "logging": {
+                        "server": socket.gethostname(),
+                        "pid": getpid()
+                    }
+                }
+            }
+        )
+        print('Updated job with logging info.')
+
     def reconcile_db(db, id):
         db.jobs.update_one(
             {'_id': ObjectId(id)},
             {
                 "$set": {
                     "status": "failed",
-                    'logging':{
-                        'server':socket.gethostname(),
-                        'pid':getpid()
+                    "logging": {
+                        "server": socket.gethostname(),
+                        "pid": getpid()
                     }
                 }
             }
@@ -90,9 +105,9 @@ def main():
             {
                 "$set": {
                     'optimization_end_time': end_time,
-                    'logging':{
-                        'server':socket.gethostname(),
-                        'pid':getpid()
+                    "logging": {
+                        "server": socket.gethostname(),
+                        "pid": getpid()
                     }
                 }
             }
@@ -104,9 +119,9 @@ def main():
             {
                 "$set": {
                     "status": "Unbounded",
-                    'logging':{
-                        'server':socket.gethostname(),
-                        'pid':getpid()
+                    "logging": {
+                        "server": socket.gethostname(),
+                        "pid": getpid()
                     }
                 }
             }
@@ -123,6 +138,7 @@ def main():
     #                     format=LOG_FORMAT,
     #                     filename=LOG_FILE)
     #
+
     logging.info('main thread pid: %s', getpid())
 
     db_conn = MongoClient(host=MONGO_HOST, port=MONGO_PORT)
@@ -141,7 +157,9 @@ def main():
             try:
                 print("Running new job")
                 process_job(run, body)
+                _id = json.loads(body.decode('utf-8'))['_id']
                 userId = json.loads(body.decode('utf-8'))['userId']
+                logging_db(db, _id)
                 send_notification(ch, userId, 'done')
             except (ZeroDivisionError):
                 logging.error('Division by Zero Error')
