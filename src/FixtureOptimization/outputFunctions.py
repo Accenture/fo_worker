@@ -67,7 +67,7 @@ def createLong(jobType, optimizationType, lOutput):
              'Current Sales $', 'Current Profit $', 'Current Sales Units', 'Current Estimated Sales $', 'Current Estimated Profit $', 'Current Estimated Sales Units', 'Result Estimated Sales $', 'Result Estimated Profit $',
              'Result Estimated Sales Units', 'Optimal Estimated Sales $',
              'Optimal Estimated Profit $', 'Optimal Estimated Sales Units', 'Total Store Space', 'Sales Penetration',
-             'Exit Flag']]
+             'Exit Flag','BOH $', 'Receipts  $','BOH Units', 'Receipts Units', 'Profit %','CC Count w/ BOH']]
     else:
         print('went to else')
         lOutput.drop('Current Space', axis=1, inplace=True)

@@ -20,14 +20,14 @@ def optimize2(methodology,jobName,Stores,Categories,tierCounts,increment,weights
     # preOpt.set_index(['Store','Category'],inplace=True)
     # print(preOpt.index)
     # mergedPreOptCF = pd.merge(cfbsOutput, preOpt[['Penetration','Exit Flag','Sales Penetration']])
-
+    print(cfbsOutput.columns)
+    print(preOpt.columns)
 
     cfbsOutput.reset_index(inplace=True)
     cfbsOutput.rename(columns={'level_0': 'Store', 'level_1': 'Category'}, inplace=True)
     # print(cfbsOutput.columns)
     # print(preOpt.columns)
-    mergedPreOptCF = pd.merge(cfbsOutput, preOpt[['Store', 'Category', 'VSG', 'Penetration','Exit Flag','Sales Penetration']],
-                              on=['Store', 'Category'])
+    mergedPreOptCF = pd.merge(cfbsOutput, preOpt[['Store', 'Category', 'VSG', 'Store Space', 'Penetration','Exit Flag','Sales Penetration','BOH $', 'Receipts  $','BOH Units', 'Receipts Units', 'Profit %','CC Count w/ BOH',]],on=['Store', 'Category'])
     print('just finished merge')
     mergedPreOptCF = mergedPreOptCF.apply(lambda x: pd.to_numeric(x, errors='ignore'))
     print('set the index')

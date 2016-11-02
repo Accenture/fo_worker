@@ -182,7 +182,7 @@ def optimize(jobName,Stores,Categories,tierCounts,spaceBound,increment,dataMunge
     # NewOptim.msg=1
     # NewOptim.solve(pulp.PULP_CBC_CMD(msg=1))
     # NewOptim.solve(pulp.PULP_CBC_CMD(msg=2,threads=4))
-    NewOptim.solve(pulp.GUROBI_CMD())
+    NewOptim.solve(pulp.GUROBI())
     # NewOptim.solve(pulp.COIN_CMD(msg=1))
     
 #Debugging
