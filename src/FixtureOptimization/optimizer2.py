@@ -340,7 +340,8 @@ def optimize2(methodology,jobName,Stores,Categories,tierCounts,increment,weights
     #Solve the problem using Gurobi
     fractGap = .1
     try:
-        NewOptim.solve(pulp.CPLEX_CMD(msg=2, options=["set mip tolerance mipgap " + str(fractGap),  "set threads " + str(threadCount)]))
+        # NewOptim.solve(pulp.CPLEX_CMD(msg=2, options=["set mip tolerance mipgap " + str(fractGap),  "set threads " + str(threadCount)]))
+        NewOptim.solve(pulp.CPLEX_CMD(msg=2, options=["set mip tolerance mipgap .1"]))
         # NewOptim.solve(pulp.PULP_CBC_CMD(msg=2,threads=4))
     except Exception as ex:
         print('Solver failure: ', ex)
