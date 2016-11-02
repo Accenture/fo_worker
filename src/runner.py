@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import logging
+
 import datetime as dt
 from pulp import *
 import config as env
@@ -23,6 +23,7 @@ from FixtureOptimization.outputFunctions import createLong, createWide, createDr
 # from FixtureOptimization.SingleStoreOptimization import optimizeSingleStore
 from pika import BlockingConnection, ConnectionParameters
 from FixtureOptimization.SingleStoreOptimization import optimizeSingleStore
+import logging
 
 # from TierKey import tierKeyCreate
 # from TierOptim import tierDef
@@ -45,10 +46,6 @@ RMQ_QUEUE_SINK = 'notify_queue'
 # LOGGING
 #
 
-LOG_FORMAT = ('%(levelname) -10s %(asctime)s %(name) -30s %(funcName) '
-              '-35s %(lineno) -5d: %(message)s')
-LOG_FILE = None
-LOGGER = logging.getLogger(__name__)
 
 
 def run(body):
@@ -118,9 +115,9 @@ def run(body):
     # Stores = msg['salesStores']
     # Categories = msg['salesCategories']
 
-    print("#####################################################################")
-    print('beginning of ' + msg['meta']['name'] + ' at ' + str(dt.datetime.utcnow()))
-    print("#####################################################################")
+    # print(logger.info("#####################################################################"))
+    logging.info('beginning of ' + msg['meta']['name'])
+    # print(logger.info("#####################################################################"))
 
     try:
         futureSpace = fetchSpace(msg["artifacts"]["futureSpaceId"])
@@ -237,10 +234,11 @@ def run(body):
             }
         }
     )
-    print("#####################################################################")
-    print('end of ' + msg['meta']['name'] + ' at ' + str(dt.datetime.utcnow()))
-    print("#####################################################################")
+    # print("#####################################################################")
+    logging.info('end of ' + msg['meta']['name'])
+    # print("#####################################################################")
     print("Job complete")
 
 if __name__ == '__main__':
-    LOGGER.debug('hello from {}'.format(__name__))
+    # LOGGER.debug('hello from {}'.format(__name__))
+    logger.debug('hello from {}'.format(__name__))
