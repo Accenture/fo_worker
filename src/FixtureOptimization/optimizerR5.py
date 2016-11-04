@@ -184,8 +184,9 @@ def optimize(jobName,Stores,Categories,tierCounts,spaceBound,increment,dataMunge
     # NewOptim.solve(pulp.PULP_CBC_CMD(msg=2,threads=4))
     # NewOptim.solve(pulp.GUROBI(msg=True, MIP=True, MIPgap=.05))
     # NewOptim.solve(pulp.COIN_CMD(msg=1))
-    NewOptim.solve(pulp.CPLEX_CMD(msg=2))
-    
+    # NewOptim.solve(pulp.CPLEX_CMD(msg=2))
+    NewOptim.solve(pulp.CPLEX_CMD(msg=2, options=["set mip tolerance mipgap .1"]))
+
 # #Debugging
     print("#####################################################################")
     print(LpStatus[NewOptim.status])
