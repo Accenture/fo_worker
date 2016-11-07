@@ -57,7 +57,7 @@ def main():
                 raise TimeoutError
 
             if not result.ready():
-                logging.info('Sleeping...')
+                # logging.info('Sleeping...')
                 mq_conn.sleep(RMQ_SLEEP)
                 continue
 

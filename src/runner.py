@@ -115,9 +115,12 @@ def run(body):
     # Stores = msg['salesStores']
     # Categories = msg['salesCategories']
 
-    # print(logger.info("#####################################################################"))
-    logging.info('beginning of ' + msg['meta']['name'])
-    # print(logger.info("#####################################################################"))
+    # logging.info('beginning of ' + msg['meta']['name'])
+
+    print("#####################################################################")
+    print('beginning of ' + msg['meta']['name'] + 'date of ' + dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+    print("#####################################################################")
+
 
     try:
         futureSpace = fetchSpace(msg["artifacts"]["futureSpaceId"])
@@ -234,9 +237,13 @@ def run(body):
             }
         }
     )
-    # print("#####################################################################")
-    logging.info('end of ' + msg['meta']['name'])
-    # print("#####################################################################")
+
+    # logging.info('end of ' + msg['meta']['name'])
+
+    print("#####################################################################")
+    print(dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+    print("#####################################################################")
+
     print("Job complete")
 
 if __name__ == '__main__':
