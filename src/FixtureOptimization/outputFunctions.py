@@ -184,7 +184,7 @@ def outputValidation(df, tierCounts, increment):
     # Take a vector of numbers and append 0 or 1 for each Category
     tierCountValidation = pd.Series(data=0, index=Categories)
     for (j, Product) in enumerate(Categories):
-        if len(pd.unique(df[df.Category == Product]['Result Space'])) > tierCounts[Product][1]:
+        if len(pd.unique(df[df.Category == Product]['Result Space']).dropna()) > tierCounts[Product][1]:
             tierCountValidation[Product] = 1
     if sum(tierCountValidation) > 0:
         tcValidation = 1
