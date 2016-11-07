@@ -339,7 +339,7 @@ def optimize2(methodology,jobName,Stores,Categories,tierCounts,increment,weights
     # try:
         # NewOptim.solve(pulp.CPLEX_CMD(msg=2, options=["set mip tolerance mipgap " + str(fractGap),  "set threads " + str(threadCount)]))
     # NewOptim.solve(pulp.GUROBI(mip=True, msg=True, Threads=2))
-    NewOptim.solve(pulp.GUROBI(mip=True, msg=True, MIPgap=.5))
+    NewOptim.solve(pulp.GUROBI(mip=True, msg=True, MIPgap=.01))
     # NewOptim.solve(pulp.GUROBI_CMD())
     # NewOptim.solve(pulp.CPLEX_CMD(msg=2, options=["set mip tolerance mipgap .05"]))
     # NewOptim.solve(pulp.CPLEX_CMD(msg=2))
