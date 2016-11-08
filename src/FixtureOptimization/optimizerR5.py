@@ -58,9 +58,7 @@ def optimize(jobName,Stores,Categories,tierCounts,spaceBound,increment,dataMunge
     # Categories = opt_amt.columns.values
     print('creating levels')
     minLevel = min(spaceBound[[1]].min())
-    print(type(minLevel))
     maxLevel = max(spaceBound[[2]].max())
-    print(type(maxLevel))
     Levels = list(np.arange(minLevel, maxLevel + increment, increment))
     if 0.0 not in Levels:
         Levels.insert(0,0.0)
@@ -180,13 +178,7 @@ def optimize(jobName,Stores,Categories,tierCounts,spaceBound,increment,dataMunge
 #Solving the Problem
     # NewOptim.writeLP("Fixture_Optimization.lp")
     # NewOptim.writeMPS(str(jobName)+".mps")
-    # NewOptim.msg=1
-    # NewOptim.solve(pulp.PULP_CBC_CMD(msg=1))
-    # NewOptim.solve(pulp.PULP_CBC_CMD(msg=2,threads=4))
     NewOptim.solve(pulp.GUROBI(mip=True, msg=True, MIPgap=.01))
-    # NewOptim.solve(pulp.COIN_CMD(msg=1))
-    # NewOptim.solve(pulp.CPLEX_CMD(msg=2))
-    # NewOptim.solve(pulp.CPLEX_CMD(msg=2, options=["set mip tolerance mipgap .05"]))
 
 # #Debugging
     print("#####################################################################")

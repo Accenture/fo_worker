@@ -8,12 +8,13 @@
 # setwd(paste0("C:\\Users\\alison.stern\\Documents\\Kohls\\FO Enhancements\\R Code\\Testing 09.29.2016\\",curr_prod_name))
 
 #library(tidyr)  #For data manipulation
-#library(gdata)
+
 
 # Curve Fitting and Bound Setting Function
 curvefitting_boundsetting<-function(master,bound_input,increment,pct_chg_limit,sls_pen_thresh,jobType,methodology){
   library(nloptr) #For running optimization to find unscaled coefficients
   library(pracma) #For error function
+  library(gdata)
   # BEGIN curve-fitting
 
   ##TODO: Create dynamic filters based upon optimization type

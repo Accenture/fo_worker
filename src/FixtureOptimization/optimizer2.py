@@ -324,37 +324,16 @@ def optimize2(methodology,jobName,Stores,Categories,increment,weights,cfbsOutput
 
     print("to the solver we go")
 
-
-    # try:
-        # NewOptim.solve(pulp.PULP_CBC_CMD(msg=2,threads=threadCount,options=["maxSolutions","1"]))
-    # except:
-        # print("maxSolutions didn't work'")
-
-    # try:
-        # NewOptim.solve(pulp.PULP_CBC_CMD(msg=2,threads=threadCount,options=["allowableGap","90"]))
-    # except:
-        # print("allowableGap didn't work'")
-
-
     # NewOptim.solve(pulp.PULP_CBC_CMD(msg=2,threads=4,fracGap=fractGap,presolve=preSolving))
     #Solve the problem using Gurobi
-    # fractGap = .1
-    # try:
-        # NewOptim.solve(pulp.CPLEX_CMD(msg=2, options=["set mip tolerance mipgap " + str(fractGap),  "set threads " + str(threadCount)]))
-    # NewOptim.solve(pulp.GUROBI(mip=True, msg=True, Threads=2))
     NewOptim.solve(pulp.GUROBI(mip=True, msg=True, MIPgap=.01))
-    # NewOptim.solve(pulp.GUROBI_CMD())
-    # NewOptim.solve(pulp.CPLEX_CMD(msg=2, options=["set mip tolerance mipgap .05"]))
-    # NewOptim.solve(pulp.CPLEX_CMD(msg=2))
     print('out of the solver')
 
-        # NewOptim.solve(pulp.PULP_CBC_CMD(msg=2,threads=4))
     # except Exception as ex:
         # print('Solver failure: ', ex)
         # return
         # print(traceback.print_stack())
         # print(repr(traceback.format_stack()))        
-    #solver = "Gurobi" #for unit testing
 
     #Time stamp for optimization solve time
     # solve_end_seconds = dt.datetime.today().hour*60*60 + dt.datetime.today().minute*60 + dt.datetime.today().second

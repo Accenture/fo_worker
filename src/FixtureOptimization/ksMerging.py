@@ -25,7 +25,6 @@ def ksMerge(jobName,optimizationType,transactions,space,brandExit=None,futureSpa
             str)
         spaceData = pd.melt(space, id_vars=['Store', 'Climate', 'VSG'], var_name='Category', value_name='Historical Space')
         spaceData['Current Space'] = spaceData['Historical Space']
-        print(spaceData.columns)
         def longTransaction(df, storeList, categories):
             df.loc[0, :] = categories
             df = pd.concat([storeList, df], axis=1)
