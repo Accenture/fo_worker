@@ -13,7 +13,7 @@ import config
 import datetime as dt
 
 # Run tiered optimization algorithm
-def optimize2(methodology,jobName,Stores,Categories,tierCounts,increment,weights,cfbsOutput,preOpt,salesPen,threadCount=None,fractGap=None):
+def optimize2(methodology,jobName,Stores,Categories,increment,weights,cfbsOutput,preOpt,salesPen,tierCounts=None,threadCount=None,fractGap=None):
     print('in the new optimization')
     # Helper function for optimize function, to create eligible space levels
     # print(cfbsOutput.columns)
@@ -174,7 +174,8 @@ def optimize2(methodology,jobName,Stores,Categories,tierCounts,increment,weights
     Levels = createLevels(mergedPreOptCF, increment)
     print('we have levels')
     # Set up created tier decision variable - has a value of 1 if that space level for that category will be a tier, else 0
-    ct = LpVariable.dicts('CT', (Categories, Levels), 0, upBound=1, cat='Binary')
+    if tierCounts is not None:
+        ct = LpVariable.dicts('CT', (Categories, Levels), 0, upBound=1, cat='Binary')
     print('we have created tiers')
     # Set up selected tier decision variable - has a value of 1 if a store will be assigned to the tier at that space level for that category, else 0
     st = LpVariable.dicts('ST', (Stores, Categories, Levels), 0, upBound=1, cat='Binary')
@@ -247,21 +248,23 @@ def optimize2(methodology,jobName,Stores,Categories,tierCounts,increment,weights
 
     print('finished first block of constraints')
     # totalTiers=0
-    for (j,Category) in enumerate(Categories):
-        # totalTiers=totalTiers+tierCounts[Category][1]
-        # The number of created tiers must be within the tier count limits for each product.
-        NewOptim += lpSum([ct[Category][Level] for (k,Level) in enumerate(Levels)]) >= tierCounts[Category][0]#, "Tier Count Lower Limit - CAT " + str(Category)
-        NewOptim += lpSum([ct[Category][Level] for (k,Level) in enumerate(Levels)]) <= tierCounts[Category][1]#, "Tier Count Upper Limit - CAT " + str(Category)
+    if tierCounts is not None:
+        print('we have tier counts')
+        for (j,Category) in enumerate(Categories):
+            # totalTiers=totalTiers+tierCounts[Category][1]
+            # The number of created tiers must be within the tier count limits for each product.
+            NewOptim += lpSum([ct[Category][Level] for (k,Level) in enumerate(Levels)]) >= tierCounts[Category][0]#, "Tier Count Lower Limit - CAT " + str(Category)
+            NewOptim += lpSum([ct[Category][Level] for (k,Level) in enumerate(Levels)]) <= tierCounts[Category][1]#, "Tier Count Upper Limit - CAT " + str(Category)
 
-        for (k,Level) in enumerate(Levels):
-            # A selected tier can be turned on if and only if the created tier at that level for that product is turned on.
-            NewOptim += lpSum([st[Store][Category][Level] for (i,Store) in enumerate(Stores)])/len(Stores) <= ct[Category][Level]#, "Selected-Created Tier Relationship - CAT " + str(Category) + ", LEV: " + str(Level)
+            for (k,Level) in enumerate(Levels):
+                # A selected tier can be turned on if and only if the created tier at that level for that product is turned on.
+                NewOptim += lpSum([st[Store][Category][Level] for (i,Store) in enumerate(Stores)])/len(Stores) <= ct[Category][Level]#, "Selected-Created Tier Relationship - CAT " + str(Category) + ", LEV: " + str(Level)
 
-            # EXPLORATORY ONLY: MINIMUM STORES PER TIER
-            # Increases optimization run time
-            # if Level > 0:
-            #        NewOptim += lpSum([st[Store][Category][Level] for (i, Store) in enumerate(Stores)]) >= m * ct[Category][Level], "Minimum Stores per Tier: CAT " + Category + ", LEV: " + str(Level)
-    print('finished second block of constraints')
+                # EXPLORATORY ONLY: MINIMUM STORES PER TIER
+                # Increases optimization run time
+                # if Level > 0:
+                #        NewOptim += lpSum([st[Store][Category][Level] for (i, Store) in enumerate(Stores)]) >= m * ct[Category][Level], "Minimum Stores per Tier: CAT " + Category + ", LEV: " + str(Level)
+        print('finished second block of constraints')
 
     # NewOptim += lpSum([ct[Category][Level] for (j, Category) in enumerate(Categories) for (k, Level) in enumerate(Levels)]) <= totalTiers
     # print('finished total tiers constraint')
@@ -338,7 +341,7 @@ def optimize2(methodology,jobName,Stores,Categories,tierCounts,increment,weights
     # fractGap = .1
     # try:
         # NewOptim.solve(pulp.CPLEX_CMD(msg=2, options=["set mip tolerance mipgap " + str(fractGap),  "set threads " + str(threadCount)]))
-    NewOptim.solve(pulp.GUROBI(mip=True, msg=True, Threads=2))
+    NewOptim.solve(pulp.GUROBI(mip=True, msg=True))
     # NewOptim.solve(pulp.GUROBI_CMD())
     # NewOptim.solve(pulp.CPLEX_CMD(msg=2, options=["set mip tolerance mipgap .05"]))
     # NewOptim.solve(pulp.CPLEX_CMD(msg=2))
@@ -382,26 +385,26 @@ def optimize2(methodology,jobName,Stores,Categories,tierCounts,increment,weights
                 elif value(st[Store][Category][Level]) < 0:
                     # print(st[Store][Category][Level],"Value is: ",value(st[Store][Category][Level])) #These values should only be a one or a zero
                     NegativeCount += 1
+    if tierCounts is not None:
+        ctNegativeCount = 0
+        ctLowCount = 0
+        ctTrueCount = 0
+        ctOneCount = 0
 
-    ctNegativeCount = 0
-    ctLowCount = 0
-    ctTrueCount = 0
-    ctOneCount = 0
-
-    for (j, Category) in enumerate(Categories):
-        for (k, Level) in enumerate(Levels):
-            if value(ct[Category][Level]) == 1:
-                # print(value(ct[Store][Category][Level])) #These values should only be a one or a zero
-                ctOneCount += 1
-            elif value(ct[Category][Level]) > 0:
-                # print(ct[Store][Category][Level],"Value is: ",value(st[Store][Category][Level])) #These values should only be a one or a zero
-                ctTrueCount += 1
-            elif value(ct[Category][Level]) == 0:
-                # print(value(ct[Category][Level])) #These values should only be a one or a zero
-                ctLowCount += 1
-            elif value(ct[Category][Level]) < 0:
-                # print(ct[Category][Level],"Value is: ",value(st[Store][Category][Level])) #These values should only be a one or a zero
-                ctNegativeCount += 1
+        for (j, Category) in enumerate(Categories):
+            for (k, Level) in enumerate(Levels):
+                if value(ct[Category][Level]) == 1:
+                    # print(value(ct[Store][Category][Level])) #These values should only be a one or a zero
+                    ctOneCount += 1
+                elif value(ct[Category][Level]) > 0:
+                    # print(ct[Store][Category][Level],"Value is: ",value(st[Store][Category][Level])) #These values should only be a one or a zero
+                    ctTrueCount += 1
+                elif value(ct[Category][Level]) == 0:
+                    # print(value(ct[Category][Level])) #These values should only be a one or a zero
+                    ctLowCount += 1
+                elif value(ct[Category][Level]) < 0:
+                    # print(ct[Category][Level],"Value is: ",value(st[Store][Category][Level])) #These values should only be a one or a zero
+                    ctNegativeCount += 1
 
     print("Status:", LpStatus[NewOptim.status])
     print("---------------------------------------------------")
@@ -411,12 +414,13 @@ def optimize2(methodology,jobName,Stores,Categories,tierCounts,increment,weights
     print("Number Above 0 and Below 1 Count is: ", TrueCount)
     print("Number of Selected Tiers: ", OneCount)
     print("---------------------------------------------------")
-    print("For Created Tiers")
-    print("Number of Negatives Count is: ", ctNegativeCount)
-    print("Number of Zeroes Count is: ", ctLowCount)
-    print("Number Above 0 and Below 1 Count is: ", ctTrueCount)
-    print("Number of Created Tiers: ", ctOneCount)
-    print("Creating Outputs")
+    if tierCounts is not None:
+        print("For Created Tiers")
+        print("Number of Negatives Count is: ", ctNegativeCount)
+        print("Number of Zeroes Count is: ", ctLowCount)
+        print("Number Above 0 and Below 1 Count is: ", ctTrueCount)
+        print("Number of Created Tiers: ", ctOneCount)
+        print("Creating Outputs")
 
     print('creating results')
     Results=pd.DataFrame(index=Stores,columns=Categories)
@@ -428,6 +432,7 @@ def optimize2(methodology,jobName,Stores,Categories,tierCounts,increment,weights
 
     Results.reset_index(inplace=True)
     Results.columns.values[0]='Store'
+    Results.to_csv('Unconstrained.csv',sep=",")
     # Results.rename(
     #     columns={'level_0': 'Store'},
     #     inplace=True)

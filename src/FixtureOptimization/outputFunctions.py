@@ -88,7 +88,7 @@ def createWide(long, jobType, optimizationType):
 
     print('renamed the columns')
     # Pivot to convert long table to wide, including Time in index for drill downs
-    if jobType == "tiered":
+    if jobType == "tiered" or 'unconstrained':
         wide = pd.pivot_table(adjusted_long, values=["result", "current", "optimal", "penetration"],
                               index=["Store", "Climate", "VSG"], columns="Category", aggfunc=np.sum, margins=True,
                               margins_name="Total")
@@ -168,7 +168,7 @@ def createDrillDownSummary(finalLong) :
     return drilldownSummaryPivot
 
 
-def outputValidation(df, tierCounts, increment):
+def outputValidation(df, jobType, tierCounts, increment):
     nullTest = 0
     tcValidation = 0
     exitValidation = 0
@@ -179,16 +179,17 @@ def outputValidation(df, tierCounts, increment):
     # Is Null
     if df.isnull().values.any():
         nullTest = 1
-
-    # Tier Counts
-    # Take a vector of numbers and append 0 or 1 for each Category
-    tierCountValidation = pd.Series(data=0, index=Categories)
-    for (j, Product) in enumerate(Categories):
-        if len(pd.unique(df[df.Category == Product]['Result Space']).dropna()) > tierCounts[Product][1]:
-            tierCountValidation[Product] = 1
-    if sum(tierCountValidation) > 0:
-        tcValidation = 1
-
+    if tierCounts is not None:
+        # Tier Counts
+        # Take a vector of numbers and append 0 or 1 for each Category
+        tierCountValidation = pd.Series(data=0, index=Categories)
+        for (j, Product) in enumerate(Categories):
+            if len(pd.unique(df[df.Category == Product]['Result Space'].dropna())) > tierCounts[Product][1]:
+                tierCountValidation[Product] = 1
+        if sum(tierCountValidation) > 0:
+            tcValidation = 1
+    else:
+        tcValidation=0
     # TODO Might be able to make this faster with an apply function and an 'any'
     exitVector = pd.Series(index=df.index, name='ExitVector')
     spVector = pd.Series(index=df.index, name='SalesPenetrationVector')

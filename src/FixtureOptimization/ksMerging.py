@@ -9,7 +9,7 @@ import sys
 
 def ksMerge(jobName,optimizationType,transactions,space,brandExit=None,futureSpace=None):
     space.rename(columns={'VSG ': 'VSG'}, inplace=True)
-    if optimizationType == 'tiered':
+    if optimizationType == 'tiered' or 'unconstrained':
         def brandExitMung(df, Stores, Categories):
             brand_exit = pd.DataFrame(index=Stores, columns=Categories)
             for (i, Store) in enumerate(Stores):

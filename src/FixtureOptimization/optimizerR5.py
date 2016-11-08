@@ -153,17 +153,18 @@ def optimize(jobName,Stores,Categories,tierCounts,spaceBound,increment,dataMunge
 
     print("After Space Bounds")
 #Tier Counts Enhancement
-    totalTiers=0
-    for (j,Category) in enumerate(Categories):
-        totalTiers=totalTiers+tierCounts[Category][1]
-        NewOptim += lpSum([ct[Category][Level] for (k,Level) in enumerate(Levels)]) >= tierCounts[Category][0] #, "Number_of_Tiers_per_Category"
-        NewOptim += lpSum([ct[Category][Level] for (k,Level) in enumerate(Levels)]) <= tierCounts[Category][1]
-#Relationship between Selected Tiers & Created Tiers
-    #Verify that we still cannot use a constraint if not using a sum - Look to improve efficiency   
-        for (k,Level) in enumerate(Levels):
-            NewOptim += lpSum([st[Store][Category][Level] for (i,Store) in enumerate(Stores)])/len(Stores) <= ct[Category][Level]#, "Relationship between ct & st"
+    # totalTiers=0
+    if tierCounts is not None:
+        for (j,Category) in enumerate(Categories):
+            totalTiers=totalTiers+tierCounts[Category][1]
+            NewOptim += lpSum([ct[Category][Level] for (k,Level) in enumerate(Levels)]) >= tierCounts[Category][0] #, "Number_of_Tiers_per_Category"
+            NewOptim += lpSum([ct[Category][Level] for (k,Level) in enumerate(Levels)]) <= tierCounts[Category][1]
+    #Relationship between Selected Tiers & Created Tiers
+        #Verify that we still cannot use a constraint if not using a sum - Look to improve efficiency
+            for (k,Level) in enumerate(Levels):
+                NewOptim += lpSum([st[Store][Category][Level] for (i,Store) in enumerate(Stores)])/len(Stores) <= ct[Category][Level]#, "Relationship between ct & st"
    
-    NewOptim += lpSum([ct[Category][Level] for (j,Category) in enumerate(Categories) for (k,Level) in enumerate(Levels)]) <= totalTiers #len(Categories)*sum(tier_count[Category][1].values())
+    # NewOptim += lpSum([ct[Category][Level] for (j,Category) in enumerate(Categories) for (k,Level) in enumerate(Levels)]) <= totalTiers #len(Categories)*sum(tier_count[Category][1].values())
 
 #Global Balance Back  
     NewOptim += lpSum(
@@ -211,26 +212,26 @@ def optimize(jobName,Stores,Categories,tierCounts,spaceBound,increment,dataMunge
                 elif value(st[Store][Category][Level]) < 0:
                     # print(st[Store][Category][Level],"Value is: ",value(st[Store][Category][Level])) #These values should only be a one or a zero
                     NegativeCount += 1
+    if tierCounts is not None:
+        ctNegativeCount = 0
+        ctLowCount = 0
+        ctTrueCount = 0
+        ctOneCount = 0
 
-    ctNegativeCount = 0
-    ctLowCount = 0
-    ctTrueCount = 0
-    ctOneCount = 0
-
-    for (j, Category) in enumerate(Categories):
-        for (k, Level) in enumerate(Levels):
-            if value(ct[Category][Level]) == 1:
-                # print(value(ct[Store][Category][Level])) #These values should only be a one or a zero
-                ctOneCount += 1
-            elif value(ct[Category][Level]) > 0:
-                # print(ct[Store][Category][Level],"Value is: ",value(st[Store][Category][Level])) #These values should only be a one or a zero
-                ctTrueCount += 1
-            elif value(ct[Category][Level]) == 0:
-                # print(value(ct[Category][Level])) #These values should only be a one or a zero
-                ctLowCount += 1
-            elif value(ct[Category][Level]) < 0:
-                # print(ct[Category][Level],"Value is: ",value(st[Store][Category][Level])) #These values should only be a one or a zero
-                ctNegativeCount += 1
+        for (j, Category) in enumerate(Categories):
+            for (k, Level) in enumerate(Levels):
+                if value(ct[Category][Level]) == 1:
+                    # print(value(ct[Store][Category][Level])) #These values should only be a one or a zero
+                    ctOneCount += 1
+                elif value(ct[Category][Level]) > 0:
+                    # print(ct[Store][Category][Level],"Value is: ",value(st[Store][Category][Level])) #These values should only be a one or a zero
+                    ctTrueCount += 1
+                elif value(ct[Category][Level]) == 0:
+                    # print(value(ct[Category][Level])) #These values should only be a one or a zero
+                    ctLowCount += 1
+                elif value(ct[Category][Level]) < 0:
+                    # print(ct[Category][Level],"Value is: ",value(st[Store][Category][Level])) #These values should only be a one or a zero
+                    ctNegativeCount += 1
 
     print("Status:", LpStatus[NewOptim.status])
     print("---------------------------------------------------")
@@ -240,12 +241,13 @@ def optimize(jobName,Stores,Categories,tierCounts,spaceBound,increment,dataMunge
     print("Number Above 0 and Below 1 Count is: ", TrueCount)
     print("Number of Selected Tiers: ", OneCount)
     print("---------------------------------------------------")
-    print("For Created Tiers")
-    print("Number of Negatives Count is: ", ctNegativeCount)
-    print("Number of Zeroes Count is: ", ctLowCount)
-    print("Number Above 0 and Below 1 Count is: ", ctTrueCount)
-    print("Number of Created Tiers: ", ctOneCount)
-    print("Creating Outputs")
+    if tierCounts is not None:
+        print("For Created Tiers")
+        print("Number of Negatives Count is: ", ctNegativeCount)
+        print("Number of Zeroes Count is: ", ctLowCount)
+        print("Number Above 0 and Below 1 Count is: ", ctTrueCount)
+        print("Number of Created Tiers: ", ctOneCount)
+        print("Creating Outputs")
 
     Results=pd.DataFrame(index=Stores,columns=Categories)
     for (i,Store) in enumerate(Stores):
