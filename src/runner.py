@@ -17,9 +17,7 @@ from FixtureOptimization.ksMerging import ksMerge
 from FixtureOptimization.preoptimizerEnh import preoptimizeEnh
 from FixtureOptimization.optimizerR5 import optimize
 from FixtureOptimization.optimizer2 import optimize2
-from FixtureOptimization.optimizerUncon import optimizeUncon
 from FixtureOptimization.outputFunctions import createLong, createWide, createDrillDownSummary, createTieredSummary, outputValidation
-# from FixtureOptimization.SingleStoreOptimization import optimizeSingleStore
 from pika import BlockingConnection, ConnectionParameters
 from FixtureOptimization.SingleStoreOptimization import optimizeSingleStore
 import logging
@@ -149,8 +147,8 @@ def run(body):
     if msg['optimizationType'] == 'traditional':
         print('going to the optimization')
         optimRes = optimize(jobName=msg['meta']['name'], Stores=msg['salesStores'], Categories=msg['salesCategories'],
-                tierCounts=msg['tierCounts'], spaceBound=msg['spaceBounds'], increment=msg['increment'],
-                dataMunged=preOpt)
+                            spaceBound=msg['spaceBounds'], increment=msg['increment'], dataMunged=preOpt,
+                            tierCounts=msg['tierCounts'])
         cfbsArtifact=[None,None]
     else:
         cfbsArtifact = curveFittingBS(dataMerged[0], msg['spaceBounds'], msg['increment'],

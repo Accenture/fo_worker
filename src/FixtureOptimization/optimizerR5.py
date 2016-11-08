@@ -12,7 +12,7 @@ import numpy as np
 import pandas as pd
 import datetime as dt
 
-def optimize(jobName,Stores,Categories,tierCounts,spaceBound,increment,dataMunged):
+def optimize(jobName,Stores,Categories,spaceBound,increment,dataMunged,tierCounts=None):
     """
     Run an LP-based optimization
 
@@ -82,7 +82,8 @@ def optimize(jobName,Stores,Categories,tierCounts,spaceBound,increment,dataMunge
     # print(TFC)
 
     print('Balance Back Vector')
-    ct = LpVariable.dicts('CT', (Categories, Levels), 0, upBound=1,cat='Binary')
+    if tierCounts is not None:
+        ct = LpVariable.dicts('CT', (Categories, Levels), 0, upBound=1,cat='Binary')
     st = LpVariable.dicts('ST', (Stores, Categories, Levels), 0,upBound=1, cat='Binary')
     print('tiers created')
 
@@ -154,7 +155,7 @@ def optimize(jobName,Stores,Categories,tierCounts,spaceBound,increment,dataMunge
     # totalTiers=0
     if tierCounts is not None:
         for (j,Category) in enumerate(Categories):
-            totalTiers=totalTiers+tierCounts[Category][1]
+            # totalTiers=totalTiers+tierCounts[Category][1]
             NewOptim += lpSum([ct[Category][Level] for (k,Level) in enumerate(Levels)]) >= tierCounts[Category][0] #, "Number_of_Tiers_per_Category"
             NewOptim += lpSum([ct[Category][Level] for (k,Level) in enumerate(Levels)]) <= tierCounts[Category][1]
     #Relationship between Selected Tiers & Created Tiers
