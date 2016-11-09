@@ -14,13 +14,6 @@ import pandas as pd
 # import os
 
 def testCalcPen(metric):
-    # print('***************************************************************************\n\n\n')
-    # print(metric.sum(axis=1))
-    # print('***************************************************************************\n\n\n')
-    # (metric.div(metric.sum(axis=1), axis=0)).to_csv('invSpread.csv',sep=",")
-    # print("CalcPen Metric")
-    # print(metric.div(metric.sum(axis=1), axis=0))
-    # print('***************************************************************************\n\n\n')
     return metric.div(metric.sum(axis=1), axis=0)
 
 def calcPen(metric):
@@ -28,7 +21,6 @@ def calcPen(metric):
 
 
 def getColumns(df):
-    # print(df[[ *np.arange(len(df.columns))[0::9] ]].drop(df.index[[0]]).convert_objects(convert_numeric=True).columns)
     return df[[*np.arange(len(df.columns))[0::9]]].drop(df.index[[0]]).convert_objects(convert_numeric=True).columns
 
 
@@ -36,22 +28,7 @@ def spreadCalc(sales, boh, receipt, mAdjustment):
     # storing input sales and inventory data in separate 2D arrays
     # finding sales penetration, GAFS and spread for each brand in given stores
     # calculate adjusted penetration
-    # Not necessary -- sales.columns = master_columns
     inv = boh.add(receipt)
-    # inv.to_csv('socksInventory.csv',sep=",")
-    # print('***************************************************************************\n\n\n')    
-    # print(mAdjustment)
-    # print('***************************************************************************\n\n\n')
-    # print("Metric Adjustment Effect")
-    # print((calcPen(sales) - calcPen(inv)).multiply(mAdjustment))
-    # writer = pd.ExcelWriter('josiePen.xlsx', engine='xlsxwriter')
-    # calcPen(sales).to_excel(writer,'salesPenetration')
-    # calcPen(inv).to_excel(writer,'inventoryPenetration')
-    # ((calcPen(sales) - calcPen(inv)).multiply(mAdjustment)).to_excel(writer,'spreadAdjustment')
-    # (calcPen(sales) + (testCalcPen(sales).subtract(testCalcPen(inv))).multiply(mAdjustment)).to_excel(writer,'spread')
-    # writer.save()
-    print('created Penetration')
-    # print('***************************************************************************\n\n\n')    
     return calcPen(sales) + (testCalcPen(sales).subtract(testCalcPen(inv))).multiply(mAdjustment)
 
 def metric_per_fixture(metric1, metric2, mAdjustment):
@@ -127,8 +104,6 @@ def preoptimizeEnh(optimizationType,dataMunged, salesPenThreshold, mAdjustment, 
     profit = dataMunged.pivot(index='Store',columns='Category',values='Profit $')
     newSpace= dataMunged.pivot(index='Store',columns='Category',values='New Space')
     bfc = dataMunged.pivot(index='Store',columns='Category',values='Current Space')
-    print(optimizedMetrics)
-    print(optimizationType)
     if optimizationType=='traditional':
         boh = dataMunged.pivot(index='Store', columns='Category', values='BOH $')
         receipt = dataMunged.pivot(index='Store', columns='Category', values='Receipts  $')
@@ -145,31 +120,16 @@ def preoptimizeEnh(optimizationType,dataMunged, salesPenThreshold, mAdjustment, 
     else:
         adj_p = (optimizedMetrics['sales'] * sales) + (optimizedMetrics['profits'] * profit) + (optimizedMetrics['units'] * sold_units)
 
-    # print(adj_p.head())
-    # adj_p.fillna(np.float(0))
-    # adj_p[np.isnan(adj_p)] = 0
-    # adj_p.where(adj_p < salesPenThreshold, 0, inplace=True)
     for i in adj_p.index:
         for j in adj_p.columns:
             if adj_p[j].loc[i] < salesPenThreshold:
                 adj_p[j].loc[i] = 0
     print('creating adj_p')
-    # writer2 = ExcelWriter('josieAdjP.xlsx', engine='xlsxwriter')
-    # print('created')    
-    # adj_p.to_csv('adjPerc.csv')
     adj_p = calcPen(adj_p)
-    # adj_p.to_excel(writer2,'adjPerc2')
     adj_p.fillna(0)
-    # adj_p.to_csv('adjPerc3.csv')
-    # writer2.save()
-    # print(adj_p == spreadCalc(sales, boh, receipt, mAdjustment))
     information=pd.merge(dataMunged,pd.melt(adj_p.reset_index(), id_vars=['Store'], var_name='Category', value_name='Penetration'),on=['Store','Category'])
     information['Optimal Space'] = information['New Space'] * information['Penetration']
     print('attempting to keep sales pen')
     information = pd.merge(information,pd.melt(calcPen(sales).reset_index(),id_vars=['Store'], var_name='Category',value_name='Sales Penetration'),on=['Store','Category'])
     information = information.apply(lambda x: pd.to_numeric(x, errors='ignore'))
-    # spreadCalc(sales, boh, receipt, mAdjustment).to_csv('socksSpreadInfo.csv',sep=",")
-    # information.to_csv('socksInfoComplete.csv',sep=",")
-    # information['Optimal Space']=information['Optimal Space'].apply(lambda x: roundValue(x,increment))
-    print(information.columns)
     return information

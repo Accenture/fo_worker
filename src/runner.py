@@ -116,7 +116,7 @@ def run(body):
     # logging.info('beginning of ' + msg['meta']['name'])
 
     print("#####################################################################")
-    print('beginning of ' + msg['meta']['name'] + 'date of ' + dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+    print('beginning of ' + msg['meta']['name'] + ' date of ' + dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
     print("#####################################################################")
 
 
@@ -227,7 +227,7 @@ def run(body):
                     'summary_report': summaryID,
                     'analytic_data': analyticsID
                 },
-                "outputErrors":{
+                "outputErrors": {
                     'invalidValues': invalids[0],
                     'invalidTierCounts': invalids[1],
                     'invalidBrandExit': invalids[2],

@@ -84,8 +84,8 @@ def optimize(jobName,Stores,Categories,spaceBound,increment,dataMunged,tierCount
     print('Balance Back Vector')
     if tierCounts is not None:
         ct = LpVariable.dicts('CT', (Categories, Levels), 0, upBound=1,cat='Binary')
+        print('tiers created')
     st = LpVariable.dicts('ST', (Stores, Categories, Levels), 0,upBound=1, cat='Binary')
-    print('tiers created')
 
     NewOptim = LpProblem(jobName, LpMinimize)  # Define Optimization Problem/
 
@@ -185,62 +185,62 @@ def optimize(jobName,Stores,Categories,spaceBound,increment,dataMunged,tierCount
     print("#####################################################################")
     print(LpStatus[NewOptim.status])
     print("#####################################################################")
-    # Debugging
-    NegativeCount = 0
-    LowCount = 0
-    TrueCount = 0
-    OneCount = 0
-    for (i, Store) in enumerate(Stores):
-        for (j, Category) in enumerate(Categories):
-            for (k, Level) in enumerate(Levels):
-                if value(st[Store][Category][Level]) == 1:
-                    # print(st[Store][Category][Level]) #These values should only be a one or a zero
-                    OneCount += 1
-                elif value(st[Store][Category][Level]) > 0:
-                    # print(st[Store][Category][Level],"Value is: ",value(st[Store][Category][Level])) #These values should only be a one or a zero
-                    TrueCount += 1
-                elif value(st[Store][Category][Level]) == 0:
-                    # print(value(st[Store][Category][Level])) #These values should only be a one or a zero
-                    LowCount += 1
-                elif value(st[Store][Category][Level]) < 0:
-                    # print(st[Store][Category][Level],"Value is: ",value(st[Store][Category][Level])) #These values should only be a one or a zero
-                    NegativeCount += 1
-    if tierCounts is not None:
-        ctNegativeCount = 0
-        ctLowCount = 0
-        ctTrueCount = 0
-        ctOneCount = 0
-
-        for (j, Category) in enumerate(Categories):
-            for (k, Level) in enumerate(Levels):
-                if value(ct[Category][Level]) == 1:
-                    # print(value(ct[Store][Category][Level])) #These values should only be a one or a zero
-                    ctOneCount += 1
-                elif value(ct[Category][Level]) > 0:
-                    # print(ct[Store][Category][Level],"Value is: ",value(st[Store][Category][Level])) #These values should only be a one or a zero
-                    ctTrueCount += 1
-                elif value(ct[Category][Level]) == 0:
-                    # print(value(ct[Category][Level])) #These values should only be a one or a zero
-                    ctLowCount += 1
-                elif value(ct[Category][Level]) < 0:
-                    # print(ct[Category][Level],"Value is: ",value(st[Store][Category][Level])) #These values should only be a one or a zero
-                    ctNegativeCount += 1
-
-    print("Status:", LpStatus[NewOptim.status])
-    print("---------------------------------------------------")
-    print("For Selected Tiers")
-    print("Number of Negatives Count is: ", NegativeCount)
-    print("Number of Zeroes Count is: ", LowCount)
-    print("Number Above 0 and Below 1 Count is: ", TrueCount)
-    print("Number of Selected Tiers: ", OneCount)
-    print("---------------------------------------------------")
-    if tierCounts is not None:
-        print("For Created Tiers")
-        print("Number of Negatives Count is: ", ctNegativeCount)
-        print("Number of Zeroes Count is: ", ctLowCount)
-        print("Number Above 0 and Below 1 Count is: ", ctTrueCount)
-        print("Number of Created Tiers: ", ctOneCount)
-        print("Creating Outputs")
+    # # Debugging
+    # NegativeCount = 0
+    # LowCount = 0
+    # TrueCount = 0
+    # OneCount = 0
+    # for (i, Store) in enumerate(Stores):
+    #     for (j, Category) in enumerate(Categories):
+    #         for (k, Level) in enumerate(Levels):
+    #             if value(st[Store][Category][Level]) == 1:
+    #                 # print(st[Store][Category][Level]) #These values should only be a one or a zero
+    #                 OneCount += 1
+    #             elif value(st[Store][Category][Level]) > 0:
+    #                 # print(st[Store][Category][Level],"Value is: ",value(st[Store][Category][Level])) #These values should only be a one or a zero
+    #                 TrueCount += 1
+    #             elif value(st[Store][Category][Level]) == 0:
+    #                 # print(value(st[Store][Category][Level])) #These values should only be a one or a zero
+    #                 LowCount += 1
+    #             elif value(st[Store][Category][Level]) < 0:
+    #                 # print(st[Store][Category][Level],"Value is: ",value(st[Store][Category][Level])) #These values should only be a one or a zero
+    #                 NegativeCount += 1
+    # if tierCounts is not None:
+    #     ctNegativeCount = 0
+    #     ctLowCount = 0
+    #     ctTrueCount = 0
+    #     ctOneCount = 0
+    #
+    #     for (j, Category) in enumerate(Categories):
+    #         for (k, Level) in enumerate(Levels):
+    #             if value(ct[Category][Level]) == 1:
+    #                 # print(value(ct[Store][Category][Level])) #These values should only be a one or a zero
+    #                 ctOneCount += 1
+    #             elif value(ct[Category][Level]) > 0:
+    #                 # print(ct[Store][Category][Level],"Value is: ",value(st[Store][Category][Level])) #These values should only be a one or a zero
+    #                 ctTrueCount += 1
+    #             elif value(ct[Category][Level]) == 0:
+    #                 # print(value(ct[Category][Level])) #These values should only be a one or a zero
+    #                 ctLowCount += 1
+    #             elif value(ct[Category][Level]) < 0:
+    #                 # print(ct[Category][Level],"Value is: ",value(st[Store][Category][Level])) #These values should only be a one or a zero
+    #                 ctNegativeCount += 1
+    #
+    # print("Status:", LpStatus[NewOptim.status])
+    # print("---------------------------------------------------")
+    # print("For Selected Tiers")
+    # print("Number of Negatives Count is: ", NegativeCount)
+    # print("Number of Zeroes Count is: ", LowCount)
+    # print("Number Above 0 and Below 1 Count is: ", TrueCount)
+    # print("Number of Selected Tiers: ", OneCount)
+    # print("---------------------------------------------------")
+    # if tierCounts is not None:
+    #     print("For Created Tiers")
+    #     print("Number of Negatives Count is: ", ctNegativeCount)
+    #     print("Number of Zeroes Count is: ", ctLowCount)
+    #     print("Number Above 0 and Below 1 Count is: ", ctTrueCount)
+    #     print("Number of Created Tiers: ", ctOneCount)
+    #     print("Creating Outputs")
 
     Results=pd.DataFrame(index=Stores,columns=Categories)
     for (i,Store) in enumerate(Stores):
@@ -253,7 +253,7 @@ def optimize(jobName,Stores,Categories,spaceBound,increment,dataMunged,tierCount
     Results = pd.melt(Results.reset_index(), id_vars=['Store'], var_name='Category', value_name='Result Space')
     Results=Results.apply(lambda x: pd.to_numeric(x, errors='ignore'))
     dataMunged=pd.merge(dataMunged,Results,on=['Store','Category'])
-    return (LpStatus[NewOptim.status],dataMunged) #(longOutput)#,wideOutput)
+    return (LpStatus[NewOptim.status],dataMunged,value(NewOptim.objective)*-1) #(longOutput)#,wideOutput)
 
 # if __name__ == '__main__':
 #     df = pd.DataFrame(np.random.randn(10, 5), columns=['a', 'b', 'c', 'd', 'e'])

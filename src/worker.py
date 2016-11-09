@@ -14,6 +14,7 @@ import datetime as dt
 import socket
 import logging
 from logging.config import fileConfig
+import traceback
 
 #
 # ENV VARS
@@ -179,6 +180,10 @@ def main():
                 updateEnd(db, _id)
                 reconcile_db(db, _id)
                 send_notification(ch, userId, 'failed')
+            except Exception as ex:
+                print('Solver failure: ', ex)
+                print(traceback.print_stack())
+                print(repr(traceback.format_stack()))
             else:
                 ch.basic_ack(delivery_tag=method.delivery_tag)
     except KeyboardInterrupt:
