@@ -13,7 +13,7 @@ from bson.objectid import ObjectId
 from pymongo import MongoClient
 import config
 from FixtureOptimization.CurveFitting import curveFittingBS
-from FixtureOptimization.ksMerging import ksMerge
+from FixtureOptimization.dataMerging import dataMerge
 from FixtureOptimization.preoptimizerEnh import preoptimizeEnh
 from FixtureOptimization.optimizerR5 import optimize
 from FixtureOptimization.optimizer2 import optimize2
@@ -22,9 +22,6 @@ from pika import BlockingConnection, ConnectionParameters
 from FixtureOptimization.SingleStoreOptimization import optimizeSingleStore
 import logging
 import traceback
-
-# from TierKey import tierKeyCreate
-# from TierOptim import tierDef
 
 #
 # ENV VARS
@@ -135,7 +132,7 @@ def run(body):
     if msg['jobType'] == 'unconstrained':
         msg['tierCounts'] = None
 
-    dataMerged = ksMerge(msg['meta']['name'],msg['jobType'], fetchTransactions(msg["artifacts"]["salesArtifactId"]),
+    dataMerged = dataMerge(msg['meta']['name'],msg['jobType'], fetchTransactions(msg["artifacts"]["salesArtifactId"]),
                             fetchSpace(msg["artifacts"]["spaceArtifactId"]),
                             brandExitArtifact, futureSpace)
     print('finished data merging')
@@ -165,15 +162,7 @@ def run(body):
                              Stores=msg['salesStores'], Categories=msg['salesCategories'],
                              increment=msg['increment'], weights=msg['optimizedMetrics'], cfbsOutput=cfbsOptimal[1],
                              preOpt=preOpt, salesPen=msg['salesPenetrationThreshold'], tierCounts=msg['tierCounts'])
-
-            # else:
-        #     optimRes = optimizeUncon(methodology=msg['optimizationType'], jobName=msg['meta']['name'],
-        #                         Stores=msg['salesStores'], Categories=msg['salesCategories'],
-        #                         increment=msg['increment'], weights=msg['optimizedMetrics'], cfbsOutput=cfbsOptimal[1],
-        #                         preOpt=preOpt, salesPen=msg['salesPenetrationThreshold'])
     print('we just did the optimization')
-    print('New optimization completed')
-
 
     # Call functions to create output information
     print('Out of the optimization')

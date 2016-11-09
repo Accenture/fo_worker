@@ -13,92 +13,85 @@ import pandas as pd
 
 # import os
 
-def testCalcPen(metric):
-    return metric.div(metric.sum(axis=1), axis=0)
-
-def calcPen(metric):
-    return metric.div(metric.sum(axis=1), axis=0)
-
-
-def getColumns(df):
-    return df[[*np.arange(len(df.columns))[0::9]]].drop(df.index[[0]]).convert_objects(convert_numeric=True).columns
-
-
-def spreadCalc(sales, boh, receipt, mAdjustment):
-    # storing input sales and inventory data in separate 2D arrays
-    # finding sales penetration, GAFS and spread for each brand in given stores
-    # calculate adjusted penetration
-    inv = boh.add(receipt)
-    return calcPen(sales) + (testCalcPen(sales).subtract(testCalcPen(inv))).multiply(mAdjustment)
-
-def metric_per_fixture(metric1, metric2, mAdjustment):
-    # storing input sales data in an array
-    # finding penetration for each brand in given stores
-    # calculate adjusted penetration
-    # spacePen = metric2.div(newSpace, axis='index')
-    return calcPen(metric1) + ((calcPen(metric1) - calcPen(metric2)) * mAdjustment)
-
-
-def metric_per_metric(metric1, metric2, mAdjustment):
-    # storing input sales data in an array
-    # finding penetration for each brand in given stores
-    # calculate adjusted penetration
-    return calcPen(metric1) + ((calcPen(metric1) - calcPen(metric2)) * mAdjustment)
-
-
-def invTurn_Calc(sold_units, boh_units, receipts_units):
-    calcPen(sold_units)
-    calcPen(boh_units + receipts_units)
-    inv_turn = calcPen(sold_units).div(calcPen(boh_units + receipts_units), axis='index')
-    inv_turn[np.isnan(inv_turn)] = 0
-    inv_turn[np.isinf(inv_turn)] = 0
-    return calcPen(inv_turn)
-
-
-def roundArray(array, increment):
-    rounded = np.copy(array)
-    for i in range(len(array)):
-        for j in range(len(list(array[0, :]))):
-            if np.mod(np.around(array[i][j], 0), increment) > increment / 2:
-                rounded[i][j] = np.around(array[i][j], 0) + (increment - (np.mod(np.around(array[i][j], 0), increment)))
-            else:
-                rounded[i][j] = np.around(array[i][j], 0) - np.mod(np.around(array[i][j], 0), increment)
-    return rounded
-
-def roundColumn(array,increment):
-    for i in range(len(array)):
-        if np.mod(np.around(array[i], 3), increment) > increment / 2:
-            array[i] = np.around(array[i], 3) + (
-                increment - (np.mod(np.around(array[i], 3), increment)))
-        else:
-            array[i] = np.around(array[i], 3) - np.mod(np.around(array[i], 3), increment)
-
-def roundValue(cVal,increment):
-    if np.mod(round(cVal, 3), increment) > increment / 2:
-        cVal = round(cVal, 3) + (increment - (np.mod(round(cVal, 3), increment)))
-    else:
-        cVal = round(cVal, 3) - np.mod(round(cVal, 3), increment)
-    return cVal
-
-# def roundValue(cVal,increment):
-#    if np.mod(round(cVal, 3), increment) > increment / 2:
-#        cVal = round(cVal, 3) + (increment - (pd.mod(round(cVal, 3), increment)))
-#    else:
-#        cVal = round(cVal, 3) - pd.mod(round(cVal, 3), increment)
-#    return cVal
-
-def roundDF(array, increment):
-    rounded = array.copy(True)
-    for i in array.index:
-        for j in array.columns:
-            if np.mod(np.around(array[j].loc[i], 3), increment) > increment / 2:
-                rounded[j].loc[i] = np.around(array[j].loc[i], 3) + (
-                increment - (np.mod(np.around(array[j].loc[i], 3), increment)))
-            else:
-                rounded[j].loc[i] = np.around(array[j].loc[i], 3) - np.mod(np.around(array[j].loc[i], 3), increment)
-    return rounded
-
 def preoptimizeEnh(optimizationType,dataMunged, salesPenThreshold, mAdjustment, optimizedMetrics, increment):
+    def calcPen(metric):
+        return metric.div(metric.sum(axis=1), axis=0)
+
+    def getColumns(df):
+        return df[[*np.arange(len(df.columns))[0::9]]].drop(df.index[[0]]).convert_objects(convert_numeric=True).columns
+
+    def spreadCalc(sales, boh, receipt, mAdjustment):
+        # storing input sales and inventory data in separate 2D arrays
+        # finding sales penetration, GAFS and spread for each brand in given stores
+        # calculate adjusted penetration
+        inv = boh.add(receipt)
+        return calcPen(sales) + (calcPen(sales).subtract(calcPen(inv))).multiply(mAdjustment)
+
+    def metric_per_fixture(metric1, metric2, mAdjustment):
+        # storing input sales data in an array
+        # finding penetration for each brand in given stores
+        # calculate adjusted penetration
+        # spacePen = metric2.div(newSpace, axis='index')
+        return calcPen(metric1) + ((calcPen(metric1) - calcPen(metric2)) * mAdjustment)
+
+    def metric_per_metric(metric1, metric2, mAdjustment):
+        # storing input sales data in an array
+        # finding penetration for each brand in given stores
+        # calculate adjusted penetration
+        return calcPen(metric1) + ((calcPen(metric1) - calcPen(metric2)) * mAdjustment)
+
+    def invTurn_Calc(sold_units, boh_units, receipts_units):
+        calcPen(sold_units)
+        calcPen(boh_units + receipts_units)
+        inv_turn = calcPen(sold_units).div(calcPen(boh_units + receipts_units), axis='index')
+        inv_turn[np.isnan(inv_turn)] = 0
+        inv_turn[np.isinf(inv_turn)] = 0
+        return calcPen(inv_turn)
+
+    def roundArray(array, increment):
+        rounded = np.copy(array)
+        for i in range(len(array)):
+            for j in range(len(list(array[0, :]))):
+                if np.mod(np.around(array[i][j], 0), increment) > increment / 2:
+                    rounded[i][j] = np.around(array[i][j], 0) + (
+                    increment - (np.mod(np.around(array[i][j], 0), increment)))
+                else:
+                    rounded[i][j] = np.around(array[i][j], 0) - np.mod(np.around(array[i][j], 0), increment)
+        return rounded
+
+    def roundColumn(array, increment):
+        for i in range(len(array)):
+            if np.mod(np.around(array[i], 3), increment) > increment / 2:
+                array[i] = np.around(array[i], 3) + (
+                    increment - (np.mod(np.around(array[i], 3), increment)))
+            else:
+                array[i] = np.around(array[i], 3) - np.mod(np.around(array[i], 3), increment)
+
+    def roundValue(cVal, increment):
+        if np.mod(round(cVal, 3), increment) > increment / 2:
+            cVal = round(cVal, 3) + (increment - (np.mod(round(cVal, 3), increment)))
+        else:
+            cVal = round(cVal, 3) - np.mod(round(cVal, 3), increment)
+        return cVal
+
+    # def roundValue(cVal,increment):
+    #    if np.mod(round(cVal, 3), increment) > increment / 2:
+    #        cVal = round(cVal, 3) + (increment - (pd.mod(round(cVal, 3), increment)))
+    #    else:
+    #        cVal = round(cVal, 3) - pd.mod(round(cVal, 3), increment)
+    #    return cVal
+
+    def roundDF(array, increment):
+        rounded = array.copy(True)
+        for i in array.index:
+            for j in array.columns:
+                if np.mod(np.around(array[j].loc[i], 3), increment) > increment / 2:
+                    rounded[j].loc[i] = np.around(array[j].loc[i], 3) + (
+                        increment - (np.mod(np.around(array[j].loc[i], 3), increment)))
+                else:
+                    rounded[j].loc[i] = np.around(array[j].loc[i], 3) - np.mod(np.around(array[j].loc[i], 3), increment)
+        return rounded
+
     sales = dataMunged.pivot(index='Store',columns='Category',values='Sales $')
     sold_units = dataMunged.pivot(index='Store',columns='Category',values='Sales Units')
     profit = dataMunged.pivot(index='Store',columns='Category',values='Profit $')

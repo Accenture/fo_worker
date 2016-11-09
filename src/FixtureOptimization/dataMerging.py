@@ -7,7 +7,7 @@ import sys
 # futureSpace=pd.read_csv('futureSpace_data.csv',header=0,dtype={'Store': object},skiprows=[1])
 # brandExit=pd.read_csv('exit_data.csv',header=0,skiprows=[1])
 
-def ksMerge(jobName,optimizationType,transactions,space,brandExit=None,futureSpace=None):
+def dataMerge(jobName,optimizationType,transactions,space,brandExit=None,futureSpace=None):
     space.rename(columns={'VSG ': 'VSG'}, inplace=True)
     if optimizationType == 'tiered' or 'unconstrained':
         def brandExitMung(df, Stores, Categories):
