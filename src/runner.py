@@ -193,6 +193,7 @@ def run(body):
         print('Set analytics ID to None')
     
     statusID = optimRes[0]
+    print(statusID)
     print('Set the Status')
     
     if msg['jobType'] == "tiered" or 'unconstrained':
@@ -219,6 +220,7 @@ def run(body):
             "$set": {
                 'optimization_end_time': end_time,
                 "status": statusID,
+                "objectiveValue": optimRes[2],
                 "artifactResults": {
                     'long_table':longID,
                     'wide_table':wideID,

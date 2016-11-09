@@ -16,14 +16,6 @@ import datetime as dt
 def optimize2(methodology,jobName,Stores,Categories,increment,weights,cfbsOutput,preOpt,salesPen,tierCounts=None,threadCount=None,fractGap=None):
     print('in the new optimization')
     # Helper function for optimize function, to create eligible space levels
-    # print(cfbsOutput.columns)
-    # print(preOpt.columns)
-    # preOpt.set_index(['Store','Category'],inplace=True)
-    # print(preOpt.index)
-    # mergedPreOptCF = pd.merge(cfbsOutput, preOpt[['Penetration','Exit Flag','Sales Penetration']])
-    print(cfbsOutput.columns)
-    print(preOpt.columns)
-
     cfbsOutput.reset_index(inplace=True)
     cfbsOutput.rename(columns={'level_0': 'Store', 'level_1': 'Category'}, inplace=True)
     # print(cfbsOutput.columns)
@@ -421,4 +413,4 @@ def optimize2(methodology,jobName,Stores,Categories,increment,weights,cfbsOutput
     mergedPreOptCF.reset_index(inplace=True)
     mergedPreOptCF.rename(columns={'level_0': 'Store', 'level_1': 'Category'}, inplace=True)
     mergedPreOptCF=pd.merge(mergedPreOptCF,Results,on=['Store','Category'])
-    return (LpStatus[NewOptim.status],mergedPreOptCF)
+    return (LpStatus[NewOptim.status],mergedPreOptCF,NewOptim.objective)
