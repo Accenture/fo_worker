@@ -7,7 +7,7 @@ from time import time
 from os import getpid
 from bson.objectid import ObjectId
 from pymongo import MongoClient
-from pika import BlockingConnection, ConnectionParameters
+from pika import BlockingConnection, ConnectionParameters, PlainCredentials
 from runner import run
 import config as env
 import datetime as dt
@@ -144,8 +144,11 @@ def main():
 
     db_conn = MongoClient(host=MONGO_HOST, port=MONGO_PORT)
     db = db_conn[MONGO_NAME]
+
+    credentials = PlainCredentials(env.RMQ_USERNAME, env.RMQ_PASSWORD)
     mq_conn = BlockingConnection(ConnectionParameters(host=RMQ_HOST,
-                                                      port=RMQ_PORT))
+                                                      port=RMQ_PORT,
+                                                      credentials=credentials))
     ch = mq_conn.channel()
     ch.queue_declare(queue=RMQ_QUEUE_SOURCE, durable=True)
     ch.queue_declare(queue=RMQ_QUEUE_SINK, durable=False)
