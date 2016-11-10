@@ -20,19 +20,17 @@ curvefitting_boundsetting<-function(master,bound_input,increment,pct_chg_limit,s
   ##TODO: Create dynamic filters based upon optimization type
   # numStores=
   # medianSpace=
-
-#  Minimal Store-Category History Filters
+  #  Minimal Store-Category History Filters
   space_filter <- 0.1
   Sales_filter <- 20
   Profit_filter <- 5
   Units_filter <- 5
 
-#  Minimal Category-Climate Group History Filters
+  #  Minimal Category-Climate Group History Filters
   strcount_filter <- 100
   avgSales_filter <- 200
   avgProfit_filter <- 50
   avgUnits_filter <- 50
-
 #  Minimal Store-Category History Filters
 #  space_filter <- 0
 #  Sales_filter <- 0
@@ -68,7 +66,7 @@ curvefitting_boundsetting<-function(master,bound_input,increment,pct_chg_limit,s
 
   # Assign Climate Groups
   master$Climate_Group <- as.character(master$Climate)
-  if(jobType == "tiered"){
+  if((jobType == "tiered")||(jobType=="unconstrained")){
     master$Climate_Group <- "NA"
   } else {
     master$Climate_Group <- ifelse((master$Climate_Group == "HOT" | master$Climate_Group == "SUPER HOT"), "HOT & SH", master$Climate_Group)
@@ -138,7 +136,7 @@ curvefitting_boundsetting<-function(master,bound_input,increment,pct_chg_limit,s
 
     # Assign Store Groups
     eligible[paste0("Store_Group_",target)] <- "NA"
-    if(jobType == "tiered"){
+    if((jobType == "tiered")||(jobType=="unconstrained")){
       eligible[paste0("Store_Group_",target)] <- eligible[,paste0("BA_Prod_Group_",target)]
     } else {
       eligible[paste0("Store_Group_",target)] <- paste0(eligible$Climate_Group,":",eligible[,paste0("BA_Prod_Group_",target)])
@@ -371,7 +369,7 @@ curvefitting_boundsetting<-function(master,bound_input,increment,pct_chg_limit,s
   master$PCT_of_Space_Upper_Limit <- ceiling(master$PCT_Space_Upper_Limit*master$Space_to_Fill/increment)*increment
   
   # Apply percent space change bound to store-category level (does not apply to drill-downs, so dummy values are used)
-  if(jobType=="tiered"){
+  if((jobType == "tiered")||(jobType=="unconstrained")){
     master$PCT_Change_Lower_Limit <- pmax(0,floor(master$Space*(1-pct_chg_limit)/increment)*increment)
     master$PCT_Change_Upper_Limit <- ceiling(master$Space*(1+pct_chg_limit)/increment)*increment
   } else {

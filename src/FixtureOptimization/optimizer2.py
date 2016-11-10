@@ -167,8 +167,8 @@ def optimize2(methodology,jobType,jobName,Stores,Categories,increment,weights,cf
         Levels = createLevels(mergedPreOptCF, increment)
         print('we have levels')
         # Set up created tier decision variable - has a value of 1 if that space level for that category will be a tier, else 0
-        if tierCounts is not None:
-            ct = LpVariable.dicts('CT', (Categories, Levels), 0, upBound=1, cat='Binary')
+        # if jobType == 'tiered':
+        ct = LpVariable.dicts('CT', (Categories, Levels), 0, upBound=1, cat='Binary')
         print('we have created tiers')
         # Set up selected tier decision variable - has a value of 1 if a store will be assigned to the tier at that space level for that category, else 0
         st = LpVariable.dicts('ST', (Stores, Categories, Levels), 0, upBound=1, cat='Binary')
@@ -234,37 +234,37 @@ def optimize2(methodology,jobType,jobName,Stores,Categories,increment,weights,cf
                 NewOptim += lpSum([st[Store][Category][Level] for (k,Level) in enumerate(Levels)]) == 1#, "One Tier per Location - STR " + str(Store) + ", CAT " + str(Category)
 
                 # The space allocated to each product at each location must be between the minimum and the maximum allowed for that product at the location.
-                NewOptim += lpSum([st[Store][Category][Level] * Level for (k,Level) in enumerate(Levels)] ) >= mergedPreOptCF["Lower_Limit"].loc[Store,Category]#,"Space Lower Limit - STR " + str(Store) + ", CAT " + str(Category)
-                NewOptim += lpSum([st[Store][Category][Level] * Level for (k,Level) in enumerate(Levels)] ) <= mergedPreOptCF["Upper_Limit"].loc[Store,Category]#,"Space Upper Limit - STR " + str(Store) + ", CAT " + str(Category)
+                NewOptim += lpSum([st[Store][Category][Level] * Level for (k,Level) in enumerate(Levels)] ) >= mergedPreOptCF["Lower_Limit"].loc[Store,Category],"Space Lower Limit - STR " + str(Store) + ", CAT " + str(Category)
+                NewOptim += lpSum([st[Store][Category][Level] * Level for (k,Level) in enumerate(Levels)] ) <= mergedPreOptCF["Upper_Limit"].loc[Store,Category],"Space Upper Limit - STR " + str(Store) + ", CAT " + str(Category)
                 if mergedPreOptCF['Sales Penetration'].loc[Store,Category] < salesPen:
                     NewOptim += st[Store][Category][0] == 1
 
         print('finished first block of constraints')
         # totalTiers=0
-        if tierCounts is not None:
-            print('we have tier counts')
+        try:
+            if jobType == 'tiered':
+                print('we have tier counts')
+                for (j,Category) in enumerate(Categories):
+                    # totalTiers=totalTiers+tierCounts[Category][1]
+                    # The number of created tiers must be within the tier count limits for each product.
+                    NewOptim += lpSum([ct[Category][Level] for (k,Level) in enumerate(Levels)]) >= tierCounts[Category][0], "Tier Count Lower Limit - CAT " + str(Category)
+                    NewOptim += lpSum([ct[Category][Level] for (k,Level) in enumerate(Levels)]) <= tierCounts[Category][1], "Tier Count Upper Limit - CAT " + str(Category)
             for (j,Category) in enumerate(Categories):
-                # totalTiers=totalTiers+tierCounts[Category][1]
-                # The number of created tiers must be within the tier count limits for each product.
-                NewOptim += lpSum([ct[Category][Level] for (k,Level) in enumerate(Levels)]) >= tierCounts[Category][0]#, "Tier Count Lower Limit - CAT " + str(Category)
-                NewOptim += lpSum([ct[Category][Level] for (k,Level) in enumerate(Levels)]) <= tierCounts[Category][1]#, "Tier Count Upper Limit - CAT " + str(Category)
-
                 for (k,Level) in enumerate(Levels):
                     # A selected tier can be turned on if and only if the created tier at that level for that product is turned on.
-                    NewOptim += lpSum([st[Store][Category][Level] for (i,Store) in enumerate(Stores)])/len(Stores) <= ct[Category][Level]#, "Selected-Created Tier Relationship - CAT " + str(Category) + ", LEV: " + str(Level)
-
+                    NewOptim += lpSum([st[Store][Category][Level] for (i,Store) in enumerate(Stores)])/len(Stores) <= ct[Category][Level], "Selected-Created Tier Relationship - CAT " + str(Category) + ", LEV: " + str(Level)
                     # EXPLORATORY ONLY: MINIMUM STORES PER TIER
                     # Increases optimization run time
                     # if Level > 0:
                     #        NewOptim += lpSum([st[Store][Category][Level] for (i, Store) in enumerate(Stores)]) >= m * ct[Category][Level], "Minimum Stores per Tier: CAT " + Category + ", LEV: " + str(Level)
             print('finished second block of constraints')
+        except Exception as e:
+            print(e)
 
-        # NewOptim += lpSum([ct[Category][Level] for (j, Category) in enumerate(Categories) for (k, Level) in enumerate(Levels)]) <= totalTiers
         # print('finished total tiers constraint')
-
         # The total space allocated to products across all locations must be within the aggregate balance back tolerance limit.
-        NewOptim += lpSum([st[Store][Category][Level] * Level for (i, Store) in enumerate(Stores) for (j, Category) in enumerate(Categories) for (k, Level) in enumerate(Levels)]) >= aggSpaceToFill * (1 - aggBalBackBound)#, "Aggregate Balance Back Lower Limit"
-        NewOptim += lpSum([st[Store][Category][Level] * Level for (i, Store) in enumerate(Stores) for (j, Category) in enumerate(Categories) for (k, Level) in enumerate(Levels)]) <= aggSpaceToFill * (1 + aggBalBackBound)#, "Aggregate Balance Back Upper Limit"
+        NewOptim += lpSum([st[Store][Category][Level] * Level for (i, Store) in enumerate(Stores) for (j, Category) in enumerate(Categories) for (k, Level) in enumerate(Levels)]) >= aggSpaceToFill * (1 - aggBalBackBound), "Aggregate Balance Back Lower Limit"
+        NewOptim += lpSum([st[Store][Category][Level] * Level for (i, Store) in enumerate(Stores) for (j, Category) in enumerate(Categories) for (k, Level) in enumerate(Levels)]) <= aggSpaceToFill * (1 + aggBalBackBound), "Aggregate Balance Back Upper Limit"
 
         # EXPLORATORY ONLY: ELASTIC BALANCE BACK
         # Penalize balance back by introducing an elastic subproblem constraint
@@ -317,8 +317,11 @@ def optimize2(methodology,jobType,jobName,Stores,Categories,increment,weights,cf
         print("to the solver we go")
 
         # NewOptim.solve(pulp.PULP_CBC_CMD(msg=2,threads=4,fracGap=fractGap,presolve=preSolving))
+
         #Solve the problem using Gurobi
+        # NewOptim.solve(pulp.GUROBI(mip=True, msg=True, MIPgap=.01, IISMethod=1))
         NewOptim.solve(pulp.GUROBI(mip=True, msg=True, MIPgap=.01))
+        # NewOptim.constraints
         print('out of the solver')
 
         # except Exception as ex:
