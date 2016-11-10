@@ -84,15 +84,18 @@ def optimize(jobName,Stores,Categories,spaceBound,increment,dataMunged,tierCount
     print('Balance Back Vector')
     if tierCounts is not None:
         ct = LpVariable.dicts('CT', (Categories, Levels), 0, upBound=1,cat='Binary')
-        print('tiers created')
+
     st = LpVariable.dicts('ST', (Stores, Categories, Levels), 0,upBound=1, cat='Binary')
+    print('tiers created')
 
     NewOptim = LpProblem(jobName, LpMinimize)  # Define Optimization Problem/
+    # Created Re
 
     # Brand Exit Enhancement
     if brandExitArtifact is None:
         print("No Brand Exit in the Optimization")
     else:
+        print('There is Brand Exit')
         for (i, Store) in enumerate(Stores):
             for (j, Category) in enumerate(Categories):
                 if (brandExitArtifact[Category].loc[Store] != 0):
@@ -100,7 +103,8 @@ def optimize(jobName,Stores,Categories,spaceBound,increment,dataMunged,tierCount
                     # lower_bound[Category].loc[Store] = 0
                     opt_amt[Category].loc[Store] = 0
                     NewOptim += st[Store][Category][0.0] == 1
-                    NewOptim += ct[Category][0.0] == 1
+                    if tierCounts is not None:
+                        NewOptim += ct[Category][0.0] == 1
                     spaceBound['Space Lower Limit'].loc[Category] = 0
 
 
@@ -241,19 +245,24 @@ def optimize(jobName,Stores,Categories,spaceBound,increment,dataMunged,tierCount
     #     print("Number Above 0 and Below 1 Count is: ", ctTrueCount)
     #     print("Number of Created Tiers: ", ctOneCount)
     #     print("Creating Outputs")
+    if LpStatus[NewOptim.status] == 'Optimal':
+        print('Found an optimal solution')
+        Results=pd.DataFrame(index=Stores,columns=Categories)
+        for (i,Store) in enumerate(Stores):
+            for (j,Category) in enumerate(Categories):
+                for (k,Level) in enumerate(Levels):
+                    if value(st[Store][Category][Level]) == 1:
+                        Results[Category][Store] = Level
+        Results.reset_index(inplace=True)
+        Results.columns.values[0]='Store'
+        Results = pd.melt(Results.reset_index(), id_vars=['Store'], var_name='Category', value_name='Result Space')
+        Results=Results.apply(lambda x: pd.to_numeric(x, errors='ignore'))
+        dataMunged=pd.merge(dataMunged,Results,on=['Store','Category'])
+        return (LpStatus[NewOptim.status],dataMunged,value(NewOptim.objective)*-1) #(longOutput)#,wideOutput)
+    else:
+        dataMunged['Result Space'] = 0
+        return(LpStatus[NewOptim.status],dataMunged,0)
 
-    Results=pd.DataFrame(index=Stores,columns=Categories)
-    for (i,Store) in enumerate(Stores):
-        for (j,Category) in enumerate(Categories):
-            for (k,Level) in enumerate(Levels):
-                if value(st[Store][Category][Level]) == 1:
-                    Results[Category][Store] = Level
-    Results.reset_index(inplace=True)
-    Results.columns.values[0]='Store'
-    Results = pd.melt(Results.reset_index(), id_vars=['Store'], var_name='Category', value_name='Result Space')
-    Results=Results.apply(lambda x: pd.to_numeric(x, errors='ignore'))
-    dataMunged=pd.merge(dataMunged,Results,on=['Store','Category'])
-    return (LpStatus[NewOptim.status],dataMunged,value(NewOptim.objective)*-1) #(longOutput)#,wideOutput)
 
 # if __name__ == '__main__':
 #     df = pd.DataFrame(np.random.randn(10, 5), columns=['a', 'b', 'c', 'd', 'e'])

@@ -158,74 +158,88 @@ def run(body):
         print('finished single store')
         # if msg['jobtype'] == 'tiered':
         print('original optimization')
-        optimRes = optimize2(methodology=msg['optimizationType'], jobName=msg['meta']['name'],
+        optimRes = optimize2(methodology=msg['optimizationType'], jobType=msg['jobType'], jobName=msg['meta']['name'],
                              Stores=msg['salesStores'], Categories=msg['salesCategories'],
                              increment=msg['increment'], weights=msg['optimizedMetrics'], cfbsOutput=cfbsOptimal[1],
                              preOpt=preOpt, salesPen=msg['salesPenetrationThreshold'], tierCounts=msg['tierCounts'])
     print('we just did the optimization')
-
-    # Call functions to create output information
-    print('Out of the optimization')
-    longOutput = createLong(msg['jobType'],msg['optimizationType'], optimRes[1])
-    print('Created Long Output')
-    wideID = str(create_output_artifact_from_dataframe(createWide(longOutput, msg['jobType'], msg['optimizationType'])))
-    print('Created Wide Output')
-
-    if cfbsArtifact[1] is not None:
-        longID = str(create_output_artifact_from_dataframe(longOutput))
-        analyticsID = str(create_output_artifact_from_dataframe(cfbsArtifact[1]))
-        print('Created analytics ID')
-    else:
-        longID = str(create_output_artifact_from_dataframe(
-            longOutput[['Store', 'Category', 'Climate', 'VSG', 'Sales Penetration', 'Result Space', 'Current Space', 'Optimal Space']]))
-        analyticsID=None
-        print('Set analytics ID to None')
-    
     statusID = optimRes[0]
     print(statusID)
     print('Set the Status')
-    
-    if msg['jobType'] == "tiered" or 'unconstrained':
-        summaryID = str(create_output_artifact_from_dataframe(createTieredSummary(longOutput)))
-    else:  # since type == "Drill Down"
-        summaryID = str(create_output_artifact_from_dataframe(createDrillDownSummary(longOutput)))
-    print('Set the summary IDs')
+    if statusID == 'Optimal' or 'Infeasible':
+        # Call functions to create output information
+        print('Out of the optimization')
+        longOutput = createLong(msg['jobType'],msg['optimizationType'], optimRes[1])
+        print('Created Long Output')
+        wideID = str(create_output_artifact_from_dataframe(createWide(longOutput, msg['jobType'], msg['optimizationType'])))
+        print('Created Wide Output')
 
-    try:
-        invalids = outputValidation(df=longOutput, jobType=msg['jobType'], tierCounts=msg['tierCounts'], increment=msg['increment'])
-    except Exception as e:
-        print(e)
-        traceback.print_exc(e)
-        print(traceback.print_stack())
-    print('set the invalids')
+        if cfbsArtifact[1] is not None:
+            longID = str(create_output_artifact_from_dataframe(longOutput))
+            analyticsID = str(create_output_artifact_from_dataframe(cfbsArtifact[1]))
+            print('Created analytics ID')
+        else:
+            longID = str(create_output_artifact_from_dataframe(
+                longOutput[['Store', 'Category', 'Climate', 'VSG', 'Sales Penetration', 'Result Space', 'Current Space', 'Optimal Space']]))
+            analyticsID=None
+            print('Set analytics ID to None')
 
-    end_time = dt.datetime.utcnow()
-    print('created the end time')
+        if msg['jobType'] == "tiered" or 'unconstrained':
+            summaryID = str(create_output_artifact_from_dataframe(createTieredSummary(longOutput)))
+        else:  # since type == "Drill Down"
+            summaryID = str(create_output_artifact_from_dataframe(createDrillDownSummary(longOutput)))
+        print('Set the summary IDs')
 
-    print("Adding end time and output ids")
-    db.jobs.find_one_and_update(
-        {'_id': job_id},
-        {
-            "$set": {
-                'optimization_end_time': end_time,
-                "status": statusID,
-                "objectiveValue": optimRes[2],
-                "artifactResults": {
-                    'long_table':longID,
-                    'wide_table':wideID,
-                    'summary_report': summaryID,
-                    'analytic_data': analyticsID
-                },
-                "outputErrors": {
-                    'invalidValues': invalids[0],
-                    'invalidTierCounts': invalids[1],
-                    'invalidBrandExit': invalids[2],
-                    'invalidSalesPenetration': invalids[3],
-                    'invalidBalanceBack': invalids[4]
+        try:
+            invalids = outputValidation(df=longOutput, jobType=msg['jobType'], tierCounts=msg['tierCounts'], increment=msg['increment'])
+        except Exception as e:
+            print(e)
+            traceback.print_exc(e)
+            print(traceback.print_stack())
+        print('set the invalids')
+
+        end_time = dt.datetime.utcnow()
+        print('created the end time')
+
+        print("Adding end time and output ids")
+        db.jobs.find_one_and_update(
+            {'_id': job_id},
+            {
+                "$set": {
+                    'optimization_end_time': end_time,
+                    "status": statusID,
+                    "objectiveValue": optimRes[2],
+                    "artifactResults": {
+                        'long_table':longID,
+                        'wide_table':wideID,
+                        'summary_report': summaryID,
+                        'analytic_data': analyticsID
+                    },
+                    "outputErrors": {
+                        'invalidValues': invalids[0],
+                        'invalidTierCounts': invalids[1],
+                        'invalidBrandExit': invalids[2],
+                        'invalidSalesPenetration': invalids[3],
+                        'invalidBalanceBack': invalids[4]
+                    }
                 }
             }
-        }
-    )
+        )
+    else:
+        end_time = dt.datetime.utcnow()
+        print('created the end time')
+
+        print("Adding end time and output ids")
+        db.jobs.find_one_and_update(
+            {'_id': job_id},
+            {
+                "$set": {
+                    'optimization_end_time': end_time,
+                    "status": statusID,
+                    "objectiveValue": optimRes[2]
+                }
+            }
+        )
 
     # logging.info('end of ' + msg['meta']['name'])
 

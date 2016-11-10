@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 from scipy.special import erf
 import math
+import traceback
 
 # Create long table for user download
 def createLong(jobType, optimizationType, lOutput):
