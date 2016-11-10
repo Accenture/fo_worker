@@ -395,7 +395,7 @@ def optimize2(methodology,jobType,jobName,Stores,Categories,increment,weights,cf
         #     print("Creating Outputs")
         #
         # print('creating results')
-        if LpStatus[NewOptim.status] == 'Optimal' or 'Infeasible' or 'Not Solved':
+        if LpStatus[NewOptim.status] == 'Optimal':
             print('Found an optimal solution')
             Results=pd.DataFrame(index=Stores,columns=Categories)
             for (i,Store) in enumerate(Stores):
@@ -418,7 +418,6 @@ def optimize2(methodology,jobType,jobName,Stores,Categories,increment,weights,cf
             return (LpStatus[NewOptim.status],mergedPreOptCF,value(NewOptim.objective)*-1)
         else:
             mergedPreOptCF['Result Space']= 0
-            mergedPreOptCF['Result Space'] = mergedPreOptCF['Optimal Space'].apply(lambda x: roundValue(x, increment))
             mergedPreOptCF.reset_index(inplace=True)
             mergedPreOptCF.rename(columns={'level_0': 'Store', 'level_1': 'Category'}, inplace=True)
             return (LpStatus[NewOptim.status], mergedPreOptCF, 0)
