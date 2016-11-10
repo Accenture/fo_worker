@@ -35,7 +35,7 @@ def optimize2(methodology,jobType,jobName,Stores,Categories,increment,weights,cf
             cVal = round(cVal, 3) - np.mod(round(cVal, 3), increment)
         return cVal
 
-    if jobType == 'tiered':
+    if jobType == 'tiered' or 'unconstrained':
         def createLevels(mergedPreOptCF, increment):
 
             minLevel = mergedPreOptCF.loc[:, 'Lower_Limit'].min()
@@ -395,7 +395,7 @@ def optimize2(methodology,jobType,jobName,Stores,Categories,increment,weights,cf
         #     print("Creating Outputs")
         #
         # print('creating results')
-        if LpStatus[NewOptim.status] == 'Optimal':
+        if LpStatus[NewOptim.status] == 'Optimal' or 'Infeasible' or 'Not Solved':
             print('Found an optimal solution')
             Results=pd.DataFrame(index=Stores,columns=Categories)
             for (i,Store) in enumerate(Stores):
@@ -418,6 +418,9 @@ def optimize2(methodology,jobType,jobName,Stores,Categories,increment,weights,cf
             return (LpStatus[NewOptim.status],mergedPreOptCF,value(NewOptim.objective)*-1)
         else:
             mergedPreOptCF['Result Space']= 0
+            mergedPreOptCF['Result Space'] = mergedPreOptCF['Optimal Space'].apply(lambda x: roundValue(x, increment))
+            mergedPreOptCF.reset_index(inplace=True)
+            mergedPreOptCF.rename(columns={'level_0': 'Store', 'level_1': 'Category'}, inplace=True)
             return (LpStatus[NewOptim.status], mergedPreOptCF, 0)
     else:
         mergedPreOptCF.reset_index(inplace=True)
