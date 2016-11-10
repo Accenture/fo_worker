@@ -31,7 +31,7 @@ def optimize(jobName,Stores,Categories,spaceBound,increment,dataMunged,tierCount
         else:
             cVal = round(cVal, 3) - np.mod(round(cVal, 3), increment)
         return cVal
-
+    dataMunged['Optimal Space']=dataMunged['Optimal Space'].apply(lambda x: roundValue(x, increment))
     spaceBound = pd.DataFrame.from_dict(spaceBound).T.reset_index()
     spaceBound.columns = ['Category', 'Space Lower Limit', 'Space Upper Limit', 'PCT_Space_Lower_Limit',
                        'PCT_Space_Upper_Limit']
