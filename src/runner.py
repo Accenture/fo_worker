@@ -145,7 +145,7 @@ def run(body):
         print('going to the optimization')
         optimRes = optimize(jobName=msg['meta']['name'], Stores=msg['salesStores'], Categories=msg['salesCategories'],
                             spaceBound=msg['spaceBounds'], increment=msg['increment'], dataMunged=preOpt,
-                            tierCounts=msg['tierCounts'])
+                            salesPen=msg['salesPenetrationThreshold'], tierCounts=msg['tierCounts'])
         cfbsArtifact=[None,None]
     else:
         cfbsArtifact = curveFittingBS(dataMerged[0], msg['spaceBounds'], msg['increment'],
