@@ -12,7 +12,7 @@ import numpy as np
 import pandas as pd
 import datetime as dt
 
-def optimize(jobName,Stores,Categories,spaceBound,increment,dataMunged,tierCounts=None):
+def optimize(jobName,Stores,Categories,spaceBound,increment,dataMunged,salesPen,tierCounts=None):
     """
     Run an LP-based optimization
 
