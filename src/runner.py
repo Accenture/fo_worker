@@ -14,9 +14,9 @@ from pymongo import MongoClient
 import config
 from FixtureOptimization.CurveFitting import curveFittingBS
 from FixtureOptimization.dataMerging import dataMerge
-from FixtureOptimization.preoptimizerEnh import preoptimizeEnh
-from FixtureOptimization.optimizerR5 import optimize
-from FixtureOptimization.optimizer2 import optimize2
+from FixtureOptimization.preoptimizer import preoptimize
+from FixtureOptimization.optimizerTrad import optimizeTrad
+from FixtureOptimization.optimizerEnh import optimizeEnh
 from FixtureOptimization.outputFunctions import createLong, createWide, createDrillDownSummary, createTieredSummary, outputValidation
 from pika import BlockingConnection, ConnectionParameters
 from FixtureOptimization.SingleStoreOptimization import optimizeSingleStore
@@ -136,17 +136,19 @@ def run(body):
                             fetchSpace(msg["artifacts"]["spaceArtifactId"]),
                             brandExitArtifact, futureSpace)
     print('finished data merging')
-    preOpt = preoptimizeEnh(optimizationType=msg['optimizationType'], dataMunged=dataMerged[1],
+    preOpt = preoptimize(optimizationType=msg['optimizationType'], dataMunged=dataMerged[1],
                             mAdjustment=float(msg["metricAdjustment"]),
                             salesPenThreshold=float(msg["salesPenetrationThreshold"]),
                             optimizedMetrics=msg["optimizedMetrics"], increment=msg["increment"])
     print('finished preoptimize')
     if msg['optimizationType'] == 'traditional':
         print('going to the optimization')
-        optimRes = optimize(jobName=msg['meta']['name'], Stores=msg['salesStores'], Categories=msg['salesCategories'],
-                            spaceBound=msg['spaceBounds'], increment=msg['increment'], dataMunged=preOpt,
-                            tierCounts=msg['tierCounts'])
+        optimRes = optimizeTrad(jobName=msg['meta']['name'], Stores=msg['salesStores'],
+                                Categories=msg['salesCategories'],
+                                spaceBound=msg['spaceBounds'], increment=msg['increment'], dataMunged=preOpt,
+                                salesPen=msg['salesPenetrationThreshold'], tierCounts = msg['tierCounts'])
         cfbsArtifact=[None,None]
+        scaledAnalyticsID = None
     else:
         cfbsArtifact = curveFittingBS(dataMerged[0], msg['spaceBounds'], msg['increment'],
                                     msg['storeCategoryBounds'],
@@ -156,9 +158,7 @@ def run(body):
         cfbsOptimal = optimizeSingleStore(cfbsArtifact[0].set_index(['Store', 'Category']), msg['increment'],
                                         msg['optimizedMetrics'])
         print('finished single store')
-        # if msg['jobtype'] == 'tiered':
-        print('original optimization')
-        optimRes = optimize2(methodology=msg['optimizationType'], jobType=msg['jobType'], jobName=msg['meta']['name'],
+        optimRes = optimizeEnh(methodology=msg['optimizationType'], jobType=msg['jobType'], jobName=msg['meta']['name'],
                              Stores=msg['salesStores'], Categories=msg['salesCategories'],
                              increment=msg['increment'], weights=msg['optimizedMetrics'], cfbsOutput=cfbsOptimal[1],
                              preOpt=preOpt, salesPen=msg['salesPenetrationThreshold'], tierCounts=msg['tierCounts'])
@@ -171,12 +171,13 @@ def run(body):
         print('Out of the optimization')
         longOutput = createLong(msg['jobType'],msg['optimizationType'], optimRes[1])
         print('Created Long Output')
-        wideID = str(create_output_artifact_from_dataframe(createWide(longOutput, msg['jobType'], msg['optimizationType'])))
+        wideID = str(create_output_artifact_from_dataframe(createWide(longOutput[0], msg['jobType'], msg['optimizationType'])))
         print('Created Wide Output')
 
         if cfbsArtifact[1] is not None:
-            longID = str(create_output_artifact_from_dataframe(longOutput))
+            longID = str(create_output_artifact_from_dataframe(longOutput[0]))
             analyticsID = str(create_output_artifact_from_dataframe(cfbsArtifact[1]))
+            scaledAnalyticsID = str(create_output_artifact_from_dataframe(longOutput[1]))
             print('Created analytics ID')
         else:
             longID = str(create_output_artifact_from_dataframe(
@@ -185,9 +186,9 @@ def run(body):
             print('Set analytics ID to None')
 
         if msg['jobType'] == "tiered" or 'unconstrained':
-            summaryID = str(create_output_artifact_from_dataframe(createTieredSummary(longOutput)))
+            summaryID = str(create_output_artifact_from_dataframe(createTieredSummary(longOutput[0])))
         else:  # since type == "Drill Down"
-            summaryID = str(create_output_artifact_from_dataframe(createDrillDownSummary(longOutput)))
+            summaryID = str(create_output_artifact_from_dataframe(createDrillDownSummary(longOutput[0])))
         print('Set the summary IDs')
 
         try:
@@ -213,7 +214,8 @@ def run(body):
                         'long_table':longID,
                         'wide_table':wideID,
                         'summary_report': summaryID,
-                        'analytic_data': analyticsID
+                        'analytic_data': analyticsID,
+                        'scaled_info': scaledAnalyticsID
                     },
                     "outputErrors": {
                         'invalidValues': invalids[0],

@@ -13,7 +13,7 @@ import pandas as pd
 
 # import os
 
-def preoptimizeEnh(optimizationType,dataMunged, salesPenThreshold, mAdjustment, optimizedMetrics, increment):
+def preoptimize(optimizationType,dataMunged, salesPenThreshold, mAdjustment, optimizedMetrics, increment):
     def calcPen(metric):
         return metric.div(metric.sum(axis=1), axis=0)
 

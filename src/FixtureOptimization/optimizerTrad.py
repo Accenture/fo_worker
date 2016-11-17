@@ -12,7 +12,7 @@ import numpy as np
 import pandas as pd
 import datetime as dt
 
-def optimize(jobName,Stores,Categories,spaceBound,increment,dataMunged,tierCounts=None):
+def optimizeTrad(jobName,Stores,Categories,spaceBound,increment,dataMunged,salesPen,tierCounts=None):
     """
     Run an LP-based optimization
 
@@ -42,6 +42,8 @@ def optimize(jobName,Stores,Categories,spaceBound,increment,dataMunged,tierCount
     dataMunged = dataMunged.apply(lambda x: pd.to_numeric(x, errors='ignore'))
     start_time = dt.datetime.today().hour*60*60+ dt.datetime.today().minute*60 + dt.datetime.today().second
     opt_amt=dataMunged.pivot(index='Store', columns='Category', values='Optimal Space') #preOpt[1]
+
+    salesPenetration=dataMunged.pivot(index='Store', columns='Category', values='Sales Penetration')
     brandExitArtifact = dataMunged.pivot(index='Store', columns='Category', values='Exit Flag')
 
     print("HEY I'M IN THE OPTIMIZATION!!!!!!!")
@@ -91,13 +93,15 @@ def optimize(jobName,Stores,Categories,spaceBound,increment,dataMunged,tierCount
     NewOptim = LpProblem(jobName, LpMinimize)  # Define Optimization Problem/
     # Created Re
 
-    # Brand Exit Enhancement
+    # Brand Exit Enhancement & Sales Penetration Constraint
     if brandExitArtifact is None:
         print("No Brand Exit in the Optimization")
     else:
         print('There is Brand Exit')
         for (i, Store) in enumerate(Stores):
             for (j, Category) in enumerate(Categories):
+                if salesPenetration[Category].loc[Store] < salesPen:
+                    NewOptim += st[Store][Category][0.0] == 1
                 if (brandExitArtifact[Category].loc[Store] != 0):
                     # upper_bound[Category].loc[Store] = 0
                     # lower_bound[Category].loc[Store] = 0
@@ -110,7 +114,7 @@ def optimize(jobName,Stores,Categories,spaceBound,increment,dataMunged,tierCount
 
         # for (j, Category) in enumerate(Categories):
         #     if (sum(brandExitArtifact[Category].values()) > 0):
-        #         tier_count["Upper_Bound"][Category] += 1
+        #         tier_count["Upper_Bound"][Category] = tier_count["Upper_Bound"][Category] + 1
 
     print('Brand Exit Done')
     BA = np.zeros((len(Stores), len(Categories), len(Levels)))
@@ -183,9 +187,14 @@ def optimize(jobName,Stores,Categories,spaceBound,increment,dataMunged,tierCount
 #Solving the Problem
     # NewOptim.writeLP("Fixture_Optimization.lp")
     # NewOptim.writeMPS(str(jobName)+".mps")
-    NewOptim.solve(pulp.GUROBI(mip=True, msg=True, MIPgap=.01))
+    # NewOptim.solve(pulp.GUROBI(mip=True, msg=True, MIPgap=.01))
+    try:
+        NewOptim.solve(pulp.PULP_CBC_CMD(msg=2, threads=6, fracGap=.1, presolve=True))
+    except Exception as e:
+        print(e)
 
-# #Debugging
+
+    # #Debugging
     print("#####################################################################")
     print(LpStatus[NewOptim.status])
     print("#####################################################################")
@@ -258,7 +267,7 @@ def optimize(jobName,Stores,Categories,spaceBound,increment,dataMunged,tierCount
         Results = pd.melt(Results.reset_index(), id_vars=['Store'], var_name='Category', value_name='Result Space')
         Results=Results.apply(lambda x: pd.to_numeric(x, errors='ignore'))
         dataMunged=pd.merge(dataMunged,Results,on=['Store','Category'])
-        return (LpStatus[NewOptim.status],dataMunged,value(NewOptim.objective)*-1) #(longOutput)#,wideOutput)
+        return (LpStatus[NewOptim.status],dataMunged,value(NewOptim.objective)) #(longOutput)#,wideOutput)
     else:
         dataMunged['Result Space'] = 0
         return(LpStatus[NewOptim.status],dataMunged,0)

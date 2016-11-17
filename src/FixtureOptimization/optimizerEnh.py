@@ -13,7 +13,7 @@ import config
 import datetime as dt
 
 # Run tiered optimization algorithm
-def optimize2(methodology,jobType,jobName,Stores,Categories,increment,weights,cfbsOutput,preOpt,salesPen,tierCounts=None,threadCount=None,fractGap=None):
+def optimizeEnh(methodology,jobType,jobName,Stores,Categories,increment,weights,cfbsOutput,preOpt,salesPen,tierCounts=None,threadCount=None,fractGap=None):
     print('in the new optimization')
     # Helper function for optimize function, to create eligible space levels
     cfbsOutput.reset_index(inplace=True)
@@ -37,6 +37,12 @@ def optimize2(methodology,jobType,jobName,Stores,Categories,increment,weights,cf
 
     if jobType == 'tiered' or 'unconstrained':
         def createLevels(mergedPreOptCF, increment):
+            """
+            Creates all possible levels given the global maximum & global minimum for space with the increment size
+            :param mergedPreOptCF: Contains all of the merged data from previous scripts
+            :param increment: Determined by the user around
+            :return: Returns a vector of all possible levels
+            """
 
             minLevel = mergedPreOptCF.loc[:, 'Lower_Limit'].min()
             maxLevel = mergedPreOptCF.loc[:, 'Upper_Limit'].max()
@@ -52,7 +58,13 @@ def optimize2(methodology,jobType,jobName,Stores,Categories,increment,weights,cf
         # str_cat is the row of the curve-fitting output for an individual store and category
         # variable can take on the values of "Sales", "Profit", or "Units"
         def forecast(str_cat, space, variable):
+            """
 
+            :param str_cat:
+            :param space:
+            :param variable:
+            :return:
+            """
             if space < str_cat["Scaled_BP_" + variable]:
                 value = space * (str_cat["Scaled_Alpha_" + variable] * (math.erf(
                     (str_cat["Scaled_BP_" + variable] - str_cat["Scaled_Shift_" + variable]) / ((
@@ -63,26 +75,17 @@ def optimize2(methodology,jobType,jobName,Stores,Categories,increment,weights,cf
 
             return round(value,2)
 
-        def forecast2(str_cat, space, variable,increment):
-            def roundValue(cVal, increment):
-                if np.mod(round(cVal, 3), increment) > increment / 2:
-                    cVal = round(cVal, 3) + (increment - (np.mod(round(cVal, 3), increment)))
-                else:
-                    cVal = round(cVal, 3) - np.mod(round(cVal, 3), increment)
-                return cVal
-
-            if space < str_cat["Scaled_BP_" + variable]:
-                value = space * (str_cat["Scaled_Alpha_" + variable] * (math.erf(
-                    (str_cat["Scaled_BP_" + variable] - str_cat["Scaled_Shift_" + variable]) / ((
-                    math.sqrt(2) * str_cat["Scaled_Beta_" + variable])))) / str_cat["Scaled_BP_" + variable])
-            else:
-                value = str_cat["Scaled_Alpha_" + variable] * math.erf(
-                    (space - str_cat["Scaled_Shift_" + variable]) / (math.sqrt(2) * str_cat["Scaled_Beta_" + variable]))
-            return value
-
         # Helper function for optimize function, to create objective function of SPU by level for Enhanced optimizations
         def createNegSPUByLevel(Stores, Categories, Levels, curveFittingOutput, enhMetrics):
+            """
 
+            :param Stores:
+            :param Categories:
+            :param Levels:
+            :param curveFittingOutput:
+            :param enhMetrics:
+            :return:
+            """
             # Create n-dimensional array to store Estimated SPU by level
             est_neg_spu_by_lev = np.zeros((len(Stores), len(Categories), len(Levels)))
 
@@ -109,6 +112,14 @@ def optimize2(methodology,jobType,jobName,Stores,Categories,increment,weights,cf
 
         # Helper function for optimize function, to create objective function of error by level for Traditional optimizations
         def createErrorByLevel(Stores, Categories, Levels, mergedCurveFitting):
+            """
+
+            :param Stores: Vector of Stores within the transactions data
+            :param Categories: Vector of Categories within the transactions data
+            :param Levels:
+            :param mergedCurveFitting:
+            :return:
+            """
             # Create n-dimensional array to store error by level
             error = np.zeros((len(Stores), len(Categories), len(Levels)))
 
@@ -121,10 +132,14 @@ def optimize2(methodology,jobType,jobName,Stores,Categories,increment,weights,cf
 
         # Adjust location balance back tolerance limit so that it's at least 2 increments
         def adjustForTwoIncr(row,bound,increment):
+            """
+            Returns a vector with the maximum percent of the original total store space between two increment sizes and 10 percent of the store space
+            :param row: Individual row of Total Space Available in Store
+            :param bound: Percent Bounding for Balance Back
+            :param increment: Increment Size Determined by the User in the UI
+            :return: Returns an adjusted vector of percentages by which individual store space should be held
+            """
             return max(bound,(2*increment)/row)
-
-        def adjustForFiveIncr(row,bound,increment):
-            return max(bound,(5*increment)/row)
 
         print('completed all of the function definitions')
         # Identify the total amount of space to fill in the optimization for each location and for all locations
@@ -134,8 +149,8 @@ def optimize2(methodology,jobType,jobName,Stores,Categories,increment,weights,cf
         aggSpaceToFill = locSpaceToFill.sum()
 
         # Hard-coded tolerance limits for balance back constraints
-        aggBalBackBound = 0.05 #5%
-        locBalBackBound = 0.10 #10%
+        aggBalBackBound = 0.05 # 5%
+        locBalBackBound = 0.10 # 10%
 
         print('now have balance back bounds')
         # EXPLORATORY ONLY: ELASTIC BALANCE BACK
@@ -275,23 +290,19 @@ def optimize2(methodology,jobType,jobName,Stores,Categories,increment,weights,cf
         # NewOptim.extend(cAggBalBackPenalty.makeElasticSubProblem(penalty= aggBalBackPenalty,proportionFreeBound = aggBalBackFreeBound))
 
         #Time stamp for optimization solve time
-        # start_seconds = dt.datetime.today().hour*60*60+ dt.datetime.today().minute*60 + dt.datetime.today().second
+        start_seconds = dt.datetime.today().hour*60*60+ dt.datetime.today().minute*60 + dt.datetime.today().second
 
         mergedPreOptCF.reset_index(inplace=True)
-        # mergedPreOptCF.to_csv(str(jobName)+'.csv',sep=',')
-        # NewOptim.writeMPS(str(jobName)+".mps")
-        # return
 
         # if jobName[0:4] == 'flag':
         #     for char in jobName[4::]:
         #         if char in range(0,10,1):
         #             fractGap.append(char)
         #     fractGap=int(jobName[4:6])
+
         # Solve the problem using open source solver
         print('optional hidden parameters')
 
-        if threadCount == None:
-            threadCount = 4
         if 'PreSolve' in jobName:
             preSolving = True
         else:
@@ -317,10 +328,14 @@ def optimize2(methodology,jobType,jobName,Stores,Categories,increment,weights,cf
         print("to the solver we go")
 
         # NewOptim.solve(pulp.PULP_CBC_CMD(msg=2,threads=4,fracGap=fractGap,presolve=preSolving))
+        try:
+            NewOptim.solve(pulp.PULP_CBC_CMD(msg=2, threads=6, fracGap=.1, presolve=True))
+        except Exception as e:
+            print(e)
 
         #Solve the problem using Gurobi
         # NewOptim.solve(pulp.GUROBI(mip=True, msg=True, MIPgap=.01, IISMethod=1))
-        NewOptim.solve(pulp.GUROBI(mip=True, msg=True, MIPgap=.01))
+        # NewOptim.solve(pulp.GUROBI(mip=True, msg=True, MIPgap=.01))
         # NewOptim.constraints
         print('out of the solver')
 
@@ -331,9 +346,9 @@ def optimize2(methodology,jobType,jobName,Stores,Categories,increment,weights,cf
             # print(repr(traceback.format_stack()))
 
         #Time stamp for optimization solve time
-        # solve_end_seconds = dt.datetime.today().hour*60*60 + dt.datetime.today().minute*60 + dt.datetime.today().second
-        # solve_seconds = solve_end_seconds - start_seconds
-        # print("Time taken to solve optimization was:" + str(solve_seconds)) #for unit testing
+        solve_end_seconds = dt.datetime.today().hour*60*60 + dt.datetime.today().minute*60 + dt.datetime.today().second
+        solve_seconds = solve_end_seconds - start_seconds
+        print("Time taken to solve optimization was:" + str(solve_seconds)) #for unit testing
 
 
         # #Debugging
@@ -409,10 +424,6 @@ def optimize2(methodology,jobType,jobName,Stores,Categories,increment,weights,cf
 
             Results.reset_index(inplace=True)
             Results.columns.values[0]='Store'
-            Results.to_csv('Unconstrained.csv',sep=",")
-            # Results.rename(
-            #     columns={'level_0': 'Store'},
-            #     inplace=True)
             Results = pd.melt(Results.reset_index(), id_vars=['Store'], var_name='Category', value_name='Result Space')
             Results=Results.apply(lambda x: pd.to_numeric(x, errors='ignore'))
             mergedPreOptCF.reset_index(inplace=True)

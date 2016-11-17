@@ -63,12 +63,21 @@ def createLong(jobType, optimizationType, lOutput):
                      'Optimal Estimated Units': 'Optimal Estimated Sales Units', 'Space_to_Fill': 'Total Store Space'},
             inplace=True)
         print('finished renaming')
+        fullData = lOutput.copy()
         lOutput = lOutput[
             ['Store', 'Category', 'Climate', 'VSG', 'Result Space', 'Current Space', 'Optimal Space',
-             'Current Sales $', 'Current Profit $', 'Current Sales Units', 'Current Estimated Sales $', 'Current Estimated Profit $', 'Current Estimated Sales Units', 'Result Estimated Sales $', 'Result Estimated Profit $',
-             'Result Estimated Sales Units', 'Optimal Estimated Sales $',
+             'Current Sales $', 'Current Profit $', 'Current Sales Units', 'Result Estimated Sales $',
+             'Result Estimated Profit $', 'Result Estimated Sales Units', 'Optimal Estimated Sales $',
              'Optimal Estimated Profit $', 'Optimal Estimated Sales Units', 'Total Store Space', 'Sales Penetration',
-             'Exit Flag','BOH $', 'Receipts  $','BOH Units', 'Receipts Units', 'Profit %','CC Count w/ BOH']]
+             'Exit Flag']]
+        # lOutput = lOutput[
+        #     ['Store', 'Category', 'Climate', 'VSG', 'Result Space', 'Current Space', 'Optimal Space',
+        #      'Current Sales $', 'Current Profit $', 'Current Sales Units', 'Current Estimated Sales $',
+        #      'Current Estimated Profit $', 'Current Estimated Sales Units', 'Result Estimated Sales $',
+        #      'Result Estimated Profit $',
+        #      'Result Estimated Sales Units', 'Optimal Estimated Sales $',
+        #      'Optimal Estimated Profit $', 'Optimal Estimated Sales Units', 'Total Store Space', 'Sales Penetration',
+        #      'Exit Flag', 'BOH $', 'Receipts  $', 'BOH Units', 'Receipts Units', 'Profit %', 'CC Count w/ BOH']]
     else:
         print('went to else')
         lOutput.drop('Current Space', axis=1, inplace=True)
@@ -77,7 +86,7 @@ def createLong(jobType, optimizationType, lOutput):
             ['Store', 'Category', 'Climate', 'VSG', 'Result Space', 'Current Space',
              'Optimal Space', 'Sales Penetration', 'Exit Flag', 'Total Store Space']]
     lOutput.sort(columns=['Store','Category'],axis=0,inplace=True)
-    return lOutput
+    return (lOutput, fullData)
 
 # Create wide table for user download
 def createWide(long, jobType, optimizationType):
