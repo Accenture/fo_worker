@@ -316,11 +316,12 @@ def optimize2(methodology,jobType,jobName,Stores,Categories,increment,weights,cf
 
         print("to the solver we go")
 
-        # NewOptim.solve(pulp.PULP_CBC_CMD(msg=2,threads=4,fracGap=fractGap,presolve=preSolving))
-
         #Solve the problem using Gurobi
-        # NewOptim.solve(pulp.GUROBI(mip=True, msg=True, MIPgap=.01, IISMethod=1))
-        NewOptim.solve(pulp.GUROBI(mip=True, msg=True, MIPgap=.01))
+        NewOptim.solve(pulp.GUROBI(mip=True, msg=True, MIPgap=.01, LogFile="/tmp/gurobi.log"))
+
+        # local development - use CBC instead of gurobi
+        # NewOptim.solve(pulp.PULP_CBC_CMD(msg=2))
+
         # NewOptim.constraints
         print('out of the solver')
 

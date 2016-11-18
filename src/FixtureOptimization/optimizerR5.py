@@ -186,9 +186,14 @@ def optimize(jobName,Stores,Categories,spaceBound,increment,dataMunged,salesPen,
 #Solving the Problem
     # NewOptim.writeLP("Fixture_Optimization.lp")
     # NewOptim.writeMPS(str(jobName)+".mps")
-    NewOptim.solve(pulp.GUROBI(mip=True, msg=True, MIPgap=.01))
 
-# #Debugging
+    # Solve the problem using Gurobi
+    NewOptim.solve(pulp.GUROBI(mip=True, msg=True, MIPgap=.01, LogFile="/tmp/gurobi.log"))
+
+    # local development - use CBC instead of gurobi
+    # NewOptim.solve(pulp.PULP_CBC_CMD(msg=2))
+
+    # #Debugging
     print("#####################################################################")
     print(LpStatus[NewOptim.status])
     print("#####################################################################")
