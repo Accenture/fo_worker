@@ -146,11 +146,9 @@ def main():
     db = db_conn[MONGO_NAME]
 
     credentials = PlainCredentials(env.RMQ_USERNAME, env.RMQ_PASSWORD)
-    # mq_conn = BlockingConnection(ConnectionParameters(host=RMQ_HOST,
-    #                                                   port=RMQ_PORT,
-    #                                                   credentials=credentials))
     mq_conn = BlockingConnection(ConnectionParameters(host=RMQ_HOST,
-                                                      port=RMQ_PORT))
+                                                       port=RMQ_PORT,
+                                                       credentials=credentials))
     ch = mq_conn.channel()
     ch.queue_declare(queue=RMQ_QUEUE_SOURCE, durable=True)
     ch.queue_declare(queue=RMQ_QUEUE_SINK, durable=False)
