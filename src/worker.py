@@ -25,6 +25,8 @@ RMQ_PORT = env.RMQ_PORT
 MONGO_HOST = env.MONGO_HOST
 MONGO_PORT = env.MONGO_PORT
 MONGO_NAME = env.MONGO_NAME
+MONGO_USERNAME = env.MONGO_USERNAME
+MONGO_PASSWORD = env.MONGO_PASSWORD
 
 #
 # MODULE CONSTANTS
@@ -142,7 +144,7 @@ def main():
 
     logging.info('main thread pid: %s', getpid())
 
-    db_conn = MongoClient(host=MONGO_HOST, port=MONGO_PORT)
+    db_conn = MongoClient('mongodb://' + MONGO_USERNAME + ":" + MONGO_PASSWORD + "@" + MONGO_HOST)
     db = db_conn[MONGO_NAME]
 
     credentials = PlainCredentials(env.RMQ_USERNAME, env.RMQ_PASSWORD)
