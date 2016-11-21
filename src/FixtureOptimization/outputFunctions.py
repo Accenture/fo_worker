@@ -5,7 +5,14 @@ import math
 import traceback
 
 # Create long table for user download
-def createLong(jobType, optimizationType, lOutput):
+def createLong(jobType, optimizationType, lInput):
+    """
+    Creates a long table output
+    :param jobType: Tiered, Unconstrained, or Drill Down
+    :param optimizationType: Traditional or Enhanced
+    :param lInput: Optimization Output
+    :return: Creates a long table output for user and a version for internal testing
+    """
     print('Inside createLong')
     # Merge the optimize output with the curve-fitting output (which was already merged with the preoptimize output)
     if optimizationType == 'enhanced':
@@ -14,7 +21,7 @@ def createLong(jobType, optimizationType, lOutput):
         # lOutput['Optimal Space']= ""
         print('Set Optimal & Penetration to 0')
 
-        lOutput = lOutput.apply(lambda x: pd.to_numeric(x, errors='ignore'))
+        lOutput = lInput.apply(lambda x: pd.to_numeric(x, errors='ignore'))
         variables = ["Sales", "Profit", "Units"]
         for v in variables:
             lOutput["Estimated " + v] = np.where(lOutput["Result Space"] < lOutput["Scaled_BP_" + v],
@@ -37,8 +44,6 @@ def createLong(jobType, optimizationType, lOutput):
                                                      math.sqrt(2) * lOutput["Scaled_Beta_" + v])))
         print("Finished Forecasting")
         # Reset the index and name the columns
-        # lOutput.rename(columns={'level_0': 'Store', 'level_1': 'Category', 'Space': 'Historical Space'}, inplace=True)
-
         # Either drop or rename space to fill, lower limit, and upper limit
         # lOutput.drop((['Space.to.Fill'],['Lower.Limit'],['Upper.Limit']), axis=1, inplace=True)
         # lOutput.rename(
@@ -46,8 +51,8 @@ def createLong(jobType, optimizationType, lOutput):
         #     inplace=True)
         print('Dropped Columns')
         # Drop scaled coefficients, can be uncommented to test curve-fitting/forecasting
-        cols = [c for c in lOutput.columns if c[:6] != 'Scaled']
-        lOutput = lOutput[cols]
+        # cols = [c for c in lOutput.columns if c[:6] != 'Scaled']
+        # lOutput = lOutput[cols]
         print('Dropped more Columns')
         lOutput.drop(['Store_Group_Sales','Store_Group_Units','Store_Group_Profit'], axis=1, inplace=True)
         print('Dropped Group Columns')
@@ -90,6 +95,13 @@ def createLong(jobType, optimizationType, lOutput):
 
 # Create wide table for user download
 def createWide(long, jobType, optimizationType):
+    """
+    Creates the wide table output from the long table output
+    :param long: Long table output
+    :param jobType: unconstrained or tiered job
+    :param optimizationType: enhanced or traditional
+    :return: wide table output
+    """
 
     # Set up for pivot by renaming metrics and converting blanks to 0's for Enhanced in long table
     adjusted_long = long.rename(

@@ -14,13 +14,34 @@ import pandas as pd
 # import os
 
 def preoptimize(optimizationType,dataMunged, salesPenThreshold, mAdjustment, optimizedMetrics, increment):
+    """
+    Conducts the preoptimization based upon legacy R2 code to determine optimal space for traditional optimizations
+    :param optimizationType: enhanced or traditional optimization
+    :param dataMunged: output from data merging
+    :param salesPenThreshold: sales penetration threshold to determine whether or not store-category information is eligible
+    :param mAdjustment: metric adjustment
+    :param optimizedMetrics:
+    :param increment: increment size
+    :return:
+    """
+
     def calcPen(metric):
+        """
+        Calculates the penetration of a given metric
+        :param metric: matrix of metric information
+        :return: penetration matrix of a given metric
+        """
         return metric.div(metric.sum(axis=1), axis=0)
 
-    def getColumns(df):
-        return df[[*np.arange(len(df.columns))[0::9]]].drop(df.index[[0]]).convert_objects(convert_numeric=True).columns
-
     def spreadCalc(sales, boh, receipt, mAdjustment):
+        """
+        Calculates the Spread given sales and inventory
+        :param sales: historical sales information
+        :param boh: historical beginning on hand information
+        :param receipt: historical receipt information
+        :param mAdjustment: metric adjustment
+        :return:
+        """
         # storing input sales and inventory data in separate 2D arrays
         # finding sales penetration, GAFS and spread for each brand in given stores
         # calculate adjusted penetration
@@ -28,6 +49,13 @@ def preoptimize(optimizationType,dataMunged, salesPenThreshold, mAdjustment, opt
         return calcPen(sales) + (calcPen(sales).subtract(calcPen(inv))).multiply(mAdjustment)
 
     def metric_per_fixture(metric1, metric2, mAdjustment):
+        """
+        Calculates metric per fixture penetration
+        :param metric1:
+        :param metric2:
+        :param mAdjustment: metric adjustment
+        :return: array of metric per metric penetration with the metric adjustment
+        """
         # storing input sales data in an array
         # finding penetration for each brand in given stores
         # calculate adjusted penetration
@@ -35,12 +63,26 @@ def preoptimize(optimizationType,dataMunged, salesPenThreshold, mAdjustment, opt
         return calcPen(metric1) + ((calcPen(metric1) - calcPen(metric2)) * mAdjustment)
 
     def metric_per_metric(metric1, metric2, mAdjustment):
+        """
+        Calculates metric per metric penetration
+        :param metric1:
+        :param metric2:
+        :param mAdjustment: metric adjustment
+        :return: returns array of metric per metric penetration with the metric adjustment
+        """
         # storing input sales data in an array
         # finding penetration for each brand in given stores
         # calculate adjusted penetration
         return calcPen(metric1) + ((calcPen(metric1) - calcPen(metric2)) * mAdjustment)
 
     def invTurn_Calc(sold_units, boh_units, receipts_units):
+        """
+        Calculates Inventory Turn
+        :param sold_units:
+        :param boh_units:
+        :param receipts_units:
+        :return: returns array of inventory turn
+        """
         calcPen(sold_units)
         calcPen(boh_units + receipts_units)
         inv_turn = calcPen(sold_units).div(calcPen(boh_units + receipts_units), axis='index')
@@ -49,6 +91,12 @@ def preoptimize(optimizationType,dataMunged, salesPenThreshold, mAdjustment, opt
         return calcPen(inv_turn)
 
     def roundArray(array, increment):
+        """
+        Rounds an array to values based on the increment size
+        :param array: array to be rounded
+        :param increment: increment size to be rounded to
+        :return: returns rounded array
+        """
         rounded = np.copy(array)
         for i in range(len(array)):
             for j in range(len(list(array[0, :]))):
@@ -60,6 +108,12 @@ def preoptimize(optimizationType,dataMunged, salesPenThreshold, mAdjustment, opt
         return rounded
 
     def roundColumn(array, increment):
+        """
+
+        :param array: array to be rounded
+        :param increment: increment size to be rounded to
+        :return: returns rounded column
+        """
         for i in range(len(array)):
             if np.mod(np.around(array[i], 3), increment) > increment / 2:
                 array[i] = np.around(array[i], 3) + (
@@ -68,20 +122,25 @@ def preoptimize(optimizationType,dataMunged, salesPenThreshold, mAdjustment, opt
                 array[i] = np.around(array[i], 3) - np.mod(np.around(array[i], 3), increment)
 
     def roundValue(cVal, increment):
+        """
+
+        :param cVal:
+        :param increment: increment size to be rounded to
+        :return:
+        """
         if np.mod(round(cVal, 3), increment) > increment / 2:
             cVal = round(cVal, 3) + (increment - (np.mod(round(cVal, 3), increment)))
         else:
             cVal = round(cVal, 3) - np.mod(round(cVal, 3), increment)
         return cVal
 
-    # def roundValue(cVal,increment):
-    #    if np.mod(round(cVal, 3), increment) > increment / 2:
-    #        cVal = round(cVal, 3) + (increment - (pd.mod(round(cVal, 3), increment)))
-    #    else:
-    #        cVal = round(cVal, 3) - pd.mod(round(cVal, 3), increment)
-    #    return cVal
-
     def roundDF(array, increment):
+        """
+        Rounds a dataframe to have values only as multiples of the increment size
+        :param array:
+        :param increment: increment size to be rounded to
+        :return:
+        """
         rounded = array.copy(True)
         for i in array.index:
             for j in array.columns:

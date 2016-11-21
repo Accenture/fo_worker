@@ -14,6 +14,23 @@ import datetime as dt
 
 # Run tiered optimization algorithm
 def optimizeEnh(methodology,jobType,jobName,Stores,Categories,increment,weights,cfbsOutput,preOpt,salesPen,tierCounts=None,threadCount=None,fractGap=None):
+    """
+
+    :param methodology: Enhanced or a Traditional Optimization
+    :param jobType: Tiered, Unconstrained, or Drill Down Optimization
+    :param jobName: Name of the Job entered by the user
+    :param Stores: Vector of all stores within the transactions data set
+    :param Categories: Vector of all categories within the transactions data set
+    :param increment: The increment size to which everything should be rounded, defined by the user in the UI
+    :param weights: The weights by which the different transaction metrics are combined to the objective function
+    :param cfbsOutput: Output with Elasticity Curve related information
+    :param preOpt: Output with intial data set inputs
+    :param salesPen: Sales Penetration threshold required to pass for a store-category combination to tbe considered for optimization
+    :param tierCounts: The upper and lower limits for the number of tiers for each product/ category, defined by the user
+    :param threadCount: The number of threads to be used by the solver for the optimization
+    :param fractGap: The optimiality gap to be used by the solver for the optimization
+    :return: Optimization Status, DataFrame of all information, objective function value
+    """
     print('in the new optimization')
     # Helper function for optimize function, to create eligible space levels
     cfbsOutput.reset_index(inplace=True)
@@ -59,7 +76,7 @@ def optimizeEnh(methodology,jobType,jobName,Stores,Categories,increment,weights,
         # variable can take on the values of "Sales", "Profit", or "Units"
         def forecast(str_cat, space, variable):
             """
-
+            Forecasts estimated Sales, Profit, or Sales Units
             :param str_cat:
             :param space:
             :param variable:
@@ -78,7 +95,7 @@ def optimizeEnh(methodology,jobType,jobName,Stores,Categories,increment,weights,
         # Helper function for optimize function, to create objective function of SPU by level for Enhanced optimizations
         def createNegSPUByLevel(Stores, Categories, Levels, curveFittingOutput, enhMetrics):
             """
-
+            Creates the objective for enhanced optimizations in which the goal to minimize the weighted combination of sales, profits, and units multiplied by -1
             :param Stores:
             :param Categories:
             :param Levels:
@@ -113,7 +130,7 @@ def optimizeEnh(methodology,jobType,jobName,Stores,Categories,increment,weights,
         # Helper function for optimize function, to create objective function of error by level for Traditional optimizations
         def createErrorByLevel(Stores, Categories, Levels, mergedCurveFitting):
             """
-
+            Creates the objective for traditional optimizations in which the goal to minimize the distance between the optimal & result space
             :param Stores: Vector of Stores within the transactions data
             :param Categories: Vector of Categories within the transactions data
             :param Levels:
@@ -333,7 +350,7 @@ def optimizeEnh(methodology,jobType,jobName,Stores,Categories,increment,weights,
         except Exception as e:
             print(e)
 
-        #Solve the problem using Gurobi
+        # Solve the problem using Gurobi
         # NewOptim.solve(pulp.GUROBI(mip=True, msg=True, MIPgap=.01, IISMethod=1))
         # NewOptim.solve(pulp.GUROBI(mip=True, msg=True, MIPgap=.01))
         # NewOptim.constraints
@@ -345,13 +362,13 @@ def optimizeEnh(methodology,jobType,jobName,Stores,Categories,increment,weights,
             # print(traceback.print_stack())
             # print(repr(traceback.format_stack()))
 
-        #Time stamp for optimization solve time
+        # Time stamp for optimization solve time
         solve_end_seconds = dt.datetime.today().hour*60*60 + dt.datetime.today().minute*60 + dt.datetime.today().second
         solve_seconds = solve_end_seconds - start_seconds
         print("Time taken to solve optimization was:" + str(solve_seconds)) #for unit testing
 
 
-        # #Debugging
+        # Debugging
         print("#####################################################################")
         print(LpStatus[NewOptim.status])
         print("#####################################################################")
