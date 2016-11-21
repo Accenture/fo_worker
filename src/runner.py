@@ -30,6 +30,8 @@ import traceback
 MONGO_HOST = env.MONGO_HOST
 MONGO_PORT = env.MONGO_PORT
 MONGO_NAME = env.MONGO_NAME
+MONGO_USERNAME = env.MONGO_USERNAME
+MONGO_PASSWORD = env.MONGO_PASSWORD
 
 #
 # MODULE CONSTANTS
@@ -45,8 +47,8 @@ RMQ_QUEUE_SINK = 'notify_queue'
 
 def run(body):
     # import pdb; pdb.set_trace()
-    db = MongoClient(host=MONGO_HOST,
-                     port=MONGO_PORT)[MONGO_NAME]
+    db = MongoClient('mongodb://' + MONGO_USERNAME + ":" + MONGO_PASSWORD + "@" + MONGO_HOST + ":" + str(MONGO_PORT))[MONGO_NAME]
+
     fs = gridfs.GridFS(db)
     
     # mq_conn = BlockingConnection(ConnectionParameters(host=RMQ_HOST,
