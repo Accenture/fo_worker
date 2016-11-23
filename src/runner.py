@@ -11,7 +11,6 @@ import pandas as pd
 import pika
 from bson.objectid import ObjectId
 from pymongo import MongoClient
-import config
 from FixtureOptimization.CurveFitting import curveFittingBS
 from FixtureOptimization.dataMerging import dataMerge
 from FixtureOptimization.preoptimizerEnh import preoptimizeEnh
@@ -22,6 +21,7 @@ from pika import BlockingConnection, ConnectionParameters
 from FixtureOptimization.SingleStoreOptimization import optimizeSingleStore
 import logging
 import traceback
+from distutils.util import strtobool
 
 #
 # ENV VARS
@@ -32,6 +32,7 @@ MONGO_PORT = env.MONGO_PORT
 MONGO_NAME = env.MONGO_NAME
 MONGO_USERNAME = env.MONGO_USERNAME
 MONGO_PASSWORD = env.MONGO_PASSWORD
+IS_AUTH_MONGO = env.IS_AUTH_MONGO
 
 #
 # MODULE CONSTANTS
@@ -46,8 +47,10 @@ RMQ_QUEUE_SINK = 'notify_queue'
 
 
 def run(body):
-    # import pdb; pdb.set_trace()
-    db = MongoClient('mongodb://' + MONGO_USERNAME + ":" + MONGO_PASSWORD + "@" + MONGO_HOST + ":" + str(MONGO_PORT))[MONGO_NAME]
+
+    db = MongoClient(host=MONGO_HOST, port=MONGO_PORT)[MONGO_NAME]
+    if strtobool(IS_AUTH_MONGO):
+        db.authenticate(MONGO_USERNAME, MONGO_PASSWORD, mechanism='SCRAM-SHA-1')
 
     fs = gridfs.GridFS(db)
     

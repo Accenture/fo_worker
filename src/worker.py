@@ -15,6 +15,7 @@ import socket
 import logging
 from logging.config import fileConfig
 import traceback
+from distutils.util import strtobool
 
 #
 # ENV VARS
@@ -27,6 +28,7 @@ MONGO_PORT = env.MONGO_PORT
 MONGO_NAME = env.MONGO_NAME
 MONGO_USERNAME = env.MONGO_USERNAME
 MONGO_PASSWORD = env.MONGO_PASSWORD
+IS_AUTH_MONGO = env.IS_AUTH_MONGO
 
 #
 # MODULE CONSTANTS
@@ -144,8 +146,9 @@ def main():
 
     logging.info('main thread pid: %s', getpid())
 
-    db_conn = MongoClient('mongodb://' + MONGO_USERNAME + ":" + MONGO_PASSWORD + "@" + MONGO_HOST + ":" + str(MONGO_PORT))
-    db = db_conn[MONGO_NAME]
+    db = MongoClient(host=MONGO_HOST, port=MONGO_PORT)[MONGO_NAME]
+    if strtobool(IS_AUTH_MONGO):
+        db.authenticate(MONGO_USERNAME, MONGO_PASSWORD, mechanism='SCRAM-SHA-1')
 
     credentials = PlainCredentials(env.RMQ_USERNAME, env.RMQ_PASSWORD)
     mq_conn = BlockingConnection(ConnectionParameters(host=RMQ_HOST,

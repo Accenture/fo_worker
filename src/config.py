@@ -22,5 +22,6 @@ MONGO_PORT = int(env.get('MONGO_PORT', '27017'))
 MONGO_NAME = env.get('MONGO_NAME', 'app')
 MONGO_USERNAME = env.get('MONGO_USERNAME', '')
 MONGO_PASSWORD = env.get('MONGO_PASSWORD', '')
+IS_AUTH_MONGO = env.get('IS_AUTH_MONGO', 'False')
 
 WORKER_NUM_PROCESSES = int(env.get('FO_WORKER_NUM_PROCESSES', '3'))
