@@ -29,6 +29,9 @@ def approximateSpaceData(transactions, total_space, total_space_id, boh_weight, 
 
     # TODO: select columns from transactions where second level index = boh units
     boh_units = transactions[[*np.arange(len(transactions.columns))[4::9]]].convert_objects(convert_numeric=True)
+    # boh_units = pivot
+    receipt_units = transactions[[*np.arange(len(transactions.columns))[5::9]]].convert_objects(convert_numeric=True)
+    inv_units = boh_units + receipt_units
 
     # TODO: populate first level index with category list (how to ensure order of category list matches original column order?)
     # TODO: transform data so each cell contains its previous value divided by the sum of all values in the row
@@ -65,14 +68,14 @@ def approximateSpaceData(transactions, total_space, total_space_id, boh_weight, 
     final_result.rename(columns = {'level_0':'Store','level_1':'Category'}, inplace = True)
 
     # TODO: insert row and populate that row in space columns with "Current Space")
-    final_result.to_csv("C:\\Users\\hardik.sanchawat\\Documents\\Optimize Code Updates P4\\Historical Space Data Approximation\\Monthly_Space_Data_Report_%s.csv"% boh_weight,
-              index=None)
+    # final_result.to_csv("C:\\Users\\hardik.sanchawat\\Documents\\Optimize Code Updates P4\\Historical Space Data Approximation\\Monthly_Space_Data_Report_%s.csv"% boh_weight,
+    #           index=None)
     return final_result
 
 
-filepath = "C:\\Users\\hardik.sanchawat\\Documents\\Optimize Code Updates P4\\Historical Space Data Approximation\\"
-total_space_data_test = pd.read_csv(filepath+"MISSES APT 9_SP16 Space.csv", header=0, skiprows=[1],index_col=[0])
-transaction_data_test = pd.read_csv(filepath+"MISSES CLASSIFICATION APT 9_Monthly Sales Data.csv", header=[0,1],index_col=[0,1])
+# filepath = "C:\\Users\\hardik.sanchawat\\Documents\\Optimize Code Updates P4\\Historical Space Data Approximation\\"
+# total_space_data_test = pd.read_csv(filepath+"MISSES APT 9_SP16 Space.csv", header=0, skiprows=[1],index_col=[0])
+# transaction_data_test = pd.read_csv(filepath+"MISSES CLASSIFICATION APT 9_Monthly Sales Data.csv", header=[0,1],index_col=[0,1])
 total_space_id_test = 'APT 9'
 boh_weight_test = .75
 time_test = 'monthly'
@@ -80,12 +83,12 @@ time_test = 'monthly'
 #TODO: initialize as standard fiscal quarter mapping (1:1,2:1,3:1,4:2,etc.)
 month_qtr_mapping_test = None
 
-returned = approximateSpaceData(transaction_data_test, total_space_data_test, total_space_id_test, boh_weight_test, time_test, month_qtr_mapping_test)
-returned.to_csv(filepath+"Approximate Space Data Output.csv",index=False)
+# returned = approximateSpaceData(transaction_data_test, total_space_data_test, total_space_id_test, boh_weight_test, time_test, month_qtr_mapping_test)
+# returned.to_csv(filepath+"Approximate Space Data Output.csv",index=False)
 
 import pandas as pd
 
-df = pd.read_csv('C:\\Users\\hardik.sanchawat\\Documents\\Drill Down Filtering Code\\DD_Time Loop_Input.csv')
+# df = pd.read_csv('C:\\Users\\hardik.sanchawat\\Documents\\Drill Down Filtering Code\\DD_Time Loop_Input.csv')
 
 def drilldownTierClimateLoop(df):
     df2 = sorted(df.loc[:, 'Climate'].unique().tolist())
@@ -95,26 +98,26 @@ def drilldownTierClimateLoop(df):
             df5 = df[(df['Climate'] == d2) & (df['Future Space'] == d3)]
             del df5['Time']
             df5.to_csv('C:\\Users\\hardik.sanchawat\\Documents\\Drill Down Filtering Code\\Drill Down Time Loop_Output_%s-%s.csv' % (d2,d3),index=None)
-drilldownTierClimateLoop(df)
+# drilldownTierClimateLoop(df)
 
 import pandas as pd
 
-df = pd.read_csv('C:\\Users\\hardik.sanchawat\\Documents\\Drill Down Filtering Code\\DD_Time Loop_Input_Dup.csv')
+# df = pd.read_csv('C:\\Users\\hardik.sanchawat\\Documents\\Drill Down Filtering Code\\DD_Time Loop_Input_Dup.csv')
 
 def drilldownTimeLoop(df):
     df1 = sorted(df.loc[:, 'Time'].unique().tolist())
     for d1 in df1:
         df2 = (df[df['Time'] == d1])
         del df2['Time']
-        df2.to_csv('C:\\Users\\hardik.sanchawat\\Documents\\Drill Down Filtering Code\\Drill Down Time Loop_Output_%s.csv' % d1,index=None)
-drilldownTimeLoop(df)
+        # df2.to_csv('C:\\Users\\hardik.sanchawat\\Documents\\Drill Down Filtering Code\\Drill Down Time Loop_Output_%s.csv' % d1,index=None)
+# drilldownTimeLoop(df)
 
 def tierKeyCreate(df):
     '''
     tierKeyCreate(dataframe)
 
     Takes in a dataframe and creates the key associated with the tiered results 
-    ''''
+    '''
     df.pivot
     headers = iter(df.columns.values) #grabs all the brand headers from the csv
     next(headers) #Skip first column

@@ -14,6 +14,26 @@ def createLong(jobType, optimizationType, lInput):
     :return: Creates a long table output for user and a version for internal testing
     """
     print('Inside createLong')
+
+    def tierColCreate(df):
+        """
+        Creates the Tier Columns
+        :param df: Long Table to be given tiering information
+        :return: tiered long table output
+        """
+        df.sort_values(by='Result Space', inplace=True)
+        # dfI=df[df['Store']==store].set_index(['Store','Category'],drop=False)
+        dfI = df.set_index(['Store', 'Category'], drop=False)
+        dfI['Tier'] = pd.Series()
+        tierVals = df.groupby('Category')['Result Space'].unique()
+        for (i, store) in enumerate(df['Store'].unique()):
+            for (j, cat) in enumerate(df['Category'].unique()):
+                for (b, tVal) in enumerate(tierVals[cat]):
+                    if dfI['Result Space'].loc[store, cat] == tVal:
+                        dfI['Tier'].loc[store, cat] = "Tier {0}".format(str(b + 1))
+        return dfI
+
+    lOutput = lInput.apply(lambda x: pd.to_numeric(x, errors='ignore'))
     # Merge the optimize output with the curve-fitting output (which was already merged with the preoptimize output)
     if optimizationType == 'enhanced':
         print('initial merge')
@@ -21,7 +41,6 @@ def createLong(jobType, optimizationType, lInput):
         # lOutput['Optimal Space']= ""
         print('Set Optimal & Penetration to 0')
 
-        lOutput = lInput.apply(lambda x: pd.to_numeric(x, errors='ignore'))
         variables = ["Sales", "Profit", "Units"]
         for v in variables:
             lOutput["Estimated " + v] = np.where(lOutput["Result Space"] < lOutput["Scaled_BP_" + v],
@@ -68,13 +87,16 @@ def createLong(jobType, optimizationType, lInput):
                      'Optimal Estimated Units': 'Optimal Estimated Sales Units', 'Space_to_Fill': 'Total Store Space'},
             inplace=True)
         print('finished renaming')
+        lOutput = tierColCreate(lOutput)
         fullData = lOutput.copy()
+        print('created copy')
         lOutput = lOutput[
             ['Store', 'Category', 'Climate', 'VSG', 'Result Space', 'Current Space', 'Optimal Space',
              'Current Sales $', 'Current Profit $', 'Current Sales Units', 'Result Estimated Sales $',
              'Result Estimated Profit $', 'Result Estimated Sales Units', 'Optimal Estimated Sales $',
              'Optimal Estimated Profit $', 'Optimal Estimated Sales Units', 'Total Store Space', 'Sales Penetration',
-             'Exit Flag']]
+             'Exit Flag', 'Tier']]
+        print('selected interesting columns')
         # lOutput = lOutput[
         #     ['Store', 'Category', 'Climate', 'VSG', 'Result Space', 'Current Space', 'Optimal Space',
         #      'Current Sales $', 'Current Profit $', 'Current Sales Units', 'Current Estimated Sales $',
@@ -89,7 +111,7 @@ def createLong(jobType, optimizationType, lInput):
         lOutput.rename(columns={'New Space': 'Total Store Space','Historical Space': 'Current Space'},inplace=True)
         lOutput = lOutput[
             ['Store', 'Category', 'Climate', 'VSG', 'Result Space', 'Current Space',
-             'Optimal Space', 'Sales Penetration', 'Exit Flag', 'Total Store Space']]
+             'Optimal Space', 'Sales Penetration', 'Exit Flag', 'Total Store Space','Tier']]
     lOutput.sort(columns=['Store','Category'],axis=0,inplace=True)
     return (lOutput, fullData)
 
@@ -189,6 +211,18 @@ def createDrillDownSummary(finalLong) :
     drilldownSummaryPivot.reset_index(inplace=True)
     return drilldownSummaryPivot
 
+def tierColCreate(df):
+    df.sort_values(by='Result Space',inplace=True)
+    # dfI=df[df['Store']==store].set_index(['Store','Category'],drop=False)
+    dfI=df.set_index(['Store','Category'],drop=False)
+    dfI['Tier'] = pd.Series()
+    tierVals = df.groupby('Category')['Result Space'].unique()
+    for (i,store) in enumerate(df['Store'].unique()):
+        for (j,cat) in enumerate(df['Category'].unique()):
+            for (b,tVal) in enumerate(tierVals[cat]):
+                if dfI['Result Space'].loc[store,cat] == tVal:
+                    dfI['Tier'].loc[store,cat] = "Tier {0}".format(str(b+1))
+    return dfI
 
 def outputValidation(df, jobType, tierCounts, increment):
     nullTest = 0

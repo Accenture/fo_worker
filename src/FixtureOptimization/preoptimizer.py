@@ -77,7 +77,7 @@ def preoptimize(optimizationType,dataMunged, salesPenThreshold, mAdjustment, opt
 
     def invTurn_Calc(sold_units, boh_units, receipts_units):
         """
-        Calculates Inventory Turn
+        Calculates an Inventory Turn array
         :param sold_units:
         :param boh_units:
         :param receipts_units:
