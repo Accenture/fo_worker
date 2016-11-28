@@ -35,15 +35,15 @@ def optimizeTrad(jobName, increment, dataMunged, salesPen):
 
     Stores = dataMunged['Store'].unique()
     Categories = dataMunged['Category'].unique()
-    Tiers = dataMunged['Tier']
-    Climates = dataMunged['Climate']
+    Tiers = dataMunged['Tier'].unique()
+    Climates = dataMunged['Climate'].unique()
 
     dataMunged['Optimal Space'] = dataMunged['Optimal Space'].apply(lambda x: roundValue(x, increment))
     print('set up new space bounds')
     dataMunged = dataMunged.apply(lambda x: pd.to_numeric(x, errors='ignore'))
     start_time = dt.datetime.today().hour * 60 * 60 + dt.datetime.today().minute * 60 + dt.datetime.today().second
     opt_amt = dataMunged.pivot(index='Store', columns='Category', values='Optimal Space')  # preOpt[1]
-
+    dataMunged["Result Space"] = dataMunged["Result Space"].apply(lambda x: roundValue(x, increment))
     salesPenetration = dataMunged.pivot(index='Store', columns='Category', values='Sales Penetration')
     brandExitArtifact = dataMunged.pivot(index='Store', columns='Category', values='Exit Flag')
 

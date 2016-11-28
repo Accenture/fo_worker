@@ -73,7 +73,7 @@ def createLong(jobType, optimizationType, lInput):
         # cols = [c for c in lOutput.columns if c[:6] != 'Scaled']
         # lOutput = lOutput[cols]
         print('Dropped more Columns')
-        lOutput.drop(['Store_Group_Sales','Store_Group_Units','Store_Group_Profit'], axis=1, inplace=True)
+        # lOutput.drop(['Store_Group_Sales','Store_Group_Units','Store_Group_Profit'], axis=1, inplace=True)
         print('Dropped Group Columns')
         lOutput.rename(
             columns={'Sales': 'Current Sales $', 'Profit': 'Current Profit $', 'Units': 'Current Sales Units',
@@ -108,10 +108,16 @@ def createLong(jobType, optimizationType, lInput):
     else:
         print('went to else')
         lOutput.drop('Current Space', axis=1, inplace=True)
+        print('Dropped Old Current Space')
         lOutput.rename(columns={'New Space': 'Total Store Space','Historical Space': 'Current Space'},inplace=True)
+        print('Renamed the columns')
+        lOutput = tierColCreate(lOutput)
+        print('Created tier column')
+        fullData = lOutput.copy()
         lOutput = lOutput[
             ['Store', 'Category', 'Climate', 'VSG', 'Result Space', 'Current Space',
              'Optimal Space', 'Sales Penetration', 'Exit Flag', 'Total Store Space','Tier']]
+        print('Selected ')
     lOutput.sort(columns=['Store','Category'],axis=0,inplace=True)
     return (lOutput, fullData)
 
