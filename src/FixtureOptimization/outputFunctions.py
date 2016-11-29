@@ -5,8 +5,35 @@ import math
 import traceback
 
 # Create long table for user download
-def createLong(jobType, optimizationType, lOutput):
+def createLong(jobType, optimizationType, lInput):
+    """
+    Creates a long table output
+    :param jobType: Tiered, Unconstrained, or Drill Down
+    :param optimizationType: Traditional or Enhanced
+    :param lInput: Optimization Output
+    :return: Creates a long table output for user and a version for internal testing
+    """
     print('Inside createLong')
+
+    def tierColCreate(df):
+        """
+        Creates the Tier Columns
+        :param df: Long Table to be given tiering information
+        :return: tiered long table output
+        """
+        df.sort_values(by='Result Space', inplace=True)
+        # dfI=df[df['Store']==store].set_index(['Store','Category'],drop=False)
+        dfI = df.set_index(['Store', 'Category'], drop=False)
+        dfI['Tier'] = pd.Series()
+        tierVals = df.groupby('Category')['Result Space'].unique()
+        for (i, store) in enumerate(df['Store'].unique()):
+            for (j, cat) in enumerate(df['Category'].unique()):
+                for (b, tVal) in enumerate(tierVals[cat]):
+                    if dfI['Result Space'].loc[store, cat] == tVal:
+                        dfI['Tier'].loc[store, cat] = "Tier {0}".format(str(b + 1))
+        return dfI
+
+    lOutput = lInput.apply(lambda x: pd.to_numeric(x, errors='ignore'))
     # Merge the optimize output with the curve-fitting output (which was already merged with the preoptimize output)
     if optimizationType == 'enhanced':
         print('initial merge')
@@ -14,7 +41,6 @@ def createLong(jobType, optimizationType, lOutput):
         # lOutput['Optimal Space']= ""
         print('Set Optimal & Penetration to 0')
 
-        lOutput = lOutput.apply(lambda x: pd.to_numeric(x, errors='ignore'))
         variables = ["Sales", "Profit", "Units"]
         for v in variables:
             lOutput["Estimated " + v] = np.where(lOutput["Result Space"] < lOutput["Scaled_BP_" + v],
@@ -37,8 +63,6 @@ def createLong(jobType, optimizationType, lOutput):
                                                      math.sqrt(2) * lOutput["Scaled_Beta_" + v])))
         print("Finished Forecasting")
         # Reset the index and name the columns
-        # lOutput.rename(columns={'level_0': 'Store', 'level_1': 'Category', 'Space': 'Historical Space'}, inplace=True)
-
         # Either drop or rename space to fill, lower limit, and upper limit
         # lOutput.drop((['Space.to.Fill'],['Lower.Limit'],['Upper.Limit']), axis=1, inplace=True)
         # lOutput.rename(
@@ -46,10 +70,10 @@ def createLong(jobType, optimizationType, lOutput):
         #     inplace=True)
         print('Dropped Columns')
         # Drop scaled coefficients, can be uncommented to test curve-fitting/forecasting
-        cols = [c for c in lOutput.columns if c[:6] != 'Scaled']
-        lOutput = lOutput[cols]
+        # cols = [c for c in lOutput.columns if c[:6] != 'Scaled']
+        # lOutput = lOutput[cols]
         print('Dropped more Columns')
-        lOutput.drop(['Store_Group_Sales','Store_Group_Units','Store_Group_Profit'], axis=1, inplace=True)
+        # lOutput.drop(['Store_Group_Sales','Store_Group_Units','Store_Group_Profit'], axis=1, inplace=True)
         print('Dropped Group Columns')
         lOutput.rename(
             columns={'Sales': 'Current Sales $', 'Profit': 'Current Profit $', 'Units': 'Current Sales Units',
@@ -63,24 +87,49 @@ def createLong(jobType, optimizationType, lOutput):
                      'Optimal Estimated Units': 'Optimal Estimated Sales Units', 'Space_to_Fill': 'Total Store Space'},
             inplace=True)
         print('finished renaming')
+        lOutput = tierColCreate(lOutput)
+        fullData = lOutput.copy()
+        print('created copy')
         lOutput = lOutput[
             ['Store', 'Category', 'Climate', 'VSG', 'Result Space', 'Current Space', 'Optimal Space',
-             'Current Sales $', 'Current Profit $', 'Current Sales Units', 'Current Estimated Sales $', 'Current Estimated Profit $', 'Current Estimated Sales Units', 'Result Estimated Sales $', 'Result Estimated Profit $',
-             'Result Estimated Sales Units', 'Optimal Estimated Sales $',
+             'Current Sales $', 'Current Profit $', 'Current Sales Units', 'Result Estimated Sales $',
+             'Result Estimated Profit $', 'Result Estimated Sales Units', 'Optimal Estimated Sales $',
              'Optimal Estimated Profit $', 'Optimal Estimated Sales Units', 'Total Store Space', 'Sales Penetration',
-             'Exit Flag','BOH $', 'Receipts  $','BOH Units', 'Receipts Units', 'Profit %','CC Count w/ BOH']]
+             'Exit Flag', 'Tier']]
+        print('selected interesting columns')
+        # lOutput = lOutput[
+        #     ['Store', 'Category', 'Climate', 'VSG', 'Result Space', 'Current Space', 'Optimal Space',
+        #      'Current Sales $', 'Current Profit $', 'Current Sales Units', 'Current Estimated Sales $',
+        #      'Current Estimated Profit $', 'Current Estimated Sales Units', 'Result Estimated Sales $',
+        #      'Result Estimated Profit $',
+        #      'Result Estimated Sales Units', 'Optimal Estimated Sales $',
+        #      'Optimal Estimated Profit $', 'Optimal Estimated Sales Units', 'Total Store Space', 'Sales Penetration',
+        #      'Exit Flag', 'BOH $', 'Receipts  $', 'BOH Units', 'Receipts Units', 'Profit %', 'CC Count w/ BOH']]
     else:
         print('went to else')
         lOutput.drop('Current Space', axis=1, inplace=True)
+        print('Dropped Old Current Space')
         lOutput.rename(columns={'New Space': 'Total Store Space','Historical Space': 'Current Space'},inplace=True)
+        print('Renamed the columns')
+        lOutput = tierColCreate(lOutput)
+        print('Created tier column')
+        fullData = lOutput.copy()
         lOutput = lOutput[
             ['Store', 'Category', 'Climate', 'VSG', 'Result Space', 'Current Space',
-             'Optimal Space', 'Sales Penetration', 'Exit Flag', 'Total Store Space']]
+             'Optimal Space', 'Sales Penetration', 'Exit Flag', 'Total Store Space','Tier']]
+        print('Selected ')
     lOutput.sort(columns=['Store','Category'],axis=0,inplace=True)
-    return lOutput
+    return (lOutput, fullData)
 
 # Create wide table for user download
 def createWide(long, jobType, optimizationType):
+    """
+    Creates the wide table output from the long table output
+    :param long: Long table output
+    :param jobType: unconstrained or tiered job
+    :param optimizationType: enhanced or traditional
+    :return: wide table output
+    """
 
     # Set up for pivot by renaming metrics and converting blanks to 0's for Enhanced in long table
     adjusted_long = long.rename(
@@ -168,6 +217,18 @@ def createDrillDownSummary(finalLong) :
     drilldownSummaryPivot.reset_index(inplace=True)
     return drilldownSummaryPivot
 
+def tierColCreate(df):
+    df.sort_values(by='Result Space',inplace=True)
+    # dfI=df[df['Store']==store].set_index(['Store','Category'],drop=False)
+    dfI=df.set_index(['Store','Category'],drop=False)
+    dfI['Tier'] = pd.Series()
+    tierVals = df.groupby('Category')['Result Space'].unique()
+    for (i,store) in enumerate(df['Store'].unique()):
+        for (j,cat) in enumerate(df['Category'].unique()):
+            for (b,tVal) in enumerate(tierVals[cat]):
+                if dfI['Result Space'].loc[store,cat] == tVal:
+                    dfI['Tier'].loc[store,cat] = "Tier {0}".format(str(b+1))
+    return dfI
 
 def outputValidation(df, jobType, tierCounts, increment):
     nullTest = 0

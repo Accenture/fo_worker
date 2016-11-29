@@ -10,7 +10,15 @@ import sys
 def dataMerge(jobName,optimizationType,transactions,space,brandExit=None,futureSpace=None):
     space.rename(columns={'VSG ': 'VSG'}, inplace=True)
     if optimizationType == 'tiered' or 'unconstrained':
+        # Define the function to convert Brand Exit Information to Binary Values
         def brandExitMung(df, Stores, Categories):
+            """
+            Converts Brand Exit Table in to a Wide Table of Binary Values
+            :param df: Initial Brand Exit Data Frame
+            :param Stores: List of Stores
+            :param Categories: List of Categories
+            :return:
+            """
             brand_exit = pd.DataFrame(index=Stores, columns=Categories)
             for (i, Store) in enumerate(Stores):
                 for (j, Category) in enumerate(Categories):
@@ -26,6 +34,13 @@ def dataMerge(jobName,optimizationType,transactions,space,brandExit=None,futureS
         spaceData = pd.melt(space, id_vars=['Store', 'Climate', 'VSG'], var_name='Category', value_name='Historical Space')
         spaceData['Current Space'] = spaceData['Historical Space']
         def longTransaction(df, storeList, categories):
+            """
+            Assigns names for each financial metric in the Transaction Data Set and converts it to a long table
+            :param df: Individual Wide Table of Transaction Metric
+            :param storeList: List of Stores
+            :param categories: List of Categories
+            :return: Returns a long table for an individual metric
+            """
             df.loc[0, :] = categories
             df = pd.concat([storeList, df], axis=1)
             df.columns = df.loc[0,]
@@ -33,14 +48,19 @@ def dataMerge(jobName,optimizationType,transactions,space,brandExit=None,futureS
                              value_name=pd.unique(df.loc[1].dropna().values)[0])
             return lPiece
 
-        masterData = spaceData
+        masterData = spaceData.copy()
+        # Loop to merge individual long tables into a single long table
         for (m, Metric) in enumerate(Metrics):
             masterData = pd.merge(left=masterData,
                                   right=longTransaction(transactions.loc[:, int(m + 1)::9], pd.DataFrame(transactions[0]),
                                                         Categories), on=['Store', 'Category'], how='outer')
+
+        # Create a Vector of Total Space by Store
         storeTotal = pd.DataFrame(masterData.groupby('Store')['Current Space'].sum()).reset_index()
         storeTotal.columns = ['Store', 'Store Space']
         storeTotal = storeTotal.sort_values(by='Store').reset_index(drop=True)
+
+        # Code to handle the usage of Future Space Files
         if futureSpace is None:
             print("we don't have future space")
             storeTotal['Future Space']=storeTotal['Store Space']
@@ -59,6 +79,8 @@ def dataMerge(jobName,optimizationType,transactions,space,brandExit=None,futureS
             masterData=pd.merge(masterData,futureSpace,on=['Store','VSG','Climate'])
 
         masterData = masterData.sort_values(by=['Store', 'Category']).reset_index(drop=True)
+
+        # Handling the upload of a Brand Exit
         if brandExit is None:
             masterData['Exit Flag'] = 0
             mergeTrad = masterData.copy()
@@ -72,10 +94,9 @@ def dataMerge(jobName,optimizationType,transactions,space,brandExit=None,futureS
             masterData=pd.merge(masterData,brandExit,on=['Store','Category'],how='inner')
             mergeTrad=pd.merge(mergeTrad,brandExit,on=['Store','Category'],how='inner')
         print('There are ' + str(len(masterData[masterData['Exit Flag'] == 1])) + ' brand exits')
-        # masterData.to_csv('mergedData.csv',sep=',',index=False)
+
+        # Make sure that all values that should be numeric are numeric
         masterData=masterData.apply(lambda x: pd.to_numeric(x, errors='ignore'))
         mergeTrad = mergeTrad.apply(lambda x: pd.to_numeric(x, errors='ignore'))
         print('Finished Data Merging')
-        # masterData.to_csv(str(jobName)+'Merge.csv',sep=',')
-            # input('Stop')
     return (masterData,mergeTrad)
