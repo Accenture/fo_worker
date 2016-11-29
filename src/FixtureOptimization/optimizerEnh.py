@@ -324,6 +324,7 @@ def optimizeEnh(methodology,jobType,jobName,Stores,Categories,increment,weights,
             preSolving = True
         else:
             preSolving = False
+
         def searchParam(search,jobName):
             if search in jobName:
                 begin=jobName.find(search)
@@ -344,24 +345,14 @@ def optimizeEnh(methodology,jobType,jobName,Stores,Categories,increment,weights,
 
         print("to the solver we go")
 
-<<<<<<< HEAD:src/FixtureOptimization/optimizer2.py
         #Solve the problem using Gurobi
         NewOptim.solve(pulp.GUROBI(mip=True, msg=True, MIPgap=.01, LogFile="/tmp/gurobi.log"))
 
         # local development - use CBC instead of gurobi
-        # NewOptim.solve(pulp.PULP_CBC_CMD(msg=2))
-
-=======
-        # NewOptim.solve(pulp.PULP_CBC_CMD(msg=2,threads=4,fracGap=fractGap,presolve=preSolving))
-        try:
-            NewOptim.solve(pulp.PULP_CBC_CMD(msg=2, threads=6, fracGap=.1, presolve=True))
-        except Exception as e:
-            print(e)
+        # NewOptim.solve(pulp.PULP_CBC_CMD(msg=2, threads=6, fracGap=.1, presolve=True))
 
         # Solve the problem using Gurobi
         # NewOptim.solve(pulp.GUROBI(mip=True, msg=True, MIPgap=.01, IISMethod=1))
-        # NewOptim.solve(pulp.GUROBI(mip=True, msg=True, MIPgap=.01))
->>>>>>> Code_CleanUp:src/FixtureOptimization/optimizerEnh.py
         # NewOptim.constraints
         print('out of the solver')
 

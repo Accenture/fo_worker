@@ -17,6 +17,7 @@ from FixtureOptimization.preoptimizer import preoptimize
 from FixtureOptimization.optimizerTrad import optimizeTrad
 from FixtureOptimization.optimizerEnh import optimizeEnh
 from FixtureOptimization.outputFunctions import createLong, createWide, createDrillDownSummary, createTieredSummary, outputValidation
+from FixtureOptimization.optimizerDD import optimizeDD
 from pika import BlockingConnection, ConnectionParameters
 from FixtureOptimization.SingleStoreOptimization import optimizeSingleStore
 import logging
@@ -134,24 +135,28 @@ def run(body):
     except:
         print("Brand Exit was not Uploaded")
         brandExitArtifact = None
-    if msg['jobType'] == 'unconstrained':
+    if msg['jobType'] == 'unconstrained' or msg['jobType'] == 'drillDown':
         msg['tierCounts'] = None
-
-    dataMerged = dataMerge(msg['meta']['name'],msg['jobType'], fetchTransactions(msg["artifacts"]["salesArtifactId"]),
-                            fetchSpace(msg["artifacts"]["spaceArtifactId"]),
-                            brandExitArtifact, futureSpace)
+    # msg['jobType'] = 'drillDown'
+    print(msg['jobType'])
+    dataMerged = dataMerge(jobName=msg['meta']['name'],jobType=msg['jobType'],optimizationType=msg['optimizationType'],transactions=fetchTransactions(msg["artifacts"]["salesArtifactId"]),
+                            space=fetchSpace(msg["artifacts"]["spaceArtifactId"]),
+                            brandExit=brandExitArtifact, futureSpace=futureSpace)
     print('finished data merging')
-    preOpt = preoptimize(optimizationType=msg['optimizationType'], dataMunged=dataMerged[1],
+    preOpt = preoptimize(jobType=msg['jobType'], optimizationType=msg['optimizationType'], dataMunged=dataMerged[1],
                             mAdjustment=float(msg["metricAdjustment"]),
                             salesPenThreshold=float(msg["salesPenetrationThreshold"]),
                             optimizedMetrics=msg["optimizedMetrics"], increment=msg["increment"])
     print('finished preoptimize')
     if msg['optimizationType'] == 'traditional':
-        print('going to the optimization')
-        optimRes = optimizeTrad(jobName=msg['meta']['name'], Stores=msg['salesStores'],
-                                Categories=msg['salesCategories'],
-                                spaceBound=msg['spaceBounds'], increment=msg['increment'], dataMunged=preOpt,
-                                salesPen=msg['salesPenetrationThreshold'], tierCounts = msg['tierCounts'])
+        if msg['jobType'] == 'unconstrained' or msg['jobType'] == 'tiered':
+            print('going to the optimization')
+            optimRes = optimizeTrad(jobName=msg['meta']['name'], Stores=msg['salesStores'],
+                                    Categories=msg['salesCategories'],
+                                    spaceBound=msg['spaceBounds'], increment=msg['increment'], dataMunged=preOpt,
+                                    salesPen=msg['salesPenetrationThreshold'], tierCounts = msg['tierCounts'])
+        else:
+            optimRes = optimizeDD()
         cfbsArtifact=[None,None]
         scaledAnalyticsID = None
     else:
