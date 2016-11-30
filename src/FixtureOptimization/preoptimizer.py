@@ -155,8 +155,7 @@ def preoptimize(jobType,optimizationType,dataMunged, salesPenThreshold, mAdjustm
     sold_units = dataMunged.pivot(index='Store',columns='Category',values='Sales Units')
     profit = dataMunged.pivot(index='Store',columns='Category',values='Profit $')
     if jobType == 'tiered' or 'unconstrained':
-        newSpace= dataMunged.pivot(index='Store',columns='Category',values='New Space')
-    bfc = dataMunged.pivot(index='Store',columns='Category',values='Current Space')
+        bfc = dataMunged.pivot(index='Store',columns='Category',values='Current Space')
     if optimizationType=='traditional':
         boh = dataMunged.pivot(index='Store', columns='Category', values='BOH $')
         receipt = dataMunged.pivot(index='Store', columns='Category', values='Receipts  $')

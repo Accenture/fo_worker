@@ -3,6 +3,7 @@ import numpy as np
 from scipy.special import erf
 import math
 import traceback
+import logging
 
 # Create long table for user download
 def createLong(jobType, optimizationType, lInput):
@@ -14,6 +15,7 @@ def createLong(jobType, optimizationType, lInput):
     :return: Creates a long table output for user and a version for internal testing
     """
     print('Inside createLong')
+    print(lInput.columns)
 
     def tierColCreate(df):
         """
@@ -31,6 +33,7 @@ def createLong(jobType, optimizationType, lInput):
                 for (b, tVal) in enumerate(tierVals[cat]):
                     if dfI['Result Space'].loc[store, cat] == tVal:
                         dfI['Tier'].loc[store, cat] = "Tier {0}".format(str(b + 1))
+        dfI.reset_index(drop=True)
         return dfI
 
     lOutput = lInput.apply(lambda x: pd.to_numeric(x, errors='ignore'))
@@ -88,6 +91,7 @@ def createLong(jobType, optimizationType, lInput):
             inplace=True)
         print('finished renaming')
         lOutput = tierColCreate(lOutput)
+        print(lOutput['Tier'])
         fullData = lOutput.copy()
         print('created copy')
         lOutput = lOutput[
@@ -217,72 +221,64 @@ def createDrillDownSummary(finalLong) :
     drilldownSummaryPivot.reset_index(inplace=True)
     return drilldownSummaryPivot
 
-def tierColCreate(df):
-    df.sort_values(by='Result Space',inplace=True)
-    # dfI=df[df['Store']==store].set_index(['Store','Category'],drop=False)
-    dfI=df.set_index(['Store','Category'],drop=False)
-    dfI['Tier'] = pd.Series()
-    tierVals = df.groupby('Category')['Result Space'].unique()
-    for (i,store) in enumerate(df['Store'].unique()):
-        for (j,cat) in enumerate(df['Category'].unique()):
-            for (b,tVal) in enumerate(tierVals[cat]):
-                if dfI['Result Space'].loc[store,cat] == tVal:
-                    dfI['Tier'].loc[store,cat] = "Tier {0}".format(str(b+1))
-    return dfI
-
 def outputValidation(df, jobType, tierCounts, increment):
-    nullTest = 0
-    tcValidation = 0
-    exitValidation = 0
-    spValidation = 0
-    Categories = pd.unique(df['Category'])
-    Stores = pd.unique(df['Store'])
+    df.reset_index(inplace=True,drop=True)
+    try:
+        nullTest = 0
+        tcValidation = 0
+        exitValidation = 0
+        spValidation = 0
+        Categories = pd.unique(df['Category'])
+        Stores = pd.unique(df['Store'])
 
-    # Is Null
-    if df.isnull().values.any():
-        nullTest = 1
-    if tierCounts is not None:
-        # Tier Counts
-        # Take a vector of numbers and append 0 or 1 for each Category
-        tierCountValidation = pd.Series(data=0, index=Categories)
-        for (j, Product) in enumerate(Categories):
-            if len(pd.unique(df[df.Category == Product]['Result Space'].dropna())) > tierCounts[Product][1]:
-                tierCountValidation[Product] = 1
-        if sum(tierCountValidation) > 0:
-            tcValidation = 1
-    else:
-        tcValidation=0
-    # TODO Might be able to make this faster with an apply function and an 'any'
-    exitVector = pd.Series(index=df.index, name='ExitVector')
-    spVector = pd.Series(index=df.index, name='SalesPenetrationVector')
-    bbVector = pd.Series(index=df.index, name='BalanceBackVector')
-    for i in df.index:
-        # Brand Exit
-        exitVector.iloc[i] = 1 if df['Exit Flag'].iloc[i] == 1 and df['Result Space'].iloc[i] > 0 else 0
-        # Sales Penetration
-        spVector.iloc[i] = 1 if df['Sales Penetration'].iloc[i] == 1 and df['Result Space'].iloc[i] > 0 else 0
-        # Balance Back
-
-    for (i, Store) in enumerate(Stores):
-        if df.groupby('Store')['Result Space'].sum().iloc[i] < max(df['Total Store Space'].iloc[i] * 1.1,
-                                                                   df['Total Store Space'].iloc[i] + increment * 2) and \
-                        df.groupby('Store')['Result Space'].sum().iloc[i] > min(df['Total Store Space'].iloc[i] * 0.9,
-                                                                                df['Total Store Space'].iloc[
-                                                                                    i] - increment * 2):
-            bbVector.iloc[i] = 0
+        # Is Null
+        if df.isnull().values.any():
+            nullTest = 1
+        if tierCounts is not None:
+            # Tier Counts
+            # Take a vector of numbers and append 0 or 1 for each Category
+            tierCountValidation = pd.Series(data=0, index=Categories)
+            for (j, Product) in enumerate(Categories):
+                if len(pd.unique(df[df.Category == Product]['Result Space'].dropna())) > tierCounts[Product][1]:
+                    tierCountValidation[Product] = 1
+            if sum(tierCountValidation) > 0:
+                tcValidation = 1
         else:
-            bbVector.iloc[i] = 1
+            tcValidation=0
+        # TODO Might be able to make this faster with an apply function and an 'any'
+        exitVector = pd.Series(index=df.index, name='ExitVector')
+        spVector = pd.Series(index=df.index, name='SalesPenetrationVector')
+        bbVector = pd.Series(index=df.index, name='BalanceBackVector')
+        for i in df.index:
+            # Brand Exit
+            exitVector.iloc[i] = 1 if df['Exit Flag'].iloc[i] == 1 and df['Result Space'].iloc[i] > 0 else 0
+            # Sales Penetration
+            spVector.iloc[i] = 1 if df['Sales Penetration'].iloc[i] == 1 and df['Result Space'].iloc[i] > 0 else 0
+            # Balance Back
 
-    exitValidation = 1 if sum(exitVector) > 0 else 0
-    spValidation = 1 if sum(spVector) > 0 else 0
-    bbValidation = 1 if sum(bbVector) > 0 else 0
+        for (i, Store) in enumerate(Stores):
+            if df.groupby('Store')['Result Space'].sum().iloc[i] < max(df['Total Store Space'].iloc[i] * 1.1,
+                                                                       df['Total Store Space'].iloc[i] + increment * 2) and \
+                            df.groupby('Store')['Result Space'].sum().iloc[i] > min(df['Total Store Space'].iloc[i] * 0.9,
+                                                                                    df['Total Store Space'].iloc[
+                                                                                        i] - increment * 2):
+                bbVector.iloc[i] = 0
+            else:
+                bbVector.iloc[i] = 1
 
-    # if df['Result Space'] > min(df['Future Space'] * 1.1, df['Future Space'] + increment * 2) and df[
+        exitValidation = 1 if sum(exitVector) > 0 else 0
+        spValidation = 1 if sum(spVector) > 0 else 0
+        bbValidation = 1 if sum(bbVector) > 0 else 0
 
-    #     'Result Space'] < max(df['Future Space'] * 0, 9, df['Future Space'] - increment * 2):
-    #     bbVector=0
-    # else:
-    #     bbVector=1
+        # if df['Result Space'] > min(df['Future Space'] * 1.1, df['Future Space'] + increment * 2) and df[
+
+        #     'Result Space'] < max(df['Future Space'] * 0, 9, df['Future Space'] - increment * 2):
+        #     bbVector=0
+        # else:
+        #     bbVector=1
 
 
-    return (nullTest, tcValidation, exitValidation, spValidation, bbValidation)
+        return (nullTest, tcValidation, exitValidation, spValidation, bbValidation)
+    except Exception:
+        logging.exception('Not entirely sure what is happening')
+        # traceback.print_exc()

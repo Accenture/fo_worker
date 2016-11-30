@@ -191,22 +191,22 @@ def run(body):
             print('Created analytics ID')
         else:
             longID = str(create_output_artifact_from_dataframe(
-                longOutput[['Store', 'Category', 'Climate', 'VSG', 'Sales Penetration', 'Result Space', 'Current Space', 'Optimal Space']]))
+                longOutput[0][['Store', 'Category', 'Climate', 'VSG', 'Sales Penetration', 'Result Space', 'Current Space', 'Optimal Space']]))
             analyticsID=None
             print('Set analytics ID to None')
 
         if msg['jobType'] == "tiered" or 'unconstrained':
-            summaryID = str(create_output_artifact_from_dataframe(createTieredSummary(longOutput[0])))
+            summaryID = str(create_output_artifact_from_dataframe(createTieredSummary(longOutput[int(0)])))
         else:  # since type == "Drill Down"
-            summaryID = str(create_output_artifact_from_dataframe(createDrillDownSummary(longOutput[0])))
+            summaryID = str(create_output_artifact_from_dataframe(createDrillDownSummary(longOutput[int(0)])))
         print('Set the summary IDs')
 
         try:
-            invalids = outputValidation(df=longOutput, jobType=msg['jobType'], tierCounts=msg['tierCounts'], increment=msg['increment'])
+            invalids = outputValidation(df=longOutput[0], jobType=msg['jobType'], tierCounts=msg['tierCounts'], increment=msg['increment'])
         except Exception as e:
-            print(e)
-            traceback.print_exc(e)
-            print(traceback.print_stack())
+            logging.exception('Not entirely sure what is happening')
+            return
+            # traceback.print_exc(e)
         print('set the invalids')
 
         end_time = dt.datetime.utcnow()
@@ -224,8 +224,7 @@ def run(body):
                         'long_table':longID,
                         'wide_table':wideID,
                         'summary_report': summaryID,
-                        'analytic_data': analyticsID,
-                        'scaled_info': scaledAnalyticsID
+                        'analytic_data': analyticsID
                     },
                     "outputErrors": {
                         'invalidValues': invalids[0],
@@ -237,6 +236,7 @@ def run(body):
                 }
             }
         )
+            # traceback.print_exc(e)
     else:
         end_time = dt.datetime.utcnow()
         print('created the end time')
