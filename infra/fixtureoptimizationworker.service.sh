@@ -10,7 +10,7 @@ Documentation=https://github.kohls.com/EIM/fo_worker
 
 [Service]
 Type=simple
-ExecStart=python /kohls/apps/fo/fo_worker/src/main.py --log-level info
+ExecStart=cd /kohls/apps/fo/fo_worker/infra && chmod +x worker.sh && ./worker.sh
 ExecStop
 # ExecReload
 # Restart

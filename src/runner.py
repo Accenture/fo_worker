@@ -17,6 +17,7 @@ from FixtureOptimization.preoptimizer import preoptimize
 from FixtureOptimization.optimizerTrad import optimizeTrad
 from FixtureOptimization.optimizerEnh import optimizeEnh
 from FixtureOptimization.outputFunctions import createLong, createWide, createDrillDownSummary, createTieredSummary, outputValidation
+from FixtureOptimization.optimizerDD import optimizeDD
 from pika import BlockingConnection, ConnectionParameters
 from FixtureOptimization.SingleStoreOptimization import optimizeSingleStore
 import logging
@@ -134,24 +135,28 @@ def run(body):
     except:
         print("Brand Exit was not Uploaded")
         brandExitArtifact = None
-    if msg['jobType'] == 'unconstrained':
+    if msg['jobType'] == 'unconstrained' or msg['jobType'] == 'drillDown':
         msg['tierCounts'] = None
-
-    dataMerged = dataMerge(msg['meta']['name'],msg['jobType'], fetchTransactions(msg["artifacts"]["salesArtifactId"]),
-                            fetchSpace(msg["artifacts"]["spaceArtifactId"]),
-                            brandExitArtifact, futureSpace)
+    # msg['jobType'] = 'drillDown'
+    print(msg['jobType'])
+    dataMerged = dataMerge(jobName=msg['meta']['name'],jobType=msg['jobType'],optimizationType=msg['optimizationType'],transactions=fetchTransactions(msg["artifacts"]["salesArtifactId"]),
+                            space=fetchSpace(msg["artifacts"]["spaceArtifactId"]),
+                            brandExit=brandExitArtifact, futureSpace=futureSpace)
     print('finished data merging')
-    preOpt = preoptimize(optimizationType=msg['optimizationType'], dataMunged=dataMerged[1],
+    preOpt = preoptimize(jobType=msg['jobType'], optimizationType=msg['optimizationType'], dataMunged=dataMerged[1],
                             mAdjustment=float(msg["metricAdjustment"]),
                             salesPenThreshold=float(msg["salesPenetrationThreshold"]),
                             optimizedMetrics=msg["optimizedMetrics"], increment=msg["increment"])
     print('finished preoptimize')
     if msg['optimizationType'] == 'traditional':
-        print('going to the optimization')
-        optimRes = optimizeTrad(jobName=msg['meta']['name'], Stores=msg['salesStores'],
-                                Categories=msg['salesCategories'],
-                                spaceBound=msg['spaceBounds'], increment=msg['increment'], dataMunged=preOpt,
-                                salesPen=msg['salesPenetrationThreshold'], tierCounts = msg['tierCounts'])
+        if msg['jobType'] == 'unconstrained' or msg['jobType'] == 'tiered':
+            print('going to the optimization')
+            optimRes = optimizeTrad(jobName=msg['meta']['name'], Stores=msg['salesStores'],
+                                    Categories=msg['salesCategories'],
+                                    spaceBound=msg['spaceBounds'], increment=msg['increment'], dataMunged=preOpt,
+                                    salesPen=msg['salesPenetrationThreshold'], tierCounts = msg['tierCounts'])
+        else:
+            optimRes = optimizeDD()
         cfbsArtifact=[None,None]
         scaledAnalyticsID = None
     else:
@@ -186,22 +191,22 @@ def run(body):
             print('Created analytics ID')
         else:
             longID = str(create_output_artifact_from_dataframe(
-                longOutput[['Store', 'Category', 'Climate', 'VSG', 'Sales Penetration', 'Result Space', 'Current Space', 'Optimal Space']]))
+                longOutput[0][['Store', 'Category', 'Climate', 'VSG', 'Sales Penetration', 'Result Space', 'Current Space', 'Optimal Space']]))
             analyticsID=None
             print('Set analytics ID to None')
 
         if msg['jobType'] == "tiered" or 'unconstrained':
-            summaryID = str(create_output_artifact_from_dataframe(createTieredSummary(longOutput[0])))
+            summaryID = str(create_output_artifact_from_dataframe(createTieredSummary(longOutput[int(0)])))
         else:  # since type == "Drill Down"
-            summaryID = str(create_output_artifact_from_dataframe(createDrillDownSummary(longOutput[0])))
+            summaryID = str(create_output_artifact_from_dataframe(createDrillDownSummary(longOutput[int(0)])))
         print('Set the summary IDs')
 
         try:
-            invalids = outputValidation(df=longOutput, jobType=msg['jobType'], tierCounts=msg['tierCounts'], increment=msg['increment'])
+            invalids = outputValidation(df=longOutput[0], jobType=msg['jobType'], tierCounts=msg['tierCounts'], increment=msg['increment'])
         except Exception as e:
-            print(e)
-            traceback.print_exc(e)
-            print(traceback.print_stack())
+            logging.exception('Not entirely sure what is happening')
+            return
+            # traceback.print_exc(e)
         print('set the invalids')
 
         end_time = dt.datetime.utcnow()
@@ -219,8 +224,7 @@ def run(body):
                         'long_table':longID,
                         'wide_table':wideID,
                         'summary_report': summaryID,
-                        'analytic_data': analyticsID,
-                        'scaled_info': scaledAnalyticsID
+                        'analytic_data': analyticsID
                     },
                     "outputErrors": {
                         'invalidValues': invalids[0],
@@ -232,6 +236,7 @@ def run(body):
                 }
             }
         )
+            # traceback.print_exc(e)
     else:
         end_time = dt.datetime.utcnow()
         print('created the end time')

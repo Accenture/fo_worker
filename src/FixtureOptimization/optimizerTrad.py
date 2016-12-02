@@ -12,11 +12,8 @@ import numpy as np
 import pandas as pd
 import datetime as dt
 
-<<<<<<< HEAD:src/FixtureOptimization/optimizerR5.py
-def optimize(jobName,Stores,Categories,spaceBound,increment,dataMunged,salesPen,tierCounts=None):
-=======
+
 def optimizeTrad(jobName,Stores,Categories,spaceBound,increment,dataMunged,salesPen,tierCounts=None):
->>>>>>> Code_CleanUp:src/FixtureOptimization/optimizerTrad.py
     """
     Run an LP-based optimization
 
@@ -46,12 +43,7 @@ def optimizeTrad(jobName,Stores,Categories,spaceBound,increment,dataMunged,sales
     dataMunged = dataMunged.apply(lambda x: pd.to_numeric(x, errors='ignore'))
     start_time = dt.datetime.today().hour*60*60+ dt.datetime.today().minute*60 + dt.datetime.today().second
     opt_amt=dataMunged.pivot(index='Store', columns='Category', values='Optimal Space') #preOpt[1]
-<<<<<<< HEAD:src/FixtureOptimization/optimizerR5.py
-    salesPenetration = dataMunged.pivot(index='Store', columns='Category', values='Sales Penetration')
-=======
-
     salesPenetration=dataMunged.pivot(index='Store', columns='Category', values='Sales Penetration')
->>>>>>> Code_CleanUp:src/FixtureOptimization/optimizerTrad.py
     brandExitArtifact = dataMunged.pivot(index='Store', columns='Category', values='Exit Flag')
 
     print("HEY I'M IN THE OPTIMIZATION!!!!!!!")
@@ -109,11 +101,7 @@ def optimizeTrad(jobName,Stores,Categories,spaceBound,increment,dataMunged,sales
         for (i, Store) in enumerate(Stores):
             for (j, Category) in enumerate(Categories):
                 if salesPenetration[Category].loc[Store] < salesPen:
-<<<<<<< HEAD:src/FixtureOptimization/optimizerR5.py
-                    NewOptim += st[Store][Category][0] == 1
-=======
                     NewOptim += st[Store][Category][0.0] == 1
->>>>>>> Code_CleanUp:src/FixtureOptimization/optimizerTrad.py
                 if (brandExitArtifact[Category].loc[Store] != 0):
                     # upper_bound[Category].loc[Store] = 0
                     # lower_bound[Category].loc[Store] = 0
@@ -199,23 +187,10 @@ def optimizeTrad(jobName,Stores,Categories,spaceBound,increment,dataMunged,sales
 #Solving the Problem
     # NewOptim.writeLP("Fixture_Optimization.lp")
     # NewOptim.writeMPS(str(jobName)+".mps")
-<<<<<<< HEAD:src/FixtureOptimization/optimizerR5.py
-
     # Solve the problem using Gurobi
     NewOptim.solve(pulp.GUROBI(mip=True, msg=True, MIPgap=.01, LogFile="/tmp/gurobi.log"))
-
-    # local development - use CBC instead of gurobi
     # NewOptim.solve(pulp.PULP_CBC_CMD(msg=2))
 
-=======
-    # NewOptim.solve(pulp.GUROBI(mip=True, msg=True, MIPgap=.01))
-    try:
-        NewOptim.solve(pulp.PULP_CBC_CMD(msg=2, threads=6, fracGap=.1, presolve=True))
-    except Exception as e:
-        print(e)
-
-
->>>>>>> Code_CleanUp:src/FixtureOptimization/optimizerTrad.py
     # #Debugging
     print("#####################################################################")
     print(LpStatus[NewOptim.status])

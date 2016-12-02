@@ -13,7 +13,7 @@ import pandas as pd
 import datetime as dt
 
 
-def optimizeTrad(jobName, increment, dataMunged, salesPen):
+def optimizeDD(jobName, increment, dataMunged, salesPen):
     """
     Run an LP-based optimization
 
@@ -136,7 +136,7 @@ def optimizeTrad(jobName, increment, dataMunged, salesPen):
                 # Verify that we still cannot use a constraint if not using a sum - Look to improve efficiency
                 for (k, Level) in enumerate(Levels):
                     NewOptim += lpSum([st[Store][Category][Level] for (i, Store) in enumerate(Stores)]) / len(Stores) <= \
-                                ct[Category][Level]  # , "Relationship between ct & st"
+                                ct[Climate][Tier][Category][Level]  # , "Relationship between ct & st"
 
     # Global Balance Back
     NewOptim += lpSum(

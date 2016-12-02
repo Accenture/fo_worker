@@ -13,7 +13,7 @@ import pandas as pd
 
 # import os
 
-def preoptimize(optimizationType,dataMunged, salesPenThreshold, mAdjustment, optimizedMetrics, increment):
+def preoptimize(jobType,optimizationType,dataMunged, salesPenThreshold, mAdjustment, optimizedMetrics, increment):
     """
     Conducts the preoptimization based upon legacy R2 code to determine optimal space for traditional optimizations
     :param optimizationType: enhanced or traditional optimization
@@ -154,8 +154,8 @@ def preoptimize(optimizationType,dataMunged, salesPenThreshold, mAdjustment, opt
     sales = dataMunged.pivot(index='Store',columns='Category',values='Sales $')
     sold_units = dataMunged.pivot(index='Store',columns='Category',values='Sales Units')
     profit = dataMunged.pivot(index='Store',columns='Category',values='Profit $')
-    newSpace= dataMunged.pivot(index='Store',columns='Category',values='New Space')
-    bfc = dataMunged.pivot(index='Store',columns='Category',values='Current Space')
+    if jobType == 'tiered' or 'unconstrained':
+        bfc = dataMunged.pivot(index='Store',columns='Category',values='Current Space')
     if optimizationType=='traditional':
         boh = dataMunged.pivot(index='Store', columns='Category', values='BOH $')
         receipt = dataMunged.pivot(index='Store', columns='Category', values='Receipts  $')
