@@ -156,6 +156,7 @@ def preoptimize(jobType,optimizationType,dataMunged, salesPenThreshold, mAdjustm
     profit = dataMunged.pivot(index='Store',columns='Category',values='Profit $')
     if jobType == 'tiered' or 'unconstrained':
         bfc = dataMunged.pivot(index='Store',columns='Category',values='Current Space')
+
     if optimizationType=='traditional':
         boh = dataMunged.pivot(index='Store', columns='Category', values='BOH $')
         receipt = dataMunged.pivot(index='Store', columns='Category', values='Receipts  $')
@@ -181,6 +182,8 @@ def preoptimize(jobType,optimizationType,dataMunged, salesPenThreshold, mAdjustm
     adj_p.fillna(0)
     information=pd.merge(dataMunged,pd.melt(adj_p.reset_index(), id_vars=['Store'], var_name='Category', value_name='Penetration'),on=['Store','Category'])
     information['Optimal Space'] = information['New Space'] * information['Penetration']
+    if jobType == 'drillDown':
+        information['Current Space'] = information['Optimal Space']
     print('attempting to keep sales pen')
     information = pd.merge(information,pd.melt(calcPen(sales).reset_index(),id_vars=['Store'], var_name='Category',value_name='Sales Penetration'),on=['Store','Category'])
     information = information.apply(lambda x: pd.to_numeric(x, errors='ignore'))

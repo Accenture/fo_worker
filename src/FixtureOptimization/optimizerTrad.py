@@ -69,7 +69,7 @@ def optimizeTrad(jobName,Stores,Categories,spaceBound,increment,dataMunged,sales
 
 
     b = .05
-    bI = .1
+    bI = .05
 
     # Adjust location balance back tolerance limit so that it's at least 2 increments
     # def adjustForTwoIncr(row,bound,increment):
