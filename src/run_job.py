@@ -52,7 +52,7 @@ RMQ_QUEUE_SINK = 'notify_queue'
 # LOGGING
 #
 
-file_dir = '/vagrant/fo_worker/test/test_optimizer_files/test/'
+# file_dir = '/vagrant/fo_worker/test/test_optimizer_files/test/'
 
 
 def run(body):
@@ -165,17 +165,24 @@ if __name__ == '__main__':
     # Getting input json name from command line
     parser = OptionParser()
     parser.add_option("-f", "--file", dest="input_json")
+    parser.add_option("-d", "--dir", dest="input_dir")
     (options, args) = parser.parse_args()
 
     # Modify json structures by replacing filename hash locations
     # from MongoDB to local filename.
+    file_dir = options.input_dir
     jsonFilename = file_dir + options.input_json 
     body = helper.loadJson(jsonFilename)
-    print (body['filenames'])
-    print (body['artifacts'])
-    helper.modifyJson(body)
-    print (body['filenames'])
-    print (body['artifacts'])
+    # print (body['filenames'])
+    # print (body['artifacts'])
+    # helper.modifyJson(body)
+    # print (body['filenames'])
+    # print (body['artifacts'])
+
+    meta = ArtifactBuilder.create(open(file_dir + 'Space_data.csv', 'r'), 'space')
+    body['salesStores'] = meta['stores']
+    body['salesCategories'] = meta['categories']
+    body['spaceBounds'] = meta['extrema']
 
     # Trigger the new runner without logging any ID info.
     run(body)

@@ -115,7 +115,7 @@ def dataMerge(jobName,jobType,optimizationType,transactions,space,brandExit=None
         print(masterData.columns)
     except Exception as e:
         logging.exception('A thing')
-        traceback.print_exception()
+        traceback.print_exception() # syntactically incorrect since this function call is expecting 3 args.
 
     print('Finished Data Merging')
     return (masterData,mergeTrad)
