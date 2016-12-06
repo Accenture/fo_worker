@@ -114,10 +114,29 @@ def run(body):
         return file
 
     def fetchLong(artifact_id,filtCategory):
+        def tierColCreate(dfI):
+            """
+            Creates the Tier Columns
+            :param df: Long Table to be given tiering information
+            :return: tiered long table output
+            """
+            try:
+                dfI.sort_values(by='Result Space', inplace=True)
+                tierVals = dfI.groupby('Category')
+                for (i, category) in tierVals:
+                    indices = category.index.values
+                    ranking = sorted(set(category['Result Space'].values.tolist()))
+                    dfI.loc[indices, 'Tier'] = category['Result Space'].apply(
+                        lambda x: 'Tier ' + str(ranking.index(x) + 1))
+                dfI.reset_index(drop=True)
+            except Exception:
+                logging.exception('This is what happened')
+                traceback.print_exception()
+            return dfI
         file = fs.get(ObjectId(artifact_id))
         file = pd.read_csv(file,header=0)
         file = file[(file['Category'] == filtCategory)]
-        file = file[['Store','VSG','Climate','Category','Result Space']]
+        file = tierColCreate(file[['Store','VSG','Climate','Category','Result Space']])
         return file
     # Stores = msg['salesStores']
     # Categories = msg['salesCategories']
@@ -166,7 +185,7 @@ def run(body):
         brandExitArtifact = None
     if msg['jobType'] == 'unconstrained' or msg['jobType'] == 'drilldown':
         msg['tierCounts'] = None
-    if msg['jobType'] == 'drillDown':
+    if msg['jobType'] == 'drilldown':
         msg['optimizedMetrics'] = \
             {
                 "spread": 100,
@@ -185,12 +204,11 @@ def run(body):
                            optimizationType=msg['optimizationType'], transactions=sales, space=space,
                            brandExit=brandExitArtifact, futureSpace=futureSpace)
     logging.info('finished data merging')
-    logging.info(dataMerged[1].head())
     try:
         preOpt = preoptimize(jobType=msg['jobType'], optimizationType=msg['optimizationType'], dataMunged=dataMerged[1],
-                                mAdjustment=float(msg["metricAdjustment"]),
-                                salesPenThreshold=float(msg["salesPenetrationThreshold"]),
-                                optimizedMetrics=msg["optimizedMetrics"], increment=msg["increment"])
+                             mAdjustment=float(msg["metricAdjustment"]),
+                             salesPenThreshold=float(msg["salesPenetrationThreshold"]),
+                             optimizedMetrics=msg["optimizedMetrics"], increment=msg["increment"])
     except:
         logging.exception('A thing')
         traceback.print_exception()
@@ -203,8 +221,12 @@ def run(body):
                                     spaceBound=msg['spaceBounds'], increment=msg['increment'], dataMunged=preOpt,
                                     salesPen=msg['salesPenetrationThreshold'], tierCounts = msg['tierCounts'])
         else:
-            optimRes = optimizeDD(jobName=msg['meta']['name'], increment=msg["increment"], dataMunged=preOpt,
+            try:
+                optimRes = optimizeDD(jobName=msg['meta']['name'], increment=msg["increment"], dataMunged=preOpt,
                                   salesPen=msg['salesPenetrationThreshold'])
+            except:
+                logging.exception('A thing')
+                traceback.print_exception()
         cfbsArtifact=[None,None]
         scaledAnalyticsID = None
     else:
