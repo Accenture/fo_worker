@@ -3,20 +3,21 @@ import numpy as np
 import sys
 import traceback
 import logging
+from itertools import product
 
-# transactions=pd.read_csv("transactions_data.csv",header=None)
-# space=pd.read_csv('fixture_data.csv',header=0,dtype={'Store': object},skiprows=[1])
-# futureSpace=pd.read_csv('futureSpace_data.csv',header=0,dtype={'Store': object},skiprows=[1])
-# brandExit=pd.read_csv('exit_data.csv',header=0,skiprows=[1])
 
 def dataMerge(jobName,jobType,optimizationType,transactions,space,brandExit=None,futureSpace=None):
     try:
-        space.rename(columns={'VSG ': 'VSG'}, inplace=True)
+        space.rename(columns={'VSG ': 'VSG','Category': 'Product'}, inplace=True)
         Categories = transactions[[*np.arange(len(transactions.columns))[1::9]]].loc[0].reset_index(
             drop=True).values.astype(str)
+        space=space.apply(lambda x: pd.to_numeric(x, errors='ignore'))
+        # space['Store'] = list(map(int, space['Store'].values.tolist()))
+        print(space.head(1))
         Stores = space['Store']
-        def transactionMerge(spaceData,transactions,Categories):
+        def transactionMerge(spaceData,transactions,Stores,Categories,jobType):
             Metrics = transactions.loc[1, 1:9].reset_index(drop=True)
+            print(Metrics)
             def longTransaction(df, storeList, categories):
                 """
                 Assigns names for each financial metric in the Transaction Data Set and converts it to a long table
@@ -30,17 +31,26 @@ def dataMerge(jobName,jobType,optimizationType,transactions,space,brandExit=None
                 df.columns = df.loc[0,]
                 lPiece = pd.melt(df[2::], id_vars=['Store'], var_name='Category',
                                  value_name=pd.unique(df.loc[1].dropna().values)[0])
-                print(lPiece.columns)
+                lPiece=lPiece.apply(lambda x: pd.to_numeric(x, errors='ignore'))
                 return lPiece
 
             masterData = spaceData.copy()
             # Loop to merge individual long tables into a single long table
-            for (m, Metric) in enumerate(Metrics):
-                masterData = pd.merge(left=masterData,
-                                      right=longTransaction(transactions.loc[:, int(m + 1)::9], pd.DataFrame(transactions[0]),
-                                                            Categories), on=['Store', 'Category'], how='outer')
+            if jobType == 'drilldown':
+                test=pd.DataFrame(list(product(Stores,Categories)), columns=['Store', 'Category'])
+                for (m, Metric) in enumerate(Metrics):
+                    test = pd.merge(left=test, right=longTransaction(transactions.loc[:, int(m + 1)::9],
+                                                                     pd.DataFrame(transactions[0]), Categories),
+                                    on=['Store', 'Category'])
+                print(test.head(2))
+                masterData=pd.merge(left=masterData,right=test,on=['Store'],how='outer')
+                print(masterData.head(2))
+            else:
+                for (m, Metric) in enumerate(Metrics):
+                    masterData = pd.merge(left=masterData,
+                                          right=longTransaction(transactions.loc[:, int(m + 1)::9], pd.DataFrame(transactions[0]),
+                                                                Categories), on=['Store', 'Category'], how='outer')
             return masterData
-        print(jobType)
         if jobType == 'tiered' or jobType == 'unconstrained':
             # Define the function to convert Brand Exit Information to Binary Values
             def brandExitMung(df, Stores, Categories):
@@ -61,7 +71,7 @@ def dataMerge(jobName,jobType,optimizationType,transactions,space,brandExit=None
                 return brand_exit
             spaceData = pd.melt(space, id_vars=['Store', 'Climate', 'VSG'], var_name='Category', value_name='Historical Space')
             spaceData['Current Space'] = spaceData['Historical Space']
-            masterData = transactionMerge(spaceData,transactions,Categories)
+            masterData = transactionMerge(spaceData,transactions,Stores,Categories,jobType)
 
             # Create a Vector of Total Space by Store
             storeTotal = pd.DataFrame(masterData.groupby('Store')['Current Space'].sum()).reset_index()
@@ -109,10 +119,11 @@ def dataMerge(jobName,jobType,optimizationType,transactions,space,brandExit=None
             masterData=masterData.apply(lambda x: pd.to_numeric(x, errors='ignore'))
             mergeTrad = mergeTrad.apply(lambda x: pd.to_numeric(x, errors='ignore'))
         else:
-            masterData = transactionMerge(space, transactions, Categories)
+            masterData = transactionMerge(space, transactions,Stores,Categories,jobType)
             masterData['Exit Flag']=0
-            masterData.rename(columns={'Result Space': 'New Space'})
-        print(masterData.columns)
+            masterData.rename(columns={'Result Space': 'New Space'},inplace=True)
+            mergeTrad = masterData.copy()
+            print('We go through the tough stuff')
     except Exception as e:
         logging.exception('A thing')
         traceback.print_exception() # syntactically incorrect since this function call is expecting 3 args.

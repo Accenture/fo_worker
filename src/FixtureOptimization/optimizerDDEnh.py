@@ -161,6 +161,8 @@ def optimizeEnh(methodology,jobType,jobName,Stores,Categories,increment,weights,
         print('completed all of the function definitions')
         # Identify the total amount of space to fill in the optimization for each location and for all locations
         # locSpaceToFill = pd.Series(mergedPreOptCF.groupby('Store')['Space_to_Fill'].sum())
+        Climates = mergedPreOptCF['Climate'].unique()
+        Tiers = mergedPreOptCF['Tiers'].unique()
         locSpaceToFill = mergedPreOptCF.groupby(level=0)['Space_to_Fill'].agg(np.mean)
 
         aggSpaceToFill = locSpaceToFill.sum()
@@ -200,7 +202,7 @@ def optimizeEnh(methodology,jobType,jobName,Stores,Categories,increment,weights,
         print('we have levels')
         # Set up created tier decision variable - has a value of 1 if that space level for that category will be a tier, else 0
         # if jobType == 'tiered':
-        ct = LpVariable.dicts('CT', (Categories, Levels), 0, upBound=1, cat='Binary')
+        ct = LpVariable.dicts('CT', (Climates, Tiers, Categories, Levels), 0, upBound=1, cat='Binary')
         print('we have created tiers')
         # Set up selected tier decision variable - has a value of 1 if a store will be assigned to the tier at that space level for that category, else 0
         st = LpVariable.dicts('ST', (Stores, Categories, Levels), 0, upBound=1, cat='Binary')
@@ -265,26 +267,26 @@ def optimizeEnh(methodology,jobType,jobName,Stores,Categories,increment,weights,
                 NewOptim += lpSum([st[Store][Category][Level] for (k,Level) in enumerate(Levels)]) == 1#, "One Tier per Location - STR " + str(Store) + ", CAT " + str(Category)
 
                 # The space allocated to each product at each location must be between the minimum and the maximum allowed for that product at the location.
-                NewOptim += lpSum([st[Store][Category][Level] * Level for (k,Level) in enumerate(Levels)] ) >= mergedPreOptCF["Lower_Limit"].loc[Store,Category],"Space Lower Limit - STR " + str(Store) + ", CAT " + str(Category)
-                NewOptim += lpSum([st[Store][Category][Level] * Level for (k,Level) in enumerate(Levels)] ) <= mergedPreOptCF["Upper_Limit"].loc[Store,Category],"Space Upper Limit - STR " + str(Store) + ", CAT " + str(Category)
+                # NewOptim += lpSum([st[Store][Category][Level] * Level for (k,Level) in enumerate(Levels)] ) >= mergedPreOptCF["Lower_Limit"].loc[Store,Category],"Space Lower Limit - STR " + str(Store) + ", CAT " + str(Category)
+                # NewOptim += lpSum([st[Store][Category][Level] * Level for (k,Level) in enumerate(Levels)] ) <= mergedPreOptCF["Upper_Limit"].loc[Store,Category],"Space Upper Limit - STR " + str(Store) + ", CAT " + str(Category)
                 if mergedPreOptCF['Sales Penetration'].loc[Store,Category] < salesPen:
                     NewOptim += st[Store][Category][0] == 1
 
         print('finished first block of constraints')
         # totalTiers=0
         try:
-            if jobType == 'tiered':
-                print('we have tier counts')
-                for (j,Category) in enumerate(Categories):
-                    # totalTiers=totalTiers+tierCounts[Category][1]
-                    # The number of created tiers must be within the tier count limits for each product.
-                    NewOptim += lpSum([ct[Category][Level] for (k,Level) in enumerate(Levels)]) >= tierCounts[Category][0], "Tier Count Lower Limit - CAT " + str(Category)
-                    NewOptim += lpSum([ct[Category][Level] for (k,Level) in enumerate(Levels)]) <= tierCounts[Category][1], "Tier Count Upper Limit - CAT " + str(Category)
-            for (j,Category) in enumerate(Categories):
-                for (k,Level) in enumerate(Levels):
-                    # A selected tier can be turned on if and only if the created tier at that level for that product is turned on.
-                    NewOptim += lpSum([st[Store][Category][Level] for (i,Store) in enumerate(Stores)])/len(Stores) <= ct[Category][Level], "Selected-Created Tier Relationship - CAT " + str(Category) + ", LEV: " + str(Level)
-                    # EXPLORATORY ONLY: MINIMUM STORES PER TIER
+            for (c,Climate) in enumerate(Climates):
+                for (t,Tier) in enumerate(Tiers):
+                    for (j,Category) in enumerate(Categories):
+                        # totalTiers=totalTiers+tierCounts[Category][1]
+                        # The number of created tiers must be within the tier count limits for each product.
+                        NewOptim += lpSum([ct[Climate][Tier][Category][Level] for (k,Level) in enumerate(Levels)]) >= tierCounts[Category][0], "Tier Count Lower Limit - CAT " + str(Category)
+                        NewOptim += lpSum([ct[Climate][Tier][Category][Level] for (k,Level) in enumerate(Levels)]) <= tierCounts[Category][1], "Tier Count Upper Limit - CAT " + str(Category)
+                    for (j,Category) in enumerate(Categories):
+                        for (k,Level) in enumerate(Levels):
+                            # A selected tier can be turned on if and only if the created tier at that level for that product is turned on.
+                            NewOptim += lpSum([st[Store][Category][Level] for (i,Store) in enumerate(Stores)])/len(Stores) <= ct[Climate][Tier][Category][Level], "Selected-Created Tier Relationship - CAT " + str(Category) + ", LEV: " + str(Level)
+                        # EXPLORATORY ONLY: MINIMUM STORES PER TIER
                     # Increases optimization run time
                     # if Level > 0:
                     #        NewOptim += lpSum([st[Store][Category][Level] for (i, Store) in enumerate(Stores)]) >= m * ct[Category][Level], "Minimum Stores per Tier: CAT " + Category + ", LEV: " + str(Level)

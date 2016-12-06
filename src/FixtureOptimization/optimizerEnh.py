@@ -167,7 +167,7 @@ def optimizeEnh(methodology,jobType,jobName,Stores,Categories,increment,weights,
 
         # Hard-coded tolerance limits for balance back constraints
         aggBalBackBound = 0.05 # 5%
-        locBalBackBound = 0.10 # 10%
+        locBalBackBound = 0.05 # 10%
 
         print('now have balance back bounds')
         # EXPLORATORY ONLY: ELASTIC BALANCE BACK

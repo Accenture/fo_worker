@@ -6,7 +6,8 @@ Created on Thu Jun 30 09:55:06 2016
 """
 import numpy as np
 import pandas as pd
-
+import logging
+import traceback
 
 # Need to change functions to allow for TFC as result of Future Space/ Brand Entry
 # Need to create a max & min for category level informaiton to be passed as bounds in a long table format // Matching format to Bounding Info that is added to job context
@@ -14,6 +15,7 @@ import pandas as pd
 # import os
 
 def preoptimize(jobType,optimizationType,dataMunged, salesPenThreshold, mAdjustment, optimizedMetrics, increment):
+    print(dataMunged.columns)
     """
     Conducts the preoptimization based upon legacy R2 code to determine optimal space for traditional optimizations
     :param optimizationType: enhanced or traditional optimization
@@ -151,37 +153,48 @@ def preoptimize(jobType,optimizationType,dataMunged, salesPenThreshold, mAdjustm
                     rounded[j].loc[i] = np.around(array[j].loc[i], 3) - np.mod(np.around(array[j].loc[i], 3), increment)
         return rounded
 
-    sales = dataMunged.pivot(index='Store',columns='Category',values='Sales $')
-    sold_units = dataMunged.pivot(index='Store',columns='Category',values='Sales Units')
-    profit = dataMunged.pivot(index='Store',columns='Category',values='Profit $')
-    if jobType == 'tiered' or 'unconstrained':
-        bfc = dataMunged.pivot(index='Store',columns='Category',values='Current Space')
-    if optimizationType=='traditional':
-        boh = dataMunged.pivot(index='Store', columns='Category', values='BOH $')
-        receipt = dataMunged.pivot(index='Store', columns='Category', values='Receipts  $')
-        boh_units = dataMunged.pivot(index='Store', columns='Category', values='BOH Units')
-        receipts_units = dataMunged.pivot(index='Store', columns='Category', values='Receipts Units')
-        gm_perc = dataMunged.pivot(index='Store', columns='Category', values='Profit %')
-        ccCount = dataMunged.pivot(index='Store', columns='Category', values='CC Count w/ BOH')
-        adj_p = (optimizedMetrics['spread'] * spreadCalc(sales, boh, receipt, mAdjustment)) + (optimizedMetrics[
-            'salesPenetration'] * calcPen(sales)) + (optimizedMetrics['salesPerSpaceUnit'] * metric_per_fixture(sales,
-                                                                                                               bfc,
-                                                                                                               mAdjustment)) + \
-                (optimizedMetrics['grossMargin'] * calcPen(gm_perc)) + (optimizedMetrics['inventoryTurns'] * invTurn_Calc(
-            sold_units, boh_units, receipts_units))
-    else:
-        adj_p = (optimizedMetrics['sales'] * sales) + (optimizedMetrics['profits'] * profit) + (optimizedMetrics['units'] * sold_units)
+    try:
+        sales = dataMunged.pivot(index='Store',columns='Category',values='Sales $')
+        sold_units = dataMunged.pivot(index='Store',columns='Category',values='Sales Units')
+        profit = dataMunged.pivot(index='Store',columns='Category',values='Profit $')
 
-    for i in adj_p.index:
-        for j in adj_p.columns:
-            if adj_p[j].loc[i] < salesPenThreshold:
-                adj_p[j].loc[i] = 0
-    print('creating adj_p')
-    adj_p = calcPen(adj_p)
-    adj_p.fillna(0)
-    information=pd.merge(dataMunged,pd.melt(adj_p.reset_index(), id_vars=['Store'], var_name='Category', value_name='Penetration'),on=['Store','Category'])
-    information['Optimal Space'] = information['New Space'] * information['Penetration']
-    print('attempting to keep sales pen')
-    information = pd.merge(information,pd.melt(calcPen(sales).reset_index(),id_vars=['Store'], var_name='Category',value_name='Sales Penetration'),on=['Store','Category'])
-    information = information.apply(lambda x: pd.to_numeric(x, errors='ignore'))
-    return information
+        if optimizationType=='traditional':
+            boh = dataMunged.pivot(index='Store', columns='Category', values='BOH $')
+            receipt = dataMunged.pivot(index='Store', columns='Category', values='Receipts  $')
+            boh_units = dataMunged.pivot(index='Store', columns='Category', values='BOH Units')
+            receipts_units = dataMunged.pivot(index='Store', columns='Category', values='Receipts Units')
+            gm_perc = dataMunged.pivot(index='Store', columns='Category', values='Profit %')
+            ccCount = dataMunged.pivot(index='Store', columns='Category', values='CC Count w/ BOH')
+            if jobType == 'tiered' or jobType == 'unconstrained':
+                bfc = dataMunged.pivot(index='Store', columns='Category', values='Current Space')
+            else:
+                bfc = calcPen(sales).multiply(dataMunged.pivot(index='Store',columns='Category',values='New Space'))
+            adj_p = (optimizedMetrics['spread'] * spreadCalc(sales, boh, receipt, mAdjustment)) + (optimizedMetrics[
+                'salesPenetration'] * calcPen(sales)) + (optimizedMetrics['salesPerSpaceUnit'] * metric_per_fixture(sales,
+                                                                                                                   bfc,
+                                                                                                                   mAdjustment)) + \
+                    (optimizedMetrics['grossMargin'] * calcPen(gm_perc)) + (optimizedMetrics['inventoryTurns'] * invTurn_Calc(
+                sold_units, boh_units, receipts_units))
+        else:
+            adj_p = (optimizedMetrics['sales'] * sales) + (optimizedMetrics['profits'] * profit) + (optimizedMetrics['units'] * sold_units)
+
+        for i in adj_p.index:
+            for j in adj_p.columns:
+                if adj_p[j].loc[i] < salesPenThreshold:
+                    adj_p[j].loc[i] = 0
+        print('creating adj_p')
+        adj_p = calcPen(adj_p)
+        adj_p.fillna(0)
+        information=pd.merge(dataMunged,pd.melt(adj_p.reset_index(), id_vars=['Store'], var_name='Category', value_name='Penetration'),on=['Store','Category'])
+        information['Optimal Space'] = information['New Space'] * information['Penetration']
+        if jobType == 'drilldown':
+            information['Current Space'] = information['Optimal Space']
+        print('attempting to keep sales pen')
+        information = pd.merge(information,pd.melt(calcPen(sales).reset_index(),id_vars=['Store'], var_name='Category',value_name='Sales Penetration'),on=['Store','Category'])
+        information = information.apply(lambda x: pd.to_numeric(x, errors='ignore'))
+        return information
+    except Exception as e:
+        logging.exception('A thing')
+        traceback.print_exception()
+        return
+    # return information

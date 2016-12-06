@@ -78,7 +78,7 @@ def run(body):
     try:
         job_id = job['_id']
     except TypeError:
-        print('Job Not Found')
+        logging.info('Job Not Found')
         return False
 
     # current_user = job['userId']
@@ -113,50 +113,98 @@ def run(body):
         file = pd.read_csv(file, header=0, skiprows=[1])
         return file
 
+    def fetchLong(artifact_id,filtCategory):
+        file = fs.get(ObjectId(artifact_id))
+        file = pd.read_csv(file,header=0)
+        file = file[(file['Category'] == filtCategory)]
+        file = file[['Store','VSG','Climate','Category','Result Space']]
+        return file
     # Stores = msg['salesStores']
     # Categories = msg['salesCategories']
 
     # logging.info('beginning of ' + msg['meta']['name'])
 
-    print("#####################################################################")
-    print('beginning of ' + msg['meta']['name'] + ' date of ' + dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
-    print("#####################################################################")
+    logging.info("#####################################################################")
+    logging.info('beginning of ' + msg['meta']['name'] + ' date of ' + dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+    logging.info("#####################################################################")
 
+    # try:
+    #     tieredResult = fetchLong(msg['artifacts']['tieredResultArtifactId'])
+    # except:
+    #     tieredResult = None
+    filtCategory = 'MISSESJRS'
+
+
+    try:
+        sales = fetchTransactions(msg["artifacts"]["salesArtifactId"])
+    except:
+        logging.info('attempting drill down')
+        sales = fetchTransactions(msg["artifacts"]["categorySalesArtifactId"])
+        logging.info(msg["artifacts"]["categorySalesArtifactId"])
+    # except:
+    #     logger.exception("Did not find categorySalesArtifactId")
+    logging.info('uploaded sales')
+
+    try:
+        space = fetchSpace(msg["artifacts"]["spaceArtifactId"])
+    except:
+        space = fetchLong(
+            msg['artifacts']['tieredResultArtifactId'],filtCategory)
+    logging.info('uploaded space')
 
     try:
         futureSpace = fetchSpace(msg["artifacts"]["futureSpaceId"])
-        print("Future Space was Uploaded")
+        logging.info("Future Space was Uploaded")
     except:
         futureSpace = None
-        print("Future Space was not Uploaded")
+        logging.info("Future Space was not Uploaded")
     try:
         brandExitArtifact = fetchExit(msg["artifacts"]["brandExitArtifactId"])
-        print("Brand Exit was Uploaded")
+        logging.info("Brand Exit was Uploaded")
     except:
-        print("Brand Exit was not Uploaded")
+        logging.info("Brand Exit was not Uploaded")
         brandExitArtifact = None
-    if msg['jobType'] == 'unconstrained' or msg['jobType'] == 'drillDown':
+    if msg['jobType'] == 'unconstrained' or msg['jobType'] == 'drilldown':
         msg['tierCounts'] = None
-    # msg['jobType'] = 'drillDown'
-    print(msg['jobType'])
-    dataMerged = dataMerge(jobName=msg['meta']['name'],jobType=msg['jobType'],optimizationType=msg['optimizationType'],transactions=fetchTransactions(msg["artifacts"]["salesArtifactId"]),
-                            space=fetchSpace(msg["artifacts"]["spaceArtifactId"]),
-                            brandExit=brandExitArtifact, futureSpace=futureSpace)
-    print('finished data merging')
-    preOpt = preoptimize(jobType=msg['jobType'], optimizationType=msg['optimizationType'], dataMunged=dataMerged[1],
-                            mAdjustment=float(msg["metricAdjustment"]),
-                            salesPenThreshold=float(msg["salesPenetrationThreshold"]),
-                            optimizedMetrics=msg["optimizedMetrics"], increment=msg["increment"])
-    print('finished preoptimize')
+    if msg['jobType'] == 'drillDown':
+        msg['optimizedMetrics'] = \
+            {
+                "spread": 100,
+                "salesPenetration": 0,
+                "salesPerSpaceUnit": 0,
+                "inventoryTurns": 0,
+                "grossMargin": 0
+            }
+        msg['increment'] = 1
+        msg['salesStores'] = space['Store'].unique()
+        msg['salesCategories'] = space['Category'].unique()
+        msg['metricAdjustment'] = 0
+        msg["salesPenetrationThreshold"] = .02
+
+    dataMerged = dataMerge(jobName=msg['meta']['name'], jobType=msg['jobType'],
+                           optimizationType=msg['optimizationType'], transactions=sales, space=space,
+                           brandExit=brandExitArtifact, futureSpace=futureSpace)
+    logging.info('finished data merging')
+    logging.info(dataMerged[1].head())
+    try:
+        preOpt = preoptimize(jobType=msg['jobType'], optimizationType=msg['optimizationType'], dataMunged=dataMerged[1],
+                                mAdjustment=float(msg["metricAdjustment"]),
+                                salesPenThreshold=float(msg["salesPenetrationThreshold"]),
+                                optimizedMetrics=msg["optimizedMetrics"], increment=msg["increment"])
+    except:
+        logging.exception('A thing')
+        traceback.print_exception()
+    logging.info('finished preoptimize')
     if msg['optimizationType'] == 'traditional':
         if msg['jobType'] == 'unconstrained' or msg['jobType'] == 'tiered':
-            print('going to the optimization')
+            logging.info('going to the optimization')
             optimRes = optimizeTrad(jobName=msg['meta']['name'], Stores=msg['salesStores'],
                                     Categories=msg['salesCategories'],
                                     spaceBound=msg['spaceBounds'], increment=msg['increment'], dataMunged=preOpt,
                                     salesPen=msg['salesPenetrationThreshold'], tierCounts = msg['tierCounts'])
         else:
-            optimRes = optimizeDD()
+            optimRes = optimizeDD(jobName=msg['meta']['name'], increment=msg["increment"], dataMunged=preOpt,
+                                  salesPen=msg['salesPenetrationThreshold'])
         cfbsArtifact=[None,None]
         scaledAnalyticsID = None
     else:
@@ -164,55 +212,59 @@ def run(body):
                                     msg['storeCategoryBounds'],
                                     float(msg["salesPenetrationThreshold"]), msg['jobType'],
                                     msg['optimizationType'])
-        print('finished curve fitting')
+        logging.info('finished curve fitting')
         cfbsOptimal = optimizeSingleStore(cfbsArtifact[0].set_index(['Store', 'Category']), msg['increment'],
                                         msg['optimizedMetrics'])
-        print('finished single store')
+        logging.info('finished single store')
         optimRes = optimizeEnh(methodology=msg['optimizationType'], jobType=msg['jobType'], jobName=msg['meta']['name'],
                              Stores=msg['salesStores'], Categories=msg['salesCategories'],
                              increment=msg['increment'], weights=msg['optimizedMetrics'], cfbsOutput=cfbsOptimal[1],
                              preOpt=preOpt, salesPen=msg['salesPenetrationThreshold'], tierCounts=msg['tierCounts'])
-    print('we just did the optimization')
+    logging.info('we just did the optimization')
     statusID = optimRes[0]
-    print(statusID)
-    print('Set the Status')
+    logging.info(statusID)
+    logging.info('Set the Status')
     if statusID == 'Optimal' or 'Infeasible':
         # Call functions to create output information
-        print('Out of the optimization')
+        logging.info('Out of the optimization')
         longOutput = createLong(msg['jobType'],msg['optimizationType'], optimRes[1])
-        print('Created Long Output')
-        wideID = str(create_output_artifact_from_dataframe(createWide(longOutput[0], msg['jobType'], msg['optimizationType'])))
-        print('Created Wide Output')
+        logging.info('Created Long Output')
+        wideID = str(
+            create_output_artifact_from_dataframe(createWide(longOutput[0], msg['jobType'], msg['optimizationType'])))
+        logging.info('Created Wide Output')
 
         if cfbsArtifact[1] is not None:
             longID = str(create_output_artifact_from_dataframe(longOutput[0]))
             analyticsID = str(create_output_artifact_from_dataframe(cfbsArtifact[1]))
             scaledAnalyticsID = str(create_output_artifact_from_dataframe(longOutput[1]))
-            print('Created analytics ID')
+            logging.info('Created analytics ID')
         else:
             longID = str(create_output_artifact_from_dataframe(
-                longOutput[0][['Store', 'Category', 'Climate', 'VSG', 'Sales Penetration', 'Result Space', 'Current Space', 'Optimal Space']]))
+                longOutput[0][
+                    ['Store', 'Category', 'Climate', 'VSG', 'Sales Penetration', 'Result Space', 'Current Space',
+                     'Optimal Space']]))
             analyticsID=None
-            print('Set analytics ID to None')
+            logging.info('Set analytics ID to None')
 
         if msg['jobType'] == "tiered" or 'unconstrained':
             summaryID = str(create_output_artifact_from_dataframe(createTieredSummary(longOutput[int(0)])))
         else:  # since type == "Drill Down"
             summaryID = str(create_output_artifact_from_dataframe(createDrillDownSummary(longOutput[int(0)])))
-        print('Set the summary IDs')
+        logging.info('Set the summary IDs')
 
         try:
-            invalids = outputValidation(df=longOutput[0], jobType=msg['jobType'], tierCounts=msg['tierCounts'], increment=msg['increment'])
+            invalids = outputValidation(df=longOutput[0], jobType=msg['jobType'], tierCounts=msg['tierCounts'],
+                                        increment=msg['increment'])
         except Exception as e:
             logging.exception('Not entirely sure what is happening')
             return
-            # traceback.print_exc(e)
-        print('set the invalids')
+            # traceback.logging.info_exc(e)
+        logging.info('set the invalids')
 
         end_time = dt.datetime.utcnow()
-        print('created the end time')
+        logging.info('created the end time')
 
-        print("Adding end time and output ids")
+        logging.info("Adding end time and output ids")
         db.jobs.find_one_and_update(
             {'_id': job_id},
             {
@@ -236,12 +288,12 @@ def run(body):
                 }
             }
         )
-            # traceback.print_exc(e)
+            # traceback.logging.info_exc(e)
     else:
         end_time = dt.datetime.utcnow()
-        print('created the end time')
+        logging.info('created the end time')
 
-        print("Adding end time and output ids")
+        logging.info("Adding end time and output ids")
         db.jobs.find_one_and_update(
             {'_id': job_id},
             {
@@ -255,11 +307,11 @@ def run(body):
 
     # logging.info('end of ' + msg['meta']['name'])
 
-    print("#####################################################################")
-    print(dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
-    print("#####################################################################")
+    logging.info("#####################################################################")
+    logging.info(dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+    logging.info("#####################################################################")
 
-    print("Job complete")
+    logging.info("Job complete")
 
 if __name__ == '__main__':
     # LOGGER.debug('hello from {}'.format(__name__))
