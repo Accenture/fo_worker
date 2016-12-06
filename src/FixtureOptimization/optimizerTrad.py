@@ -54,9 +54,6 @@ def optimizeTrad(jobName,Stores,Categories,spaceBound,increment,dataMunged,sales
     ##########################################################################################
     ##################Vector Creation ||May be moved to another module/ program in the future
     ##########################################################################################
-    # opt_amt.index=opt_amt.index.values.astype(int)
-    # Stores = opt_amt.index.tolist()
-    # Setting up the Selected Tier Combinations -- Need to redo if not getting or creating data for all possible levels
     # Categories = opt_amt.columns.values
     print('creating levels')
     minLevel = min(spaceBound[[1]].min())
