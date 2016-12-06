@@ -18,6 +18,7 @@ from FixtureOptimization.optimizerTrad import optimizeTrad
 from FixtureOptimization.optimizerEnh import optimizeEnh
 from FixtureOptimization.outputFunctions import createLong, createWide, createDrillDownSummary, createTieredSummary, outputValidation
 from FixtureOptimization.optimizerDD import optimizeDD
+from FixtureOptimization.optimizerDDEnh import optimizeEnhDD
 from pika import BlockingConnection, ConnectionParameters
 from FixtureOptimization.SingleStoreOptimization import optimizeSingleStore
 import logging
@@ -196,7 +197,6 @@ def run(body):
             }
         msg['increment'] = 1
         msg['salesStores'] = space['Store'].unique()
-        msg['salesCategories'] = space['Category'].unique()
         msg['metricAdjustment'] = 0
         msg["salesPenetrationThreshold"] = .02
 
@@ -222,8 +222,11 @@ def run(body):
                                     salesPen=msg['salesPenetrationThreshold'], tierCounts = msg['tierCounts'])
         else:
             try:
-                optimRes = optimizeDD(jobName=msg['meta']['name'], increment=msg["increment"], dataMunged=preOpt,
-                                  salesPen=msg['salesPenetrationThreshold'])
+                msg['salesCategories'] = preOpt['Category'].unique()
+                print(preOpt['Category'])
+                # optimRes = optimizeDD(jobName=msg['meta']['name'], increment=msg["increment"], dataMunged=preOpt,
+                #                   salesPen=msg['salesPenetrationThreshold'])
+                optimizeEnhDD(methodology=msg['optimizationType'], jobType=msg['jobType'],jobName=msg['meta']['name'],Stores=msg['salesStores'],Categories=msg['salesCategories'],increment=msg['increment'],weights=msg['optimizedMetrics'],preOpt=preOpt,salesPen=msg['salesPenetrationThreshold'])
             except:
                 logging.exception('A thing')
                 traceback.print_exception()

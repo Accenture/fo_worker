@@ -42,10 +42,10 @@ def optimizeDD(jobName, increment, dataMunged, salesPen):
     print('set up new space bounds')
     dataMunged = dataMunged.apply(lambda x: pd.to_numeric(x, errors='ignore'))
     start_time = dt.datetime.today().hour * 60 * 60 + dt.datetime.today().minute * 60 + dt.datetime.today().second
-    opt_amt = dataMunged.pivot(index='Store', columns='Category', values='Optimal Space')  # preOpt[1]
-    dataMunged["Result Space"] = dataMunged["Result Space"].apply(lambda x: roundValue(x, increment))
+    dataMunged["Optimal Space"] = dataMunged["Optimal Space"].apply(lambda x: roundValue(x, increment))
     salesPenetration = dataMunged.pivot(index='Store', columns='Category', values='Sales Penetration')
     brandExitArtifact = dataMunged.pivot(index='Store', columns='Category', values='Exit Flag')
+    opt_amt= dataMunged.pivot(index='Store', columns='Category', values='Optimal Space')
 
     print("HEY I'M IN THE OPTIMIZATION!!!!!!!")
     ###############################################################################################
@@ -68,7 +68,7 @@ def optimizeDD(jobName, increment, dataMunged, salesPen):
     print("created levels")
 
     b = .05
-    bI = .1
+    bI = .05
 
     # Adjust location balance back tolerance limit so that it's at least 2 increments
     # def adjustForTwoIncr(row,bound,increment):
@@ -136,7 +136,7 @@ def optimizeDD(jobName, increment, dataMunged, salesPen):
                 # Verify that we still cannot use a constraint if not using a sum - Look to improve efficiency
                 for (k, Level) in enumerate(Levels):
                     NewOptim += lpSum([st[Store][Category][Level] for (i, Store) in enumerate(Stores)]) / len(Stores) <= \
-                                ct[Climate][Tier][Category][Level]  # , "Relationship between ct & st"
+                                ct[Tier][Climate][Category][Level]  # , "Relationship between ct & st"
 
     # Global Balance Back
     NewOptim += lpSum(
@@ -156,7 +156,8 @@ def optimizeDD(jobName, increment, dataMunged, salesPen):
     # NewOptim.writeMPS(str(jobName)+".mps")
     # NewOptim.solve(pulp.GUROBI(mip=True, msg=True, MIPgap=.01))
     try:
-        NewOptim.solve(pulp.PULP_CBC_CMD(msg=2, threads=6, fracGap=.1, presolve=True))
+        NewOptim.solve(pulp.GUROBI(mip=True, msg=True, MIPgap=.01, LogFile="/tmp/gurobi.log"))
+
     except Exception as e:
         print(e)
 
