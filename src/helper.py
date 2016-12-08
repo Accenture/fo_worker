@@ -84,7 +84,6 @@ def loadJson(file):
 	return j
 # modify json request by replacing MongoDB fs hash location to local path locations.
 def jsonFormulator(options):
-	print (options)
 	err_lst = list()
 	_dir = options.input_dir if options.input_dir != None else err_lst.append('input dir')
 	conf = _dir + options.conf if _dir != None and options.conf != None else err_lst.append("config json")
