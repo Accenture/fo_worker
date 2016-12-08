@@ -81,22 +81,43 @@ def loadJson(file):
 		j = json.load(f)
 	return j
 # modify json request by replacing MongoDB fs hash location to local path locations.
-def modifyJson(j):
-	# store fileNames as (k,v) pair such that
-	# j['filenames'] is in style of (filename, filename)
-	allHashKeys = sorted(j['filenames'])
-	allFileNames = list(v for k,v in j['filenames'].items())
-	for fileName in allFileNames:
-		j['filenames'][fileName] = fileName
-	
-	# Replace key in j['artifacts'] by its actual fileName.
-	for key in j['artifacts'].keys():
-		hashLocation = j['artifacts'][key]
-		j['artifacts'][key] = j['filenames'][hashLocation]
-	
-	# delete the previous (k,v) in j['filenames'].
-	for hash_key in allHashKeys:
-		del j['filenames'][hash_key]
+def jsonFormulator(options):
+	err_lst = list()
+	_dir = options.input_dir if options.input_dir != None else err_lst.append('input dir')
+	conf = _dir + options.conf if options.conf != None else err_lst.append("config json")
+	sales_data = _dir + options.sales_data if options.sales_data != None else err_lst.append("sales data")
+	space_data = _dir + options.space_data if options.space_data != None else err_lst.append("space data")
+	brand_exit = _dir + options.brand_exit if options.brand_exit != None else None
+	future_space = _dir + options.future_space if options.future_space != None else None
+
+	if len(err_lst) != 0:
+		err = ', '.join(err_lst)
+		print (err + " is/are required!!!")
+		sys.exit(1)
+
+	j = loadJson(conf)
+
+	j['filenames'] = dict()
+	j['artifacts'] = dict()
+
+	j['filenames'][sales_data] = sales_data
+	j['artifacts']['salesArtifactId'] = sales_data
+
+	j['filenames'][space_data] = space_data
+	j['artifacts']['spaceArtifactId'] = space_data
+
+	if brand_exit != None:
+		j['filenames'][brand_exit] = brand_exit
+		j['artifacts']['brandExitArtifactId'] = brand_exit
+
+	if future_space != None:
+		j['filenames'][future_space] = future_space
+		j['artifacts']['futureSpaceArtifactId'] = future_space
+
+
+	return j
+
+
 
 def create_new_artifact(filename, _type):
 	

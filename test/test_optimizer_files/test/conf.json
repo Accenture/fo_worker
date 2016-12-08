@@ -1,0 +1,82 @@
+{
+  "jobType": "tiered",
+  "metricAdjustment": 0.01,
+  "salesPenetrationThreshold": 0.02,
+  "optimizationType": "enhanced",
+  "optimizedMetrics": {
+    "sales": 85,
+    "profits": 10,
+    "units": 5
+  },
+  "threads": 4,
+  "fracGap": 0,
+  "increment": 1,
+  "storeCategoryBounds": 50,
+  "spaceBoundType": "Fixture",
+  "globalSpace": 15,
+  "tierCounts": {
+    "LICENSED CHARACTER - JBD": [
+      1,
+      3
+    ],
+    "LEE DENIM": [
+      1,
+      3
+    ],
+    "LEVI DENIM": [
+      1,
+      3
+    ],
+    "SONOMA DENIM": [
+      1,
+      3
+    ],
+    "NIKE": [
+      1,
+      3
+    ],
+    "ADIDAS": [
+      1,
+      3
+    ],
+    "JUMPING BEANS ACTIVE": [
+      1,
+      3
+    ],
+    "CARTERS": [
+      1,
+      3
+    ],
+    "OSHKOSH": [
+      1,
+      3
+    ],
+    "HURLEY - HAWK": [
+      1,
+      3
+    ],
+    "JUMPING BEANS": [
+      1,
+      3
+    ],
+    "SONOMA": [
+      1,
+      3
+    ],
+    "CHAPS": [
+      1,
+      3
+    ],
+    "OUTERWEAR": [
+      1,
+      3
+    ],
+    "SWIMWEAR": [
+      1,
+      3
+    ]
+  },
+  "meta": {
+    "name": "Test_enh"
+  }
+}
