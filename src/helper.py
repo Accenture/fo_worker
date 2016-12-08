@@ -21,6 +21,8 @@ from distutils.util import strtobool
 
 import sys
 sys.path.append('/vagrant/fo_api/src/')
+# The following path is the path for local env.
+sys.path.append('../fo_api/src/')
 from artifacts import ArtifactBuilder
 
 
@@ -82,13 +84,14 @@ def loadJson(file):
 	return j
 # modify json request by replacing MongoDB fs hash location to local path locations.
 def jsonFormulator(options):
+	print (options)
 	err_lst = list()
 	_dir = options.input_dir if options.input_dir != None else err_lst.append('input dir')
-	conf = _dir + options.conf if options.conf != None else err_lst.append("config json")
-	sales_data = _dir + options.sales_data if options.sales_data != None else err_lst.append("sales data")
-	space_data = _dir + options.space_data if options.space_data != None else err_lst.append("space data")
-	brand_exit = _dir + options.brand_exit if options.brand_exit != None else None
-	future_space = _dir + options.future_space if options.future_space != None else None
+	conf = _dir + options.conf if _dir != None and options.conf != None else err_lst.append("config json")
+	sales_data = _dir + options.sales_data if _dir != None and options.sales_data != None else err_lst.append("sales data")
+	space_data = _dir + options.space_data if _dir != None and options.space_data != None else err_lst.append("space data")
+	brand_exit = _dir + options.brand_exit if _dir != None and options.brand_exit != None else None
+	future_space = _dir + options.future_space if _dir != None and options.future_space != None else None
 
 	if len(err_lst) != 0:
 		err = ', '.join(err_lst)
