@@ -46,6 +46,32 @@ def fetchSpace(file):
 	file = pd.read_csv(file, header=0, dtype={'Store': object}, skiprows=[1])
 	return file
 
+def fetchLong(file,filtCategory):
+    def tierColCreate(dfI):
+        """
+        Creates the Tier Columns
+        :param df: Long Table to be given tiering information
+        :return: tiered long table output
+        """
+        try:
+            dfI.sort_values(by='Result Space', inplace=True)
+            tierVals = dfI.groupby('Category')
+            for (i, category) in tierVals:
+                indices = category.index.values
+                ranking = sorted(set(category['Result Space'].values.tolist()))
+                dfI.loc[indices, 'Tier'] = category['Result Space'].apply(
+                    lambda x: 'Tier ' + str(ranking.index(x) + 1))
+            dfI.reset_index(drop=True)
+        except Exception:
+            logging.exception('This is what happened')
+            traceback.print_exception()
+        return dfI
+    # file = fs.get(ObjectId(artifact_id))
+    file = pd.read_csv(file,header=0)
+    file = file[(file['Category'] == filtCategory)]
+    file = tierColCreate(file[['Store','VSG','Climate','Category','Result Space']])
+    return file
+
 def fetchExit(file):
 	# file = fs.get(ObjectId(artifact_id))
 	file = pd.read_csv(file, header=0, skiprows=[1])
