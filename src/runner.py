@@ -222,12 +222,14 @@ def run(body):
                                     salesPen=msg['salesPenetrationThreshold'], tierCounts = msg['tierCounts'])
         else:
             try:
-                msg['salesCategories'] = preOpt['Category'].unique()
                 print(preOpt['Category'])
-                # optimRes = optimizeDD(jobName=msg['meta']['name'], increment=msg["increment"], dataMunged=preOpt,
-                #                   salesPen=msg['salesPenetrationThreshold'])
-                optimizeEnhDD(methodology=msg['optimizationType'], jobType=msg['jobType'],jobName=msg['meta']['name'],Stores=msg['salesStores'],Categories=msg['salesCategories'],increment=msg['increment'],weights=msg['optimizedMetrics'],preOpt=preOpt,salesPen=msg['salesPenetrationThreshold'])
-            except:
+                msg['salesCategories'] = preOpt['Category'].unique()
+                optimRes = optimizeDD(jobName=msg['meta']['name'], increment=msg["increment"], dataMunged=preOpt,
+                                  salesPen=msg['salesPenetrationThreshold'])
+                # optimRes = optimizeEnhDD(methodology=msg['optimizationType'], jobType=msg['jobType'], jobName=msg['meta']['name'],
+                #               Stores=msg['salesStores'], Categories=msg['salesCategories'], increment=msg['increment'],
+                #               weights=msg['optimizedMetrics'], preOpt=preOpt, salesPen=msg['salesPenetrationThreshold'])
+            except Exception:
                 logging.exception('A thing')
                 traceback.print_exception()
         cfbsArtifact=[None,None]

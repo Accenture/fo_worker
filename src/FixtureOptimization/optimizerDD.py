@@ -33,10 +33,13 @@ def optimizeDD(jobName, increment, dataMunged, salesPen):
             cVal = round(cVal, 3) - np.mod(round(cVal, 3), increment)
         return cVal
 
-    Stores = dataMunged['Store'].unique()
-    Categories = dataMunged['Category'].unique()
-    Tiers = dataMunged['Tier'].unique()
-    Climates = dataMunged['Climate'].unique()
+    Stores = dataMunged['Store'].unique().tolist()
+    Categories = dataMunged['Category'].unique().tolist()
+    Tiers = dataMunged['Tier'].unique().tolist()
+    Climates = dataMunged['Climate'].unique().tolist()
+
+    print('Stores Type{}'.format(len(Stores)))
+    print('Categories Type{}'.format(len(Categories)))
 
     dataMunged['Optimal Space'] = dataMunged['Optimal Space'].apply(lambda x: roundValue(x, increment))
     print('set up new space bounds')
