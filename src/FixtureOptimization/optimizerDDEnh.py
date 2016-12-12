@@ -31,7 +31,7 @@ def optimizeEnhDD(methodology,jobType,jobName,Stores,Categories,increment,weight
     :param fractGap: The optimiality gap to be used by the solver for the optimization
     :return: Optimization Status, DataFrame of all information, objective function value
     """
-    print('in the new optimization')
+    print('I know where I am')
 
     print('just finished merge')
     mergedPreOptCF = preOpt.apply(lambda x: pd.to_numeric(x, errors='ignore'))
@@ -234,6 +234,8 @@ def optimizeEnhDD(methodology,jobType,jobName,Stores,Categories,increment,weight
         print('created objective function')
         # Begin CONSTRAINT SETUP
 
+        print(Categories)
+        print(mergedPreOptCF.head())
         for (i,Store) in enumerate(Stores):
             # TODO: Exploratory analysis on impact of balance back on financials for Enhanced
             # Store-level balance back constraint: the total space allocated to products at each location must be within the individual location balance back tolerance limit
@@ -275,7 +277,7 @@ def optimizeEnhDD(methodology,jobType,jobName,Stores,Categories,increment,weight
                         for (k,Level) in enumerate(Levels):
                             # A selected tier can be turned on if and only if the created tier at that level for that product is turned on.
                             NewOptim += lpSum([st[Store][Category][Level] for (i,Store) in enumerate(Stores)])/len(Stores) <= ct[Climate][Tier][Category][Level]
-                        # EXPLORATORY ONLY: MINIMUM STORES PER TIER
+                    # EXPLORATORY ONLY: MINIMUM STORES PER TIER
                     # Increases optimization run time
                     # if Level > 0:
                     #        NewOptim += lpSum([st[Store][Category][Level] for (i, Store) in enumerate(Stores)]) >= m * ct[Category][Level], "Minimum Stores per Tier: CAT " + Category + ", LEV: " + str(Level)

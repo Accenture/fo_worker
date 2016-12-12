@@ -15,7 +15,6 @@ import traceback
 # import os
 
 def preoptimize(jobType,optimizationType,dataMunged, salesPenThreshold, mAdjustment, optimizedMetrics, increment):
-    print(dataMunged.columns)
     """
     Conducts the preoptimization based upon legacy R2 code to determine optimal space for traditional optimizations
     :param optimizationType: enhanced or traditional optimization
@@ -24,7 +23,7 @@ def preoptimize(jobType,optimizationType,dataMunged, salesPenThreshold, mAdjustm
     :param mAdjustment: metric adjustment
     :param optimizedMetrics:
     :param increment: increment size
-    :return:
+    :return: initial long table with optimal space & sales penetration
     """
 
     def calcPen(metric):
@@ -192,7 +191,6 @@ def preoptimize(jobType,optimizationType,dataMunged, salesPenThreshold, mAdjustm
         print('attempting to keep sales pen')
         information = pd.merge(information,pd.melt(calcPen(sales).reset_index(),id_vars=['Store'], var_name='Category',value_name='Sales Penetration'),on=['Store','Category'])
         information = information.apply(lambda x: pd.to_numeric(x, errors='ignore'))
-        print(information.columns)
         return information
     except Exception as e:
         logging.exception('A thing')

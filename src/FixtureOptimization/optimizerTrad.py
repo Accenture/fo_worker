@@ -25,6 +25,8 @@ def optimizeTrad(jobName,Stores,Categories,spaceBound,increment,dataMunged,sales
     Synopsis:
         I just wrapped the script from Ken in a callable - DCE
     """
+    print('Stores Type{}'.format(type(Stores)))
+    print('Categories Type{}'.format(type(Categories)))
 
     def roundValue(cVal, increment):
         if np.mod(round(cVal, 3), increment) > increment / 2:
@@ -124,6 +126,8 @@ def optimizeTrad(jobName,Stores,Categories,spaceBound,increment,dataMunged,sales
 
     NewOptim += lpSum([(st[Store][Category][Level] * error[i][j][k]) for (i, Store) in enumerate(Stores) for (j, Category) in enumerate(Categories) for (k, Level) in enumerate(Levels)]), ""
     print('created objective function')
+    print(Categories)
+    print()
 ###############################################################################################################
 ############################################### Constraints
 ###############################################################################################################

@@ -7,6 +7,17 @@ from itertools import product
 
 
 def dataMerge(jobName,jobType,optimizationType,transactions,space,brandExit=None,futureSpace=None):
+    """
+
+    :param jobName:
+    :param jobType:
+    :param optimizationType:
+    :param transactions:
+    :param space:
+    :param brandExit:
+    :param futureSpace:
+    :return:
+    """
     try:
         space.rename(columns={'VSG ': 'VSG','Category': 'Product'}, inplace=True)
         Categories = transactions[[*np.arange(len(transactions.columns))[1::9]]].loc[0].reset_index(
