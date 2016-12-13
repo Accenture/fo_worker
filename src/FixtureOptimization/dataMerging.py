@@ -7,9 +7,9 @@ import sys
 # futureSpace=pd.read_csv('futureSpace_data.csv',header=0,dtype={'Store': object},skiprows=[1])
 # brandExit=pd.read_csv('exit_data.csv',header=0,skiprows=[1])
 
-def ksMerge(optimizationType,transactions,space,brandExit=None,futureSpace=None):
+def dataMerge(jobName,optimizationType,transactions,space,brandExit=None,futureSpace=None):
     space.rename(columns={'VSG ': 'VSG'}, inplace=True)
-    if optimizationType == 'tiered':
+    if optimizationType == 'tiered' or 'unconstrained':
         def brandExitMung(df, Stores, Categories):
             brand_exit = pd.DataFrame(index=Stores, columns=Categories)
             for (i, Store) in enumerate(Stores):
@@ -25,7 +25,6 @@ def ksMerge(optimizationType,transactions,space,brandExit=None,futureSpace=None)
             str)
         spaceData = pd.melt(space, id_vars=['Store', 'Climate', 'VSG'], var_name='Category', value_name='Historical Space')
         spaceData['Current Space'] = spaceData['Historical Space']
-        print(spaceData.columns)
         def longTransaction(df, storeList, categories):
             df.loc[0, :] = categories
             df = pd.concat([storeList, df], axis=1)
@@ -77,6 +76,6 @@ def ksMerge(optimizationType,transactions,space,brandExit=None,futureSpace=None)
         masterData=masterData.apply(lambda x: pd.to_numeric(x, errors='ignore'))
         mergeTrad = mergeTrad.apply(lambda x: pd.to_numeric(x, errors='ignore'))
         print('Finished Data Merging')
-        # masterData.to_csv('MacroMerge.csv',sep=',')
+        # masterData.to_csv(str(jobName)+'Merge.csv',sep=',')
             # input('Stop')
     return (masterData,mergeTrad)

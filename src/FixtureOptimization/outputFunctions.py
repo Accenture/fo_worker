@@ -2,11 +2,11 @@ import pandas as pd
 import numpy as np
 from scipy.special import erf
 import math
+import traceback
 
 # Create long table for user download
 def createLong(jobType, optimizationType, lOutput):
     print('Inside createLong')
-    print(lOutput.columns)
     # Merge the optimize output with the curve-fitting output (which was already merged with the preoptimize output)
     if optimizationType == 'enhanced':
         print('initial merge')
@@ -24,6 +24,16 @@ def createLong(jobType, optimizationType, lOutput):
                                                                                 "Scaled_BP_" + v]),
                                                  lOutput["Scaled_Alpha_" + v] * erf(
                                                      (lOutput["Result Space"] - lOutput["Scaled_Shift_" + v]).div(
+                                                     math.sqrt(2) * lOutput["Scaled_Beta_" + v])))
+
+        for v in variables:
+            lOutput["Current Estimated " + v] = np.where(lOutput["Space"] < lOutput["Scaled_BP_" + v],
+                                                 lOutput["Space"] * (lOutput["Scaled_Alpha_" + v] * (erf(
+                                                     (lOutput["Scaled_BP_" + v] - lOutput["Scaled_Shift_" + v]).div(
+                                                     math.sqrt(2) * lOutput["Scaled_Beta_" + v]))) / lOutput[
+                                                                                "Scaled_BP_" + v]),
+                                                 lOutput["Scaled_Alpha_" + v] * erf(
+                                                     (lOutput["Space"] - lOutput["Scaled_Shift_" + v]).div(
                                                      math.sqrt(2) * lOutput["Scaled_Beta_" + v])))
         print("Finished Forecasting")
         # Reset the index and name the columns
@@ -43,8 +53,11 @@ def createLong(jobType, optimizationType, lOutput):
         print('Dropped Group Columns')
         lOutput.rename(
             columns={'Sales': 'Current Sales $', 'Profit': 'Current Profit $', 'Units': 'Current Sales Units',
-                     'Space': 'Current Space', 'Estimated Sales': 'Estimated Sales $',
-                     'Estimated Profit': 'Estimated Profit $', 'Estimated Units': 'Estimated Sales Units',
+                     'Space': 'Current Space', 'Current Estimated Sales': 'Current Estimated Sales $',
+                     'Current Estimated Profit': 'Current Estimated Profit $',
+                     'Current Estimated Units': 'Current Estimated Sales Units',
+                     'Estimated Sales': 'Result Estimated Sales $',
+                     'Estimated Profit': 'Result Estimated Profit $', 'Estimated Units': 'Result Estimated Sales Units',
                      'Optimal Estimated Sales': 'Optimal Estimated Sales $',
                      'Optimal Estimated Profit': 'Optimal Estimated Profit $',
                      'Optimal Estimated Units': 'Optimal Estimated Sales Units', 'Space_to_Fill': 'Total Store Space'},
@@ -52,10 +65,10 @@ def createLong(jobType, optimizationType, lOutput):
         print('finished renaming')
         lOutput = lOutput[
             ['Store', 'Category', 'Climate', 'VSG', 'Result Space', 'Current Space', 'Optimal Space',
-             'Current Sales $', 'Current Profit $', 'Current Sales Units', 'Estimated Sales $', 'Estimated Profit $',
-             'Estimated Sales Units', 'Optimal Estimated Sales $',
+             'Current Sales $', 'Current Profit $', 'Current Sales Units', 'Current Estimated Sales $', 'Current Estimated Profit $', 'Current Estimated Sales Units', 'Result Estimated Sales $', 'Result Estimated Profit $',
+             'Result Estimated Sales Units', 'Optimal Estimated Sales $',
              'Optimal Estimated Profit $', 'Optimal Estimated Sales Units', 'Total Store Space', 'Sales Penetration',
-             'Exit Flag']]
+             'Exit Flag','BOH $', 'Receipts  $','BOH Units', 'Receipts Units', 'Profit %','CC Count w/ BOH']]
     else:
         print('went to else')
         lOutput.drop('Current Space', axis=1, inplace=True)
@@ -76,7 +89,7 @@ def createWide(long, jobType, optimizationType):
 
     print('renamed the columns')
     # Pivot to convert long table to wide, including Time in index for drill downs
-    if jobType == "tiered":
+    if jobType == "tiered" or 'unconstrained':
         wide = pd.pivot_table(adjusted_long, values=["result", "current", "optimal", "penetration"],
                               index=["Store", "Climate", "VSG"], columns="Category", aggfunc=np.sum, margins=True,
                               margins_name="Total")
@@ -156,7 +169,7 @@ def createDrillDownSummary(finalLong) :
     return drilldownSummaryPivot
 
 
-def outputValidation(df, tierCounts, increment):
+def outputValidation(df, jobType, tierCounts, increment):
     nullTest = 0
     tcValidation = 0
     exitValidation = 0
@@ -167,16 +180,17 @@ def outputValidation(df, tierCounts, increment):
     # Is Null
     if df.isnull().values.any():
         nullTest = 1
-
-    # Tier Counts
-    # Take a vector of numbers and append 0 or 1 for each Category
-    tierCountValidation = pd.Series(data=0, index=Categories)
-    for (j, Product) in enumerate(Categories):
-        if len(pd.unique(df[df.Category == Product]['Result Space'])) > tierCounts[Product][1]:
-            tierCountValidation[Product] = 1
-    if sum(tierCountValidation) > 0:
-        tcValidation = 1
-
+    if tierCounts is not None:
+        # Tier Counts
+        # Take a vector of numbers and append 0 or 1 for each Category
+        tierCountValidation = pd.Series(data=0, index=Categories)
+        for (j, Product) in enumerate(Categories):
+            if len(pd.unique(df[df.Category == Product]['Result Space'].dropna())) > tierCounts[Product][1]:
+                tierCountValidation[Product] = 1
+        if sum(tierCountValidation) > 0:
+            tcValidation = 1
+    else:
+        tcValidation=0
     # TODO Might be able to make this faster with an apply function and an 'any'
     exitVector = pd.Series(index=df.index, name='ExitVector')
     spVector = pd.Series(index=df.index, name='SalesPenetrationVector')
