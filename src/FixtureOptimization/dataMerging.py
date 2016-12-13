@@ -99,6 +99,7 @@ def dataMerge(jobName,jobType,optimizationType,transactions,space,brandExit=None
             else:
                 print('we have future space')
                 futureSpace = futureSpace.sort_values(by='Store').reset_index(drop=True)
+                futureSpace['Store'] = list(map(int, futureSpace['Store'].values.tolist()))
                 futureSpace=pd.merge(storeTotal,futureSpace,on=['Store'],how='inner')
                 print('in future space loop')
                 futureSpace['Entry Space'].fillna(0,inplace=True)
@@ -137,7 +138,7 @@ def dataMerge(jobName,jobType,optimizationType,transactions,space,brandExit=None
             print('We go through the tough stuff')
     except Exception as e:
         logging.exception('A thing')
-        traceback.print_exception()
+        traceback.print_exception() # syntactically incorrect since this function call is expecting 3 args.
 
     print('Finished Data Merging')
     return (masterData,mergeTrad)
