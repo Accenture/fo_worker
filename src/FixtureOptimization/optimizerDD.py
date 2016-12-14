@@ -25,6 +25,9 @@ def optimizeDD(jobName, increment, dataMunged, salesPen):
     Synopsis:
         I just wrapped the script from Ken in a callable - DCE
     """
+
+    print('==> optimizeDD()')
+
     dataMunged.to_csv('DrillDownMunged.csv',sep=",")
     def roundValue(cVal, increment):
         if np.mod(round(cVal, 3), increment) > increment / 2:

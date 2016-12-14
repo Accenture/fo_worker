@@ -12,8 +12,7 @@
   },
   "filenames": {
     "Sales_data.csv": "Sales_data.csv",
-    "Space_data.csv": "Space_data.csv",
-    "exit_data.csv": "exit_data.csv"
+    "Space_data.csv": "Space_data.csv"
   },
   "salesStores": [
     7,
@@ -1190,8 +1189,7 @@
   },
   "artifacts": {
     "salesArtifactId": "Sales_data.csv",
-    "spaceArtifactId": "Space_data.csv",
-    "brandExitArtifactId": "exit_data.csv"
+    "spaceArtifactId": "Space_data.csv"
   },
   "spaceBounds": {
     "NIKE": [

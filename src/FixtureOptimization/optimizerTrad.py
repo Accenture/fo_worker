@@ -26,6 +26,8 @@ def optimizeTrad(jobName,Stores,Categories,spaceBound,increment,dataMunged,sales
         I just wrapped the script from Ken in a callable - DCE
     """
 
+    print('==> optimizeTrad()')
+
     def roundValue(cVal, increment):
         if np.mod(round(cVal, 3), increment) > increment / 2:
             cVal = round(cVal, 3) + (increment - (np.mod(round(cVal, 3), increment)))
@@ -66,7 +68,11 @@ def optimizeTrad(jobName,Stores,Categories,spaceBound,increment,dataMunged,sales
 
     b = .05
     bI = .05
+
+    print('Columns in dataMunged')
     print(dataMunged.columns)
+    print(' ')
+    
     locSpaceToFill = dataMunged.groupby('Store')['New Space'].agg(np.mean)
     def adjustForTwoIncr(row, bound, increment):
         """
@@ -192,8 +198,8 @@ def optimizeTrad(jobName,Stores,Categories,spaceBound,increment,dataMunged,sales
     # NewOptim.writeLP("Fixture_Optimization.lp")
     # NewOptim.writeMPS(str(jobName)+".mps")
     # Solve the problem using Gurobi
-    NewOptim.solve(pulp.GUROBI(mip=True, msg=True, MIPgap=.01, LogFile="/tmp/gurobi.log"))
-    # NewOptim.solve(pulp.PULP_CBC_CMD(msg=2))
+    #NewOptim.solve(pulp.GUROBI(mip=True, msg=True, MIPgap=.01, LogFile="/tmp/gurobi.log"))
+    NewOptim.solve(pulp.PULP_CBC_CMD(msg=2))
 
     # #Debugging
     print("#####################################################################")
