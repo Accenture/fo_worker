@@ -337,14 +337,14 @@ def optimizeEnhDD(methodology,jobType,jobName,Stores,Categories,increment,weight
 
         print("to the solver we go")
 
-        #Solve the problem using Gurobi
-        NewOptim.solve(pulp.GUROBI(mip=True, msg=True, MIPgap=.01, LogFile="/tmp/gurobi.log"))
+        # Solve the problem using Gurobi
+        #NewOptim.solve(pulp.GUROBI(mip=True, msg=True, MIPgap=.01, LogFile="/tmp/gurobi.log"))
 
         # local development - use CBC instead of gurobi
         # NewOptim.solve(pulp.PULP_CBC_CMD(msg=2, threads=6, fracGap=.1, presolve=True))
 
         # Solve the problem using Gurobi
-        # NewOptim.solve(pulp.GUROBI(mip=True, msg=True, MIPgap=.01, IISMethod=1))
+        NewOptim.solve(pulp.GUROBI(mip=True, msg=True, MIPgap=.01, IISMethod=1))
         # NewOptim.constraints
         print('out of the solver')
 

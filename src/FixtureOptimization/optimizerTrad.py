@@ -198,8 +198,10 @@ def optimizeTrad(jobName,Stores,Categories,spaceBound,increment,dataMunged,sales
     # NewOptim.writeLP("Fixture_Optimization.lp")
     # NewOptim.writeMPS(str(jobName)+".mps")
     # Solve the problem using Gurobi
-    #NewOptim.solve(pulp.GUROBI(mip=True, msg=True, MIPgap=.01, LogFile="/tmp/gurobi.log"))
-    NewOptim.solve(pulp.PULP_CBC_CMD(msg=2))
+    NewOptim.solve(pulp.GUROBI(mip=True, msg=True, MIPgap=.01, LogFile="/tmp/gurobi.log"))
+
+    # local development uses CBC until
+    #NewOptim.solve(pulp.PULP_CBC_CMD(msg=2))
 
     # #Debugging
     print("#####################################################################")

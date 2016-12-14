@@ -168,6 +168,8 @@ def optimizeDD(jobName, increment, dataMunged, salesPen):
     # NewOptim.solve(pulp.GUROBI(mip=True, msg=True, MIPgap=.01))
     try:
         NewOptim.solve(pulp.GUROBI(mip=True, msg=True, MIPgap=.01, LogFile="/tmp/gurobi.log"))
+        # local development uses CBC until
+        #NewOptim.solve(pulp.PULP_CBC_CMD(msg=2))
 
     except Exception as e:
         print(e)
