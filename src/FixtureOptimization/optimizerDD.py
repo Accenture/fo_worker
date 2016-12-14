@@ -111,6 +111,7 @@ def optimizeDD(jobName, increment, dataMunged, salesPen):
         [(st[Store][Category][Level] * error[i][j][k]) for (i, Store) in enumerate(Stores) for (j, Category) in
          enumerate(Categories) for (k, Level) in enumerate(Levels)]), ""
     print('created objective function')
+
     ###############################################################################################################
     ############################################### Constraints
     ###############################################################################################################
@@ -135,23 +136,25 @@ def optimizeDD(jobName, increment, dataMunged, salesPen):
     for (c, Climate) in enumerate(Climates):
         for (t, Tier) in enumerate(Tiers):
             for (j, Category) in enumerate(Categories):
+
+                # only one level per tier-climate-category combination is chosen
                 NewOptim += lpSum([ct[Tier][Climate][Category][Level] for (k, Level) in enumerate(Levels)]) == 1
+
                 # Relationship between Selected Tiers & Created Tiers
                 # Verify that we still cannot use a constraint if not using a sum - Look to improve efficiency
                 for (k, Level) in enumerate(Levels):
                     NewOptim += lpSum([st[Store][Category][Level] for (i, Store) in enumerate(Stores)]) / len(Stores) <= \
                                 ct[Tier][Climate][Category][Level]  # , "Relationship between ct & st"
+
     print('finished the second block of constraints')
 
-    # Global Balance Back
+    # Global Balance Back: total space cannot deviate from total 
     NewOptim += lpSum(
         [st[Store][Category][Level] * Level for (i, Store) in enumerate(Stores) for (j, Category) in
-         enumerate(Categories) for
-         (k, Level) in enumerate(Levels)]) >= W * (1 - b)
+         enumerate(Categories) for (k, Level) in enumerate(Levels)]) >= W * (1 - b)
     NewOptim += lpSum(
         [st[Store][Category][Level] * Level for (i, Store) in enumerate(Stores) for (j, Category) in
-         enumerate(Categories) for
-         (k, Level) in enumerate(Levels)]) <= W * (1 + b)
+         enumerate(Categories) for (k, Level) in enumerate(Levels)]) <= W * (1 + b)
     # NewOptim.writeLP("Fixture_Optimization.lp")
     # LpSolverDefault.msg = 1
     print("The problem has been formulated")
