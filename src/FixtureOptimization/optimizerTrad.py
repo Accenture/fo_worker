@@ -100,6 +100,10 @@ def optimizeTrad(jobName,Stores,Categories,spaceBound,increment,dataMunged,sales
 
     # Brand Exit Enhancement & Sales Penetration Constraint
     if brandExitArtifact is None:
+        for (i, Store) in enumerate(Stores):
+            for (j, Category) in enumerate(Categories):
+                if salesPenetration[Category].loc[Store] < salesPen:
+                    NewOptim += st[Store][Category][0.0] == 1
         print("No Brand Exit in the Optimization")
     else:
         print('There is Brand Exit')

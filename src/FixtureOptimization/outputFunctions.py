@@ -97,9 +97,13 @@ def createLong(jobType, optimizationType, lInput):
         print('Dropped Old Current Space')
         lOutput.rename(columns={'New Space': 'Total Store Space','Historical Space': 'Current Space'},inplace=True)
         print('Renamed the columns')
-        lOutput = tierColCreate(lOutput)
+        if jobType == 'drillDown':
+            lOutput['Current Space'] = lOutput['Total Store Space'] * lOutput['Penetration']
+        else:
+            lOutput = tierColCreate(lOutput)
         print('Created tier column')
         fullData = lOutput.copy()
+
         lOutput = lOutput[
             ['Store', 'Category', 'Climate', 'VSG', 'Result Space', 'Current Space',
              'Optimal Space', 'Sales Penetration', 'Exit Flag', 'Total Store Space','Tier']]

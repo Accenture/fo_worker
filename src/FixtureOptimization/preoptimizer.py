@@ -181,14 +181,14 @@ def preoptimize(jobType,optimizationType,dataMunged, salesPenThreshold, mAdjustm
             for j in adj_p.columns:
                 if adj_p[j].loc[i] < salesPenThreshold:
                     adj_p[j].loc[i] = 0
-        print('creating adj_p')
+        logging.info('creating adj_p')
         adj_p = calcPen(adj_p)
         adj_p.fillna(0)
         information=pd.merge(dataMunged,pd.melt(adj_p.reset_index(), id_vars=['Store'], var_name='Category', value_name='Penetration'),on=['Store','Category'])
         information['Optimal Space'] = information['New Space'] * information['Penetration']
         if jobType == 'drilldown':
             information['Current Space'] = information['Optimal Space']
-        print('attempting to keep sales pen')
+        logging.info('attempting to keep sales pen')
         information = pd.merge(information,pd.melt(calcPen(sales).reset_index(),id_vars=['Store'], var_name='Category',value_name='Sales Penetration'),on=['Store','Category'])
         information = information.apply(lambda x: pd.to_numeric(x, errors='ignore'))
         return information

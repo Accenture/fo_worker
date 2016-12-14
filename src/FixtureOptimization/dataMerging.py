@@ -24,11 +24,9 @@ def dataMerge(jobName,jobType,optimizationType,transactions,space,brandExit=None
             drop=True).values.astype(str)
         space=space.apply(lambda x: pd.to_numeric(x, errors='ignore'))
         # space['Store'] = list(map(int, space['Store'].values.tolist()))
-        print(space.head(1))
         Stores = space['Store']
         def transactionMerge(spaceData,transactions,Stores,Categories,jobType):
             Metrics = transactions.loc[1, 1:9].reset_index(drop=True)
-            print(Metrics)
             def longTransaction(df, storeList, categories):
                 """
                 Assigns names for each financial metric in the Transaction Data Set and converts it to a long table
@@ -53,9 +51,7 @@ def dataMerge(jobName,jobType,optimizationType,transactions,space,brandExit=None
                     test = pd.merge(left=test, right=longTransaction(transactions.loc[:, int(m + 1)::9],
                                                                      pd.DataFrame(transactions[0]), Categories),
                                     on=['Store', 'Category'])
-                print(test.head(2))
                 masterData=pd.merge(left=masterData,right=test,on=['Store'],how='outer')
-                print(masterData.head(2))
             else:
                 for (m, Metric) in enumerate(Metrics):
                     masterData = pd.merge(left=masterData,
@@ -91,17 +87,17 @@ def dataMerge(jobName,jobType,optimizationType,transactions,space,brandExit=None
 
             # Code to handle the usage of Future Space Files
             if futureSpace is None:
-                print("we don't have future space")
+                logging.info("we don't have future space")
                 storeTotal['Future Space']=storeTotal['Store Space']
                 storeTotal['Entry Space']=0
                 storeTotal['New Space'] = storeTotal['Store Space'] - storeTotal['Entry Space']
                 masterData=pd.merge(masterData,storeTotal,on=['Store'])
             else:
-                print('we have future space')
+                logging.info('we have future space')
                 futureSpace = futureSpace.sort_values(by='Store').reset_index(drop=True)
                 futureSpace['Store'] = list(map(int, futureSpace['Store'].values.tolist()))
                 futureSpace=pd.merge(storeTotal,futureSpace,on=['Store'],how='inner')
-                print('in future space loop')
+                logging.info('in future space loop')
                 futureSpace['Entry Space'].fillna(0,inplace=True)
                 for (i,Store) in enumerate(Stores):
                     futureSpace['Future Space'].loc[i] = storeTotal['Store Space'].loc[i] if \
@@ -125,7 +121,7 @@ def dataMerge(jobName,jobType,optimizationType,transactions,space,brandExit=None
                         mergeTrad.loc[i,5::]=0
                 masterData=pd.merge(masterData,brandExit,on=['Store','Category'],how='inner')
                 mergeTrad=pd.merge(mergeTrad,brandExit,on=['Store','Category'],how='inner')
-            print('There are ' + str(len(masterData[masterData['Exit Flag'] == 1])) + ' brand exits')
+            logging.info('There are ' + str(len(masterData[masterData['Exit Flag'] == 1])) + ' brand exits')
 
             # Make sure that all values that should be numeric are numeric
             masterData=masterData.apply(lambda x: pd.to_numeric(x, errors='ignore'))
@@ -135,10 +131,10 @@ def dataMerge(jobName,jobType,optimizationType,transactions,space,brandExit=None
             masterData['Exit Flag']=0
             masterData.rename(columns={'Result Space': 'New Space'},inplace=True)
             mergeTrad = masterData.copy()
-            print('We go through the tough stuff')
+            logging.info('We go through the tough stuff')
     except Exception as e:
         logging.exception('A thing')
         traceback.print_exception() # syntactically incorrect since this function call is expecting 3 args.
 
-    print('Finished Data Merging')
+    logging.info('Finished Data Merging')
     return (masterData,mergeTrad)

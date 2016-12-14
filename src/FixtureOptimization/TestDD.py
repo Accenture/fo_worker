@@ -45,12 +45,12 @@ def optimizeDD(jobName, increment, dataMunged, salesPen):
     dataMunged["Optimal Space"] = dataMunged["Optimal Space"].apply(lambda x: roundValue(x, increment))
     salesPenetration = dataMunged.pivot(index='Store', columns='Category', values='Sales Penetration')
     brandExitArtifact = dataMunged.pivot(index='Store', columns='Category', values='Exit Flag')
-    opt_amt= dataMunged.pivot(index='Store', columns='Category', values='Optimal Space')
 
     b = .05
     bI = .05
 
-    locSpaceToFill = dataMunged.groupby('Store')['New Space'].agg(np.mean)
+    locSpaceToFill = dataMunged.groupby(['Tier','Climate'])['New Space'].agg(np.mean)
+    aggSpaceToFill = locSpaceToFill.sum()
     def adjustForTwoIncr(row, bound, increment):
         """
         Returns a vector with the maximum percent of the original total store space between two increment sizes and 10 percent of the store space
@@ -88,71 +88,61 @@ def optimizeDD(jobName, increment, dataMunged, salesPen):
 
     # Create a Vectors & Arrays of required variables
     # Calculate Total fixtures(TotFixt) per store by summing up the individual fixture counts
-    W = opt_amt.sum(axis=1).sum(axis=0)
 
     print('Balance Back Vector')
 
     ct = LpVariable.dicts('CT', (Tiers, Climates, Categories, Levels), 0, upBound=1, cat='Binary')
-    st = LpVariable.dicts('ST', (Stores, Categories, Levels), 0, upBound=1, cat='Binary')
     print('tiers created')
 
     NewOptim = LpProblem(jobName, LpMinimize)  # Define Optimization Problem/
 
+    dataMunged.set_index(['Climate','Tier','Category'], inplace=True)
     print('Brand Exit Done')
-    BA = np.zeros((len(Stores), len(Categories), len(Levels)))
-    error = np.zeros((len(Stores), len(Categories), len(Levels)))
-    for (i, Store) in enumerate(Stores):
-        for (j, Category) in enumerate(Categories):
-            for (k, Level) in enumerate(Levels):
-                BA[i][j][k] = opt_amt[Category].iloc[i]
-                error[i][j][k] = np.absolute(BA[i][j][k] - Level)
+    error = np.zeros((len(Tiers), len(Climates), len(Categories), len(Levels)))
+    for (t, Tier) in enumerate(Tiers):
+        for (c, Climate) in enumerate(Climates):
+            for (j, Category) in enumerate(Categories):
+                for (k, Level) in enumerate(Levels):
+                    error[c][t][j][k] = np.absolute(dataMunged.loc[Climate, Tier, Category]['Optimal Space']-Level)
 
     NewOptim += lpSum(
-        [(st[Store][Category][Level] * error[i][j][k]) for (i, Store) in enumerate(Stores) for (j, Category) in
+        [(ct[Tier][Climate][Category][Level] * error[i][j][k]) for (t, Tier) in enumerate(Tiers) for (c,Climate) in enumerate(Climates) for (j, Category) in
          enumerate(Categories) for (k, Level) in enumerate(Levels)]), ""
     print('created objective function')
     ###############################################################################################################
     ############################################### Constraints
     ###############################################################################################################
     # Makes is to that there is only one Selected tier for each Store/ Category Combination
-    for (i, Store) in enumerate(Stores):
-        # TODO: Exploratory analysis on impact of balance back on financials for Enhanced
-        # Store-level balance back constraint: the total space allocated to products at each location must be within the individual location balance back tolerance limit
-        NewOptim += lpSum(
-            [(st[Store][Category][Level]) * Level for (j, Category) in enumerate(Categories) for (k, Level) in
-             enumerate(Levels)]) >= locSpaceToFill[Store] * (1 - locBalBackBoundAdj[Store])  # , "Location Balance Back Lower Limit - STR " + str(Store)
-        NewOptim += lpSum(
-            [(st[Store][Category][Level]) * Level for (j, Category) in enumerate(Categories) for (k, Level) in
-             enumerate(Levels)]) <= locSpaceToFill[Store] * (1 + locBalBackBoundAdj[Store])  # , "Location Balance Back Upper Limit - STR " + str(Store)
-
-    #     # One Space per Store Category
-        # Makes sure that the number of fixtures, by store, does not go above or below some percentage of the total number of fixtures within the store
-        for (j, Category) in enumerate(Categories):
-            NewOptim += lpSum([st[Store][Category][Level] for (k, Level) in
-                               enumerate(Levels)]) == 1  # , "One_Level_per_Store-Category_Combination"
-    print('finished first block of constraints')
-
     for (c, Climate) in enumerate(Climates):
         for (t, Tier) in enumerate(Tiers):
-            for (j, Category) in enumerate(Categories):
-                NewOptim += lpSum([ct[Tier][Climate][Category][Level] for (k, Level) in enumerate(Levels)]) == 1
-                # Relationship between Selected Tiers & Created Tiers
-                # Verify that we still cannot use a constraint if not using a sum - Look to improve efficiency
-                for (k, Level) in enumerate(Levels):
-                    NewOptim += lpSum([st[Store][Category][Level] for (i, Store) in enumerate(Stores)]) / len(Stores) <= \
-                                ct[Tier][Climate][Category][Level]  # , "Relationship between ct & st"
+            try:
+                print(dataMunged.loc[Tier,Climate,Category])
+                NewOptim += lpSum(
+                    [(ct[Tier][Climate][Category][Level]) * Level for (j, Category) in enumerate(Categories) for (k, Level)
+                     in
+                     enumerate(Levels)]) >= locSpaceToFill[Tier,Climate] * (
+                1 - locBalBackBoundAdj[Tier,Climate])  # , "Location Balance Back Lower Limit - STR " + str(Store)
+                NewOptim += lpSum(
+                    [(ct[Tier][Climate][Category][Level]) * Level for (j, Category) in enumerate(Categories) for (k, Level) in
+                     enumerate(Levels)]) <= locSpaceToFill[Tier,Climate] * (
+                1 + locBalBackBoundAdj[Tier,Climate])  # , "Location Balance Back Upper Limit - STR " + str(Store)
+                for (j, Category) in enumerate(Categories):
+                    NewOptim += lpSum([ct[Tier][Climate][Category][Level] for (k, Level) in enumerate(Levels)]) == 1
+                    # Relationship between Selected Tiers & Created Tiers
+                    # Verify that we still cannot use a constraint if not using a sum - Look to improve efficiency
+            except:
+                NewOptim += lpSum([ct[Tier][Climate][Category][Level] == 0 for (j, Category) in enumerate(Categories) for (k,Level) in enumerate(Levels)]) == 0
     print('finished the second block of constraints')
 
     # Global Balance Back
     NewOptim += lpSum(
-        [st[Store][Category][Level] * Level for (i, Store) in enumerate(Stores) for (j, Category) in
+        [ct[Tier][Climate][Category][Level] * Level for (c, Climate) in enumerate(Climates) for (t, Tier) in enumerate(Tiers) for (j, Category) in
          enumerate(Categories) for
-         (k, Level) in enumerate(Levels)]) >= W * (1 - b)
+         (k, Level) in enumerate(Levels)]) >= aggSpaceToFill * (1 - b)
     NewOptim += lpSum(
-        [st[Store][Category][Level] * Level for (i, Store) in enumerate(Stores) for (j, Category) in
+        [ct[Tier][Climate][Category][Level] * Level for (c, Climate) in enumerate(Climates) for (t, Tier) in enumerate(Tiers) for (j, Category) in
          enumerate(Categories) for
-         (k, Level) in enumerate(Levels)]) <= W * (1 + b)
-    # NewOptim.writeLP("Fixture_Optimization.lp")
+         (k, Level) in enumerate(Levels)]) >= aggSpaceToFill * (1 + b)
     # LpSolverDefault.msg = 1
     print("The problem has been formulated")
 
@@ -162,15 +152,14 @@ def optimizeDD(jobName, increment, dataMunged, salesPen):
     # NewOptim.solve(pulp.GUROBI(mip=True, msg=True, MIPgap=.01))
     try:
         NewOptim.solve(pulp.GUROBI(mip=True, msg=True, MIPgap=.01, LogFile="/tmp/gurobi.log"))
-
     except Exception as e:
         print(e)
 
-    # #Debugging
+    # Debugging
     print("#####################################################################")
     print(LpStatus[NewOptim.status])
     print("#####################################################################")
-    # # Debugging
+    # Debugging
     # NegativeCount = 0
     # LowCount = 0
     # TrueCount = 0

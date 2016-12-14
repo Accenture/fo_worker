@@ -17,7 +17,7 @@ from FixtureOptimization.preoptimizer import preoptimize
 from FixtureOptimization.optimizerTrad import optimizeTrad
 from FixtureOptimization.optimizerEnh import optimizeEnh
 from FixtureOptimization.outputFunctions import createLong, createWide, createDrillDownSummary, createTieredSummary, outputValidation
-from FixtureOptimization.optimizerDD import optimizeDD
+from FixtureOptimization.DivideConquer import optimizeDD
 from FixtureOptimization.optimizerDDEnh import optimizeEnhDD
 from pika import BlockingConnection, ConnectionParameters
 from FixtureOptimization.SingleStoreOptimization import optimizeSingleStore
@@ -247,42 +247,108 @@ def run(body):
                              increment=msg['increment'], weights=msg['optimizedMetrics'], cfbsOutput=cfbsOptimal[1],
                              preOpt=preOpt, salesPen=msg['salesPenetrationThreshold'], tierCounts=msg['tierCounts'])
     logging.info('we just did the optimization')
-    statusID = optimRes[0]
-    logging.info(statusID)
-    logging.info('Set the Status')
-    if statusID == 'Optimal' or 'Infeasible':
-        # Call functions to create output information
-        logging.info('Out of the optimization')
-        longOutput = createLong(msg['jobType'],msg['optimizationType'], optimRes[1])
-        logging.info('Created Long Output')
+    if msg['jobType'] == 'tiered' or msg['jobType'] == 'unconstrained':
+        statusID = optimRes[0]
+        logging.info(statusID)
+        logging.info('Set the Status')
+        if statusID == 'Optimal' or 'Infeasible':
+            # Call functions to create output information
+            logging.info('Out of the optimization')
+            longOutput = createLong(msg['jobType'],msg['optimizationType'], optimRes[1])
+            logging.info('Created Long Output')
+            wideID = str(
+                create_output_artifact_from_dataframe(createWide(longOutput[0], msg['jobType'], msg['optimizationType'])))
+            logging.info('Created Wide Output')
+
+            if cfbsArtifact[1] is not None:
+                longID = str(create_output_artifact_from_dataframe(longOutput[0]))
+                analyticsID = str(create_output_artifact_from_dataframe(cfbsArtifact[1]))
+                scaledAnalyticsID = str(create_output_artifact_from_dataframe(longOutput[1]))
+                logging.info('Created analytics ID')
+            else:
+                longID = str(create_output_artifact_from_dataframe(
+                    longOutput[0][
+                        ['Store', 'Category', 'Climate', 'VSG', 'Sales Penetration', 'Result Space', 'Current Space',
+                         'Optimal Space']]))
+                analyticsID=None
+                logging.info('Set analytics ID to None')
+
+            if msg['jobType'] == "tiered" or 'unconstrained':
+                summaryID = str(create_output_artifact_from_dataframe(createTieredSummary(longOutput[int(0)])))
+            else:  # since type == "Drill Down"
+                summaryID = str(create_output_artifact_from_dataframe(createDrillDownSummary(longOutput[int(0)])))
+            logging.info('Set the summary IDs')
+
+            try:
+                invalids = outputValidation(df=longOutput[0], jobType=msg['jobType'], tierCounts=msg['tierCounts'],
+                                            increment=msg['increment'])
+            except Exception as e:
+                logging.exception('Not entirely sure what is happening')
+                return
+                # traceback.logging.info_exc(e)
+            logging.info('set the invalids')
+
+            end_time = dt.datetime.utcnow()
+            logging.info('created the end time')
+
+            logging.info("Adding end time and output ids")
+            db.jobs.find_one_and_update(
+                {'_id': job_id},
+                {
+                    "$set": {
+                        'optimization_end_time': end_time,
+                        "status": statusID,
+                        "objectiveValue": optimRes[2],
+                        "artifactResults": {
+                            'long_table':longID,
+                            'wide_table':wideID,
+                            'summary_report': summaryID,
+                            'analytic_data': analyticsID
+                        },
+                        "outputErrors": {
+                            'invalidValues': invalids[0],
+                            'invalidTierCounts': invalids[1],
+                            'invalidBrandExit': invalids[2],
+                            'invalidSalesPenetration': invalids[3],
+                            'invalidBalanceBack': invalids[4]
+                        }
+                    }
+                }
+            )
+                # traceback.logging.info_exc(e)
+        else:
+            end_time = dt.datetime.utcnow()
+            logging.info('created the end time')
+
+            logging.info("Adding end time and output ids")
+            db.jobs.find_one_and_update(
+                {'_id': job_id},
+                {
+                    "$set": {
+                        'optimization_end_time': end_time,
+                        "status": statusID,
+                        "objectiveValue": optimRes[2]
+                    }
+                }
+            )
+    else:
+        longOutput=createLong(msg['jobType'],msg['optimizationType'],optimRes[0])
         wideID = str(
             create_output_artifact_from_dataframe(createWide(longOutput[0], msg['jobType'], msg['optimizationType'])))
-        logging.info('Created Wide Output')
-
-        if cfbsArtifact[1] is not None:
-            longID = str(create_output_artifact_from_dataframe(longOutput[0]))
-            analyticsID = str(create_output_artifact_from_dataframe(cfbsArtifact[1]))
-            scaledAnalyticsID = str(create_output_artifact_from_dataframe(longOutput[1]))
-            logging.info('Created analytics ID')
-        else:
-            longID = str(create_output_artifact_from_dataframe(
-                longOutput[0][
-                    ['Store', 'Category', 'Climate', 'VSG', 'Sales Penetration', 'Result Space', 'Current Space',
-                     'Optimal Space']]))
-            analyticsID=None
-            logging.info('Set analytics ID to None')
-
-        if msg['jobType'] == "tiered" or 'unconstrained':
+        longID = str(create_output_artifact_from_dataframe(
+            longOutput[0][
+                ['Store', 'Category', 'Climate', 'VSG', 'Sales Penetration', 'Result Space', 'Current Space',
+                 'Optimal Space']]))
+        analyticsID = None
+        try:
             summaryID = str(create_output_artifact_from_dataframe(createTieredSummary(longOutput[int(0)])))
-        else:  # since type == "Drill Down"
+        except:  # since type == "Drill Down"
             summaryID = str(create_output_artifact_from_dataframe(createDrillDownSummary(longOutput[int(0)])))
-        logging.info('Set the summary IDs')
-
         try:
             invalids = outputValidation(df=longOutput[0], jobType=msg['jobType'], tierCounts=msg['tierCounts'],
                                         increment=msg['increment'])
         except Exception as e:
-            logging.exception('Not entirely sure what is happening')
+            logging.exception('Not entirely sure what is happening \n not a big deal')
             return
             # traceback.logging.info_exc(e)
         logging.info('set the invalids')
@@ -296,11 +362,9 @@ def run(body):
             {
                 "$set": {
                     'optimization_end_time': end_time,
-                    "status": statusID,
-                    "objectiveValue": optimRes[2],
                     "artifactResults": {
-                        'long_table':longID,
-                        'wide_table':wideID,
+                        'long_table': longID,
+                        'wide_table': wideID,
                         'summary_report': summaryID,
                         'analytic_data': analyticsID
                     },
@@ -314,22 +378,8 @@ def run(body):
                 }
             }
         )
-            # traceback.logging.info_exc(e)
-    else:
-        end_time = dt.datetime.utcnow()
-        logging.info('created the end time')
 
-        logging.info("Adding end time and output ids")
-        db.jobs.find_one_and_update(
-            {'_id': job_id},
-            {
-                "$set": {
-                    'optimization_end_time': end_time,
-                    "status": statusID,
-                    "objectiveValue": optimRes[2]
-                }
-            }
-        )
+
 
     # logging.info('end of ' + msg['meta']['name'])
 
