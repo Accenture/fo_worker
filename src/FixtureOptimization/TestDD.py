@@ -25,6 +25,9 @@ def optimizeDD(jobName, increment, dataMunged, salesPen):
     Synopsis:
         I just wrapped the script from Ken in a callable - DCE
     """
+
+    print('==> optimizeDD()')
+
     dataMunged.to_csv('DrillDownMunged.csv',sep=",")
     def roundValue(cVal, increment):
         if np.mod(round(cVal, 3), increment) > increment / 2:
@@ -109,12 +112,14 @@ def optimizeDD(jobName, increment, dataMunged, salesPen):
         [(ct[Tier][Climate][Category][Level] * error[i][j][k]) for (t, Tier) in enumerate(Tiers) for (c,Climate) in enumerate(Climates) for (j, Category) in
          enumerate(Categories) for (k, Level) in enumerate(Levels)]), ""
     print('created objective function')
+
     ###############################################################################################################
     ############################################### Constraints
     ###############################################################################################################
     # Makes is to that there is only one Selected tier for each Store/ Category Combination
     for (c, Climate) in enumerate(Climates):
         for (t, Tier) in enumerate(Tiers):
+<<<<<<< HEAD:src/FixtureOptimization/TestDD.py
             try:
                 print(dataMunged.loc[Tier,Climate,Category])
                 NewOptim += lpSum(
@@ -132,10 +137,24 @@ def optimizeDD(jobName, increment, dataMunged, salesPen):
                     # Verify that we still cannot use a constraint if not using a sum - Look to improve efficiency
             except:
                 NewOptim += lpSum([ct[Tier][Climate][Category][Level] == 0 for (j, Category) in enumerate(Categories) for (k,Level) in enumerate(Levels)]) == 0
+=======
+            for (j, Category) in enumerate(Categories):
+
+                # only one level per tier-climate-category combination is chosen
+                NewOptim += lpSum([ct[Tier][Climate][Category][Level] for (k, Level) in enumerate(Levels)]) == 1
+
+                # Relationship between Selected Tiers & Created Tiers
+                # Verify that we still cannot use a constraint if not using a sum - Look to improve efficiency
+                for (k, Level) in enumerate(Levels):
+                    NewOptim += lpSum([st[Store][Category][Level] for (i, Store) in enumerate(Stores)]) / len(Stores) <= \
+                                ct[Tier][Climate][Category][Level]  # , "Relationship between ct & st"
+
+>>>>>>> d0113fa2175983c37818bf6cc17f83a504657121:src/FixtureOptimization/optimizerDD.py
     print('finished the second block of constraints')
 
-    # Global Balance Back
+    # Global Balance Back: total space cannot deviate from total 
     NewOptim += lpSum(
+<<<<<<< HEAD:src/FixtureOptimization/TestDD.py
         [ct[Tier][Climate][Category][Level] * Level for (c, Climate) in enumerate(Climates) for (t, Tier) in enumerate(Tiers) for (j, Category) in
          enumerate(Categories) for
          (k, Level) in enumerate(Levels)]) >= aggSpaceToFill * (1 - b)
@@ -143,6 +162,14 @@ def optimizeDD(jobName, increment, dataMunged, salesPen):
         [ct[Tier][Climate][Category][Level] * Level for (c, Climate) in enumerate(Climates) for (t, Tier) in enumerate(Tiers) for (j, Category) in
          enumerate(Categories) for
          (k, Level) in enumerate(Levels)]) >= aggSpaceToFill * (1 + b)
+=======
+        [st[Store][Category][Level] * Level for (i, Store) in enumerate(Stores) for (j, Category) in
+         enumerate(Categories) for (k, Level) in enumerate(Levels)]) >= W * (1 - b)
+    NewOptim += lpSum(
+        [st[Store][Category][Level] * Level for (i, Store) in enumerate(Stores) for (j, Category) in
+         enumerate(Categories) for (k, Level) in enumerate(Levels)]) <= W * (1 + b)
+    # NewOptim.writeLP("Fixture_Optimization.lp")
+>>>>>>> d0113fa2175983c37818bf6cc17f83a504657121:src/FixtureOptimization/optimizerDD.py
     # LpSolverDefault.msg = 1
     print("The problem has been formulated")
 
@@ -152,6 +179,12 @@ def optimizeDD(jobName, increment, dataMunged, salesPen):
     # NewOptim.solve(pulp.GUROBI(mip=True, msg=True, MIPgap=.01))
     try:
         NewOptim.solve(pulp.GUROBI(mip=True, msg=True, MIPgap=.01, LogFile="/tmp/gurobi.log"))
+<<<<<<< HEAD:src/FixtureOptimization/TestDD.py
+=======
+        # local development uses CBC until
+        #NewOptim.solve(pulp.PULP_CBC_CMD(msg=2))
+
+>>>>>>> d0113fa2175983c37818bf6cc17f83a504657121:src/FixtureOptimization/optimizerDD.py
     except Exception as e:
         print(e)
 
