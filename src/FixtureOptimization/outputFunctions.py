@@ -153,8 +153,8 @@ def createWide(long, jobType, optimizationType):
     if optimizationType == "enhanced":
         # for i in range(tot_col["C"] + 1, tot_col["O"] + 1):
         #     wide[[i]] = ""
-        for i in range(tot_col["O"] + 1,tot_col["R"] + 1):
-            wide[[i]] = ""
+        # for i in range(tot_col["O"] + 1,tot_col["R"] + 1):
+        #     wide[[i]] = ""
         for i in range(tot_col["R"] + 1, len(cols)):
             wide[[i]] = ""
 

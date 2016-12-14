@@ -222,7 +222,6 @@ def run(body):
                                     salesPen=msg['salesPenetrationThreshold'], tierCounts = msg['tierCounts'])
         else:
             try:
-                print(preOpt['Category'])
                 msg['salesCategories'] = preOpt['Category'].unique()
                 optimRes = optimizeDD(jobName=msg['meta']['name'], increment=msg["increment"], dataMunged=preOpt,
                                   salesPen=msg['salesPenetrationThreshold'])
