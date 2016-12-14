@@ -5,16 +5,6 @@ import json
 import gridfs
 import pandas as pd
 import pika
-from bson.objectid import ObjectId
-from pymongo import MongoClient
-from FixtureOptimization.CurveFitting import curveFittingBS
-from FixtureOptimization.dataMerging import dataMerge
-from FixtureOptimization.preoptimizer import preoptimize
-from FixtureOptimization.optimizerTrad import optimizeTrad
-from FixtureOptimization.optimizerEnh import optimizeEnh
-from FixtureOptimization.outputFunctions import createLong, createWide, createDrillDownSummary, createTieredSummary, outputValidation
-from pika import BlockingConnection, ConnectionParameters
-from FixtureOptimization.SingleStoreOptimization import optimizeSingleStore
 import logging
 import traceback
 from distutils.util import strtobool
@@ -41,11 +31,15 @@ def fetch_artifact(file):
 def fetchTransactions(file):
 	# file = fs.get(ObjectId(artifact_id))
 	file = pd.read_csv(file, header=None)
+	# print (file.loc[range(10), :])
+	# return file.loc[range(10), :]
 	return file
 
 def fetchSpace(file):
 	# file = fs.get(ObjectId(artifact_id))
 	file = pd.read_csv(file, header=0, dtype={'Store': object}, skiprows=[1])
+	# print (file.loc[range(10), :])
+	# return file.loc[range(10), :]
 	return file
 
 def fetchLong(file,filtCategory):
@@ -91,6 +85,7 @@ def jsonFormulator(options):
 	space_data = _dir + options.space_data if _dir != None and options.space_data != None else err_lst.append("space data")
 	brand_exit = _dir + options.brand_exit if _dir != None and options.brand_exit != None else None
 	future_space = _dir + options.future_space if _dir != None and options.future_space != None else None
+	drill_down = options.drill_down == "True" if options.drill_down != None else err_lst.append("drill down option needs to be either True or False!")
 
 	if len(err_lst) != 0:
 		err = ', '.join(err_lst)
@@ -106,7 +101,10 @@ def jsonFormulator(options):
 	j['artifacts']['salesArtifactId'] = sales_data
 
 	j['filenames'][space_data] = space_data
-	j['artifacts']['spaceArtifactId'] = space_data
+	if drill_down:
+		j['artifacts']['tieredResultArtifactId'] = space_data
+	else:
+		j['artifacts']['spaceArtifactId'] = space_data
 
 	if brand_exit != None:
 		j['filenames'][brand_exit] = brand_exit
@@ -114,7 +112,7 @@ def jsonFormulator(options):
 
 	if future_space != None:
 		j['filenames'][future_space] = future_space
-		j['artifacts']['futureSpaceArtifactId'] = future_space
+		j['artifacts']['futureSpaceId'] = future_space
 
 
 	return j

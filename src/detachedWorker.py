@@ -17,6 +17,8 @@ from FixtureOptimization.preoptimizer import preoptimize
 from FixtureOptimization.optimizerTrad import optimizeTrad
 from FixtureOptimization.optimizerEnh import optimizeEnh
 from FixtureOptimization.outputFunctions import createLong, createWide, createDrillDownSummary, createTieredSummary, outputValidation
+from FixtureOptimization.optimizerDD import optimizeDD
+from FixtureOptimization.optimizerDDEnh import optimizeEnhDD
 from pika import BlockingConnection, ConnectionParameters
 from FixtureOptimization.SingleStoreOptimization import optimizeSingleStore
 import logging
@@ -76,8 +78,12 @@ def run(body):
 	print("#####################################################################")
 
 	print ('before csv files loading in run line 74-115: ', time.time())
+
+	filtCategory = 'MISSESJRS'
+
 	try:
 		sales = fetchTransactions(msg["artifacts"]["salesArtifactId"])
+		# print (sales)
 	except:
 		logging.info('attempting drill down')
 		sales = fetchTransactions(msg["artifacts"]["categorySalesArtifactId"])
@@ -88,6 +94,7 @@ def run(body):
 
 	try:
 		space = fetchSpace(msg["artifacts"]["spaceArtifactId"])
+		# print (space)
 	except:
 		space = fetchLong(
 			msg['artifacts']['tieredResultArtifactId'],filtCategory)
@@ -226,6 +233,7 @@ if __name__ == '__main__':
 	parser.add_option("-b", "--brandExit", dest="brand_exit")
 	parser.add_option("-f", "--futureSpace", dest="future_space")
 	parser.add_option("-d", "--dir", dest="input_dir")
+	parser.add_option("-r", "--drillDown", dest="drill_down")
 	(options, args) = parser.parse_args()
 
 	# Modify json structures by replacing filename hash locations
@@ -233,32 +241,39 @@ if __name__ == '__main__':
 	# jsonFilename = file_dir + options.conf
 	body = helper.jsonFormulator(options)
 ###################################### Sales and Space Input Validation #####################################
-	meta_sales = ArtifactBuilder.create(open(body['artifacts']['salesArtifactId'], 'r'), 'sales')
-	meta_space = ArtifactBuilder.create(open(body['artifacts']['spaceArtifactId'], 'r'), 'space')
+	# meta_sales = ArtifactBuilder.create(open(body['artifacts']['salesArtifactId'], 'r'), 'sales')
+	# meta_space = ArtifactBuilder.create(open(body['artifacts']['spaceArtifactId'], 'r'), 'space')
 	
-	# Checking if stores match between sales_data and space_data.
-	stores_diff = [set(meta_space['stores']) - set(meta_sales['stores']), 'space'] \
-					if len(set(meta_space['stores'])) >= len(set(meta_sales['stores'])) \
-					else [set(meta_sales['stores']) - set(meta_space['stores']), 'sales']
-	if len(stores_diff[0]) != 0:
-		print ("stores on sales data and space data don't match!!!!! Here's the what the stores missing from " + stores_diff[1] + ":")
-		print (list(stores_diff[0]))
-		sys.exit(1)
+	# # Checking if stores match between sales_data and space_data.
+	# stores_diff = [set(meta_space['stores']) - set(meta_sales['stores']), 'space'] \
+	#               if len(set(meta_space['stores'])) >= len(set(meta_sales['stores'])) \
+	#               else [set(meta_sales['stores']) - set(meta_space['stores']), 'sales']
+	# if len(stores_diff[0]) != 0:
+	#   print ("stores on sales data and space data don't match!!!!! Here's the what the stores missing from " + stores_diff[1] + ":")
+	#   print (list(stores_diff[0]))
+	#   sys.exit(1)
 
-	# Checkign if categories matche between sales_data and space_data.
-	categories_diff = [set(meta_space['categories']) - set(meta_sales['categories']), 'space'] \
-					if len(set(meta_space['categories'])) >= len(set(meta_sales['categories'])) \
-					else [set(meta_sales['categories']) - set(meta_space['categories']), 'sales']
-	if len(categories_diff[0]) != 0:
-		print ("stores on sales data and space data don't match!!!!! Here's the what the stores missing from " + categories_diff[1] + ":")
-		print (list(categories_diff[0]))
-		sys.exit(1)
+	# # Checkign if categories matche between sales_data and space_data.
+	# categories_diff = [set(meta_space['categories']) - set(meta_sales['categories']), 'space'] \
+	#               if len(set(meta_space['categories'])) >= len(set(meta_sales['categories'])) \
+	#               else [set(meta_sales['categories']) - set(meta_space['categories']), 'sales']
+	# if len(categories_diff[0]) != 0:
+	#   print ("stores on sales data and space data don't match!!!!! Here's the what the stores missing from " + categories_diff[1] + ":")
+	#   print (list(categories_diff[0]))
+	#   sys.exit(1)
 
 ##########################################################################################################
 
-	body['salesStores'] = meta_space['stores']
-	body['salesCategories'] = meta_space['categories']
-	body['spaceBounds'] = meta_space['extrema']
+	# print (list(map(int,meta_space['stores'])))
+	# print (meta_space['extrema'])
+	# print (body['spaceBounds'])
+
+	# sys.exit(0)
+
+	# body['salesStores'] = [7, 8, 9, 10, 11, 14, 17, 18]
+	# body['salesStores'] = list(map(int, meta_space['stores']))
+	# body['salesCategories'] = meta_space['categories']
+	# body['spaceBounds'] = meta_space['extrema']
 
 	# Trigger the new runner without logging any ID info.
 	run(body)

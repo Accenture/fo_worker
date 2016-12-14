@@ -1,5 +1,5 @@
 {
-  "jobType": "tiered",
+  "jobType": "unconstrained",
   "metricAdjustment": 0.5,
   "salesPenetrationThreshold": 0.02,
   "optimizationType": "traditional",
@@ -1186,7 +1186,7 @@
   "threads": 4,
   "fracGap": 0,
   "meta": {
-    "name": "tiered-traditional-v1"
+    "name": "unconstrained-traditional-v1"
   },
   "artifacts": {
     "salesArtifactId": "Sales_data.csv",
@@ -1288,68 +1288,5 @@
   "increment": 1,
   "storeCategoryBounds": 20,
   "spaceBoundType": "Fixture",
-  "globalSpace": 15,
-  "tierCounts": {
-    "LICENSED CHARACTER - JBD": [
-      1,
-      4
-    ],
-    "LEE DENIM": [
-      1,
-      4
-    ],
-    "LEVI DENIM": [
-      1,
-      4
-    ],
-    "SONOMA DENIM": [
-      1,
-      4
-    ],
-    "NIKE": [
-      1,
-      4
-    ],
-    "ADIDAS": [
-      1,
-      4
-    ],
-    "JUMPING BEANS ACTIVE": [
-      1,
-      4
-    ],
-    "CARTERS": [
-      1,
-      4
-    ],
-    "OSHKOSH": [
-      1,
-      4
-    ],
-    "HURLEY - HAWK": [
-      1,
-      4
-    ],
-    "JUMPING BEANS": [
-      1,
-      4
-    ],
-    "SONOMA": [
-      1,
-      4
-    ],
-    "CHAPS": [
-      1,
-      4
-    ],
-    "OUTERWEAR": [
-      1,
-      4
-    ],
-    "SWIMWEAR": [
-      1,
-      4
-    ]
-  },
-  "jobUploadDate": "2016-12-13T19:31:55.937Z"
+  "globalSpace": 15
 }

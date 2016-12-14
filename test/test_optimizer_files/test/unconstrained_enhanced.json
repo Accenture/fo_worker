@@ -1,19 +1,18 @@
 {
-  "jobType": "tiered",
-  "metricAdjustment": 0.5,
+  "jobType": "unconstrained",
+  "metricAdjustment": 0.01,
   "salesPenetrationThreshold": 0.02,
-  "optimizationType": "traditional",
+  "optimizationType": "enhanced",
   "optimizedMetrics": {
-    "spread": 45,
-    "salesPenetration": 45,
-    "salesPerSpaceUnit": 0,
-    "inventoryTurns": 10,
-    "grossMargin": 0
+    "sales": 85,
+    "profits": 10,
+    "units": 5
   },
   "filenames": {
-    "Sales_data.csv": "Sales_data.csv",
-    "Space_data.csv": "Space_data.csv",
-    "exit_data.csv": "exit_data.csv"
+    "58504c1ae47d051fbe260e74": "Sales_data.csv",
+    "58504c27e47d051fbe260e79": "Space_data.csv",
+    "58504c5ce47d051fbe260e7b": "exit_data.csv",
+    "5850746be47d051fbe260e7f": "Future_Space_data.csv"
   },
   "salesStores": [
     7,
@@ -1186,12 +1185,13 @@
   "threads": 4,
   "fracGap": 0,
   "meta": {
-    "name": "tiered-traditional-v1"
+    "name": "unconstrained-enhanced-v1"
   },
   "artifacts": {
-    "salesArtifactId": "Sales_data.csv",
-    "spaceArtifactId": "Space_data.csv",
-    "brandExitArtifactId": "exit_data.csv"
+    "salesArtifactId": "58504c1ae47d051fbe260e74",
+    "spaceArtifactId": "58504c27e47d051fbe260e79",
+    "brandExitArtifactId": "58504c5ce47d051fbe260e7b",
+    "futureSpaceId": "5850746be47d051fbe260e7f"
   },
   "spaceBounds": {
     "NIKE": [
@@ -1286,70 +1286,7 @@
     ]
   },
   "increment": 1,
-  "storeCategoryBounds": 20,
+  "storeCategoryBounds": 50,
   "spaceBoundType": "Fixture",
-  "globalSpace": 15,
-  "tierCounts": {
-    "LICENSED CHARACTER - JBD": [
-      1,
-      4
-    ],
-    "LEE DENIM": [
-      1,
-      4
-    ],
-    "LEVI DENIM": [
-      1,
-      4
-    ],
-    "SONOMA DENIM": [
-      1,
-      4
-    ],
-    "NIKE": [
-      1,
-      4
-    ],
-    "ADIDAS": [
-      1,
-      4
-    ],
-    "JUMPING BEANS ACTIVE": [
-      1,
-      4
-    ],
-    "CARTERS": [
-      1,
-      4
-    ],
-    "OSHKOSH": [
-      1,
-      4
-    ],
-    "HURLEY - HAWK": [
-      1,
-      4
-    ],
-    "JUMPING BEANS": [
-      1,
-      4
-    ],
-    "SONOMA": [
-      1,
-      4
-    ],
-    "CHAPS": [
-      1,
-      4
-    ],
-    "OUTERWEAR": [
-      1,
-      4
-    ],
-    "SWIMWEAR": [
-      1,
-      4
-    ]
-  },
-  "jobUploadDate": "2016-12-13T19:31:55.937Z"
+  "globalSpace": 15
 }
