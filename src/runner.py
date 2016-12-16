@@ -223,11 +223,12 @@ def run(body):
         else:
             try:
                 msg['salesCategories'] = preOpt['Category'].unique()
-                optimRes = optimizeDD(jobName=msg['meta']['name'], increment=msg["increment"], dataMunged=preOpt,
-                                  salesPen=msg['salesPenetrationThreshold'])
-                # optimRes = optimizeEnhDD(methodology=msg['optimizationType'], jobType=msg['jobType'], jobName=msg['meta']['name'],
-                #               Stores=msg['salesStores'], Categories=msg['salesCategories'], increment=msg['increment'],
-                #               weights=msg['optimizedMetrics'], preOpt=preOpt, salesPen=msg['salesPenetrationThreshold'])
+                # optimRes = optimizeDD(jobName=msg['meta']['name'], increment=msg["increment"], dataMunged=preOpt,
+                #                   salesPen=msg['salesPenetrationThreshold'],mipGap=fracGap)
+                result=pd.read_csv('dividedTest.csv',header=0)
+                summary=None
+                optimRes = (result,summary)
+
             except Exception:
                 logging.exception('A thing')
                 traceback.print_exception()
@@ -332,24 +333,32 @@ def run(body):
                 }
             )
     else:
-        longOutput=createLong(msg['jobType'],msg['optimizationType'],optimRes[0])
-        wideID = str(
-            create_output_artifact_from_dataframe(createWide(longOutput[0], msg['jobType'], msg['optimizationType'])))
+        try:
+            longOutput=createLong(msg['jobType'],msg['optimizationType'],optimRes[0])
+        except Exception:
+            logging.exception('A thing')
+            traceback.print_exception()
+        try:
+            wideID = str(
+                create_output_artifact_from_dataframe(createWide(longOutput[0], msg['jobType'], msg['optimizationType'])))
+        except Exception:
+            logging.exception('A thing')
+            traceback.print_exception()
         longID = str(create_output_artifact_from_dataframe(
             longOutput[0][
-                ['Store', 'Category', 'Climate', 'VSG', 'Sales Penetration', 'Result Space', 'Current Space',
+                ['Store', 'Category', 'Climate', 'VSG', 'Sales Penetration', 'Result Space',
                  'Optimal Space']]))
-        analyticsID = None
-        try:
-            summaryID = str(create_output_artifact_from_dataframe(createTieredSummary(longOutput[int(0)])))
-        except:  # since type == "Drill Down"
-            summaryID = str(create_output_artifact_from_dataframe(createDrillDownSummary(longOutput[int(0)])))
-        try:
-            invalids = outputValidation(df=longOutput[0], jobType=msg['jobType'], tierCounts=msg['tierCounts'],
-                                        increment=msg['increment'])
-        except Exception as e:
-            logging.exception('Not entirely sure what is happening \n not a big deal')
-            return
+        analyticsID = str(create_output_artifact_from_dataframe(optimRes[1]))
+        # try:
+        summaryID = str(create_output_artifact_from_dataframe(createTieredSummary(longOutput[int(0)])))
+        # except:  # since type == "Drill Down"
+        #     summaryID = str(create_output_artifact_from_dataframe(createDrillDownSummary(longOutput[int(0)])))
+        # try:
+        #     invalids = outputValidation(df=longOutput[0], jobType=msg['jobType'], tierCounts=msg['tierCounts'],
+        #                                 increment=msg['increment'])
+        # except Exception as e:
+        #     logging.exception('Not entirely sure what is happening \n not a big deal')
+        #     return
             # traceback.logging.info_exc(e)
         logging.info('set the invalids')
 
@@ -361,19 +370,13 @@ def run(body):
             {'_id': job_id},
             {
                 "$set": {
+                    'statusID': 'optimal',
                     'optimization_end_time': end_time,
                     "artifactResults": {
                         'long_table': longID,
                         'wide_table': wideID,
                         'summary_report': summaryID,
                         'analytic_data': analyticsID
-                    },
-                    "outputErrors": {
-                        'invalidValues': invalids[0],
-                        'invalidTierCounts': invalids[1],
-                        'invalidBrandExit': invalids[2],
-                        'invalidSalesPenetration': invalids[3],
-                        'invalidBalanceBack': invalids[4]
                     }
                 }
             }
