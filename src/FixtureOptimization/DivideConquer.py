@@ -45,12 +45,19 @@ def optimizeDD(jobName, increment, dataMunged, salesPen):
     # dataMunged.set_index(['Climate','Tier'],inplace=True)
     # dataMunged['ddKey'] = dataMunged['Climate'] + "|" + dataMunged['Tier']
     dataMunged['ddKey'] = dataMunged[['Climate', 'Tier']].apply(lambda x: '|'.join(x), axis=1)
+    Categories = dataMunged['Category'].unique().tolist()
+    # Concat/ Merge Approach
+    # masterData = pd.DataFrame(list(product(dataMunged['Store'].unique().tolist(), Categories)), columns=['Store', 'Category'])
 
-    masterData = pd.DataFrame(columns=['Store','Climate','Tier','VSG','Optimal Space','Result Space'])
+    # Append Approach
+    masterData = pd.DataFrame(columns=dataMunged.columns)
+    masterData['Result Space'] = pd.Series(index=masterData.index)
+
+    # print(masterData)
     masterSummary = pd.DataFrame(list(product(Climates,Tiers)),columns=['Climate','Tier'])
     masterSummary['Status'] = ''
     masterSummary['Objective Value'] = 0
-    masterSummary['Optimization Run Time'] = dt.datetime.utcnow()
+    masterSummary['Optimization Run Time'] = pd.Series(dtype=type(dt.datetime.utcnow()-dt.datetime.utcnow()),index=masterSummary.index)
     masterSummary.set_index(['Climate','Tier'],inplace=True)
     for (loop,key) in enumerate(dataMunged['ddKey'].unique()):
         # logging.info("We are in loop number {}".format(loop+1))
@@ -180,7 +187,7 @@ def optimizeDD(jobName, increment, dataMunged, salesPen):
         # NewOptim.writeMPS(str(jobName)+".mps")
         # NewOptim.solve(pulp.GUROBI(mip=True, msg=True, MIPgap=.01))
         try:
-            NewOptim.solve(pulp.GUROBI(mip=True, msg=True, MIPgap=.99, LogFile="/tmp/gurobi.log"))
+            NewOptim.solve(pulp.GUROBI(mip=True, msg=True, MIPgap=99, LogFile="/tmp/gurobi.log"))
 
         except Exception as e:
             logging.info(e)
@@ -258,15 +265,27 @@ def optimizeDD(jobName, increment, dataMunged, salesPen):
             Results.columns.values[0] = 'Store'
             Results = pd.melt(Results.reset_index(), id_vars=['Store'], var_name='Category', value_name='Result Space')
             Results = Results.apply(lambda x: pd.to_numeric(x, errors='ignore'))
-            masterData = pd.merge(dataMunged, Results, on=['Store', 'Category'])
+            # Either Append this
+            loopData = pd.merge(loopData, Results, on=['Store', 'Category'])
+            masterData = masterData.append(loopData, ignore_index=True)
+
+            #Or Concatenate this
+            # dataMunged = pd.concat([dataMunged,Results],axis=1)
+            # masterData= dataMunged.copy()
+
+            # masterData = pd.merge(loopData,Results,on=['Store','Category'])
+            print('the columns of masterData are the following \n {}'.format(masterData.columns))
+            print('there are {} unique values for result space in masterData'.format(len(masterData['Result Space'].unique())))
+            print('masterData is now {} rows'.format(len(masterData)))
             masterSummary['Status'].loc[climate, tier] = LpStatus[NewOptim.status]
             masterSummary['Objective Value'].loc[climate, tier] = value(NewOptim.objective)
-            masterSummary['Optimization Run Time'].loc[climate, tier] = optimization_end_time - optimization_start_time
+            runTime=optimization_end_time - optimization_start_time
+            masterSummary['Optimization Run Time'].loc[climate, tier] = runTime
         else:
             masterSummary['Status'].loc[climate, tier] = LpStatus[NewOptim.status]
             masterSummary['Objective Value'].loc[climate, tier] = 0
     masterData.to_csv('dividedTest.csv',sep=",")
-    masterSummary.to_csv('dividedSummary',sep=",")
+    masterSummary.to_csv('dividedSummary.csv',sep=",")
     return (masterData,masterSummary) # (longOutput)#,wideOutput)
 
 # if __name__ == '__main__':

@@ -93,7 +93,8 @@ def createLong(jobType, optimizationType, lInput):
         print('selected interesting columns')
     else:
         print('went to else')
-        lOutput.drop('Current Space', axis=1, inplace=True)
+        if jobType != 'drillDown':
+            lOutput.drop('Current Space', axis=1, inplace=True)
         print('Dropped Old Current Space')
         lOutput.rename(columns={'New Space': 'Total Store Space','Historical Space': 'Current Space'},inplace=True)
         print('Renamed the columns')
@@ -103,11 +104,17 @@ def createLong(jobType, optimizationType, lInput):
             lOutput = tierColCreate(lOutput)
         print('Created tier column')
         fullData = lOutput.copy()
-
-        lOutput = lOutput[
-            ['Store', 'Category', 'Climate', 'VSG', 'Result Space', 'Current Space',
-             'Optimal Space', 'Sales Penetration', 'Exit Flag', 'Total Store Space','Tier']]
-        print('Selected ')
+        print('created the copy')
+        print('current columns {}'.format(lOutput.columns))
+        if jobType != 'drillDown':
+            lOutput = lOutput[
+                ['Store', 'Category', 'Climate', 'VSG', 'Result Space',
+                 'Optimal Space', 'Sales Penetration', 'Exit Flag', 'Total Store Space','Tier']]
+        else:
+            lOutput = lOutput[
+                ['Store', 'Product', 'Category', 'Climate', 'VSG', 'Result Space', 'Current Space',
+                 'Optimal Space', 'Sales Penetration', 'Exit Flag', 'Total Store Space', 'Tier']]
+        print('selected used columns')
     lOutput.sort(columns=['Store','Category'],axis=0,inplace=True)
     return (lOutput, fullData)
 
@@ -128,14 +135,14 @@ def createWide(long, jobType, optimizationType):
 
     print('renamed the columns')
     # Pivot to convert long table to wide, including Time in index for drill downs
-    if jobType == "tiered" or 'unconstrained':
-        wide = pd.pivot_table(adjusted_long, values=["result", "current", "optimal", "penetration"],
-                              index=["Store", "Climate", "VSG"], columns="Category", aggfunc=np.sum, margins=True,
-                              margins_name="Total")
-    else:  # since type == Drill Down
-        wide = pd.pivot_table(adjusted_long, values=["result", "current", "optimal", "penetration"],
-                              index=["Store", "Time", "Climate", "VSG"], columns="Category", aggfunc=np.sum,
-                              margins=True, margins_name="Total")
+    # if jobType == "tiered" or 'unconstrained':
+    wide = pd.pivot_table(adjusted_long, values=["result", "current", "optimal", "penetration"],
+                          index=["Store", "Climate", "VSG"], columns="Category", aggfunc=np.sum, margins=True,
+                          margins_name="Total")
+    # else:  # since type == Drill Down
+    #     wide = pd.pivot_table(adjusted_long, values=["result", "current", "optimal", "penetration"],
+    #                           index=["Store", "Time", "Climate", "VSG"], columns="Category", aggfunc=np.sum,
+    #                           margins=True, margins_name="Total")
 
     print('transpose the data')
     # Generate concatenated column titles by swapping levels and merging category name with metric name

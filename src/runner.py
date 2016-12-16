@@ -332,24 +332,32 @@ def run(body):
                 }
             )
     else:
-        longOutput=createLong(msg['jobType'],msg['optimizationType'],optimRes[0])
-        wideID = str(
-            create_output_artifact_from_dataframe(createWide(longOutput[0], msg['jobType'], msg['optimizationType'])))
+        try:
+            longOutput=createLong(msg['jobType'],msg['optimizationType'],optimRes[0])
+        except Exception:
+            logging.exception('A thing')
+            traceback.print_exception()
+        try:
+            wideID = str(
+                create_output_artifact_from_dataframe(createWide(longOutput[0], msg['jobType'], msg['optimizationType'])))
+        except Exception:
+            logging.exception('A thing')
+            traceback.print_exception()
         longID = str(create_output_artifact_from_dataframe(
             longOutput[0][
                 ['Store', 'Category', 'Climate', 'VSG', 'Sales Penetration', 'Result Space', 'Current Space',
                  'Optimal Space']]))
         analyticsID = None
-        try:
-            summaryID = str(create_output_artifact_from_dataframe(createTieredSummary(longOutput[int(0)])))
-        except:  # since type == "Drill Down"
-            summaryID = str(create_output_artifact_from_dataframe(createDrillDownSummary(longOutput[int(0)])))
-        try:
-            invalids = outputValidation(df=longOutput[0], jobType=msg['jobType'], tierCounts=msg['tierCounts'],
-                                        increment=msg['increment'])
-        except Exception as e:
-            logging.exception('Not entirely sure what is happening \n not a big deal')
-            return
+        # try:
+        summaryID = str(create_output_artifact_from_dataframe(createTieredSummary(longOutput[int(0)])))
+        # except:  # since type == "Drill Down"
+        #     summaryID = str(create_output_artifact_from_dataframe(createDrillDownSummary(longOutput[int(0)])))
+        # try:
+        #     invalids = outputValidation(df=longOutput[0], jobType=msg['jobType'], tierCounts=msg['tierCounts'],
+        #                                 increment=msg['increment'])
+        # except Exception as e:
+        #     logging.exception('Not entirely sure what is happening \n not a big deal')
+        #     return
             # traceback.logging.info_exc(e)
         logging.info('set the invalids')
 
@@ -367,13 +375,6 @@ def run(body):
                         'wide_table': wideID,
                         'summary_report': summaryID,
                         'analytic_data': analyticsID
-                    },
-                    "outputErrors": {
-                        'invalidValues': invalids[0],
-                        'invalidTierCounts': invalids[1],
-                        'invalidBrandExit': invalids[2],
-                        'invalidSalesPenetration': invalids[3],
-                        'invalidBalanceBack': invalids[4]
                     }
                 }
             }
