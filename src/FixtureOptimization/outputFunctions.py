@@ -93,22 +93,23 @@ def createLong(jobType, optimizationType, lInput):
         print('selected interesting columns')
     else:
         print('went to else')
-        if jobType != 'drillDown':
+        if jobType != 'drilldown':
             lOutput.drop('Current Space', axis=1, inplace=True)
         print('Dropped Old Current Space')
         lOutput.rename(columns={'New Space': 'Total Store Space','Historical Space': 'Current Space'},inplace=True)
         print('Renamed the columns')
         if jobType == 'drillDown':
-            lOutput['Current Space'] = lOutput['Total Store Space'] * lOutput['Penetration']
+            lOutput['Current Space'] = lOutput['Total Store Space'] * lOutput['Sales Penetration']
+            print('created the fake current space')
         else:
             lOutput = tierColCreate(lOutput)
-        print('Created tier column')
+            print('Created tier column')
         fullData = lOutput.copy()
         print('created the copy')
         print('current columns {}'.format(lOutput.columns))
-        if jobType != 'drillDown':
+        if jobType != 'drilldown':
             lOutput = lOutput[
-                ['Store', 'Category', 'Climate', 'VSG', 'Result Space',
+                ['Store', 'Category', 'Climate', 'VSG', 'Result Space', 'Current Space',
                  'Optimal Space', 'Sales Penetration', 'Exit Flag', 'Total Store Space','Tier']]
         else:
             lOutput = lOutput[
@@ -166,8 +167,14 @@ def createWide(long, jobType, optimizationType):
         #     wide[[i]] = ""
         # for i in range(tot_col["O"] + 1,tot_col["R"] + 1):
         #     wide[[i]] = ""
-        for i in range(tot_col["R"] + 1, len(cols)):
+        for i in range(tot_col["R"] + 1, len(cols)): # Actually hides Penetration
             wide[[i]] = ""
+    if jobType == 'drilldown':
+        for i in range(tot_col["C"] + 1, tot_col["O"] + 1):
+            wide[[i]] = ""
+        # for i in range(tot_col["O"] + 1,tot_col["R"] + 1):
+        #     wide[[i]] = ""
+
 
     # Reorder columns and drop total penetration
     # cols = cols[:tot_col["C"]] + cols[tot_col["C"] + 1:tot_col["O"]] + cols[tot_col["O"] + 1:tot_col[

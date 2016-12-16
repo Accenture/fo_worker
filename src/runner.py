@@ -223,11 +223,12 @@ def run(body):
         else:
             try:
                 msg['salesCategories'] = preOpt['Category'].unique()
-                optimRes = optimizeDD(jobName=msg['meta']['name'], increment=msg["increment"], dataMunged=preOpt,
-                                  salesPen=msg['salesPenetrationThreshold'])
-                # optimRes = optimizeEnhDD(methodology=msg['optimizationType'], jobType=msg['jobType'], jobName=msg['meta']['name'],
-                #               Stores=msg['salesStores'], Categories=msg['salesCategories'], increment=msg['increment'],
-                #               weights=msg['optimizedMetrics'], preOpt=preOpt, salesPen=msg['salesPenetrationThreshold'])
+                # optimRes = optimizeDD(jobName=msg['meta']['name'], increment=msg["increment"], dataMunged=preOpt,
+                #                   salesPen=msg['salesPenetrationThreshold'],mipGap=fracGap)
+                result=pd.read_csv('dividedTest.csv',header=0)
+                summary=None
+                optimRes = (result,summary)
+
             except Exception:
                 logging.exception('A thing')
                 traceback.print_exception()
@@ -345,7 +346,7 @@ def run(body):
             traceback.print_exception()
         longID = str(create_output_artifact_from_dataframe(
             longOutput[0][
-                ['Store', 'Category', 'Climate', 'VSG', 'Sales Penetration', 'Result Space', 'Current Space',
+                ['Store', 'Category', 'Climate', 'VSG', 'Sales Penetration', 'Result Space',
                  'Optimal Space']]))
         analyticsID = None
         # try:

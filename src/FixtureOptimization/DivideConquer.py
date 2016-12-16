@@ -15,7 +15,7 @@ from itertools import product
 import logging
 from FixtureOptimization.outputFunctions import outputValidation
 
-def optimizeDD(jobName, increment, dataMunged, salesPen):
+def optimizeDD(jobName, increment, dataMunged, salesPen,mipGap = None):
     """
     Run an LP-based optimization
 
@@ -186,8 +186,10 @@ def optimizeDD(jobName, increment, dataMunged, salesPen):
         # NewOptim.writeLP("Fixture_Optimization.lp")
         # NewOptim.writeMPS(str(jobName)+".mps")
         # NewOptim.solve(pulp.GUROBI(mip=True, msg=True, MIPgap=.01))
+        if mipGap < 1 or mipGap == None:
+            mipGap=99
         try:
-            NewOptim.solve(pulp.GUROBI(mip=True, msg=True, MIPgap=99, LogFile="/tmp/gurobi.log"))
+            NewOptim.solve(pulp.GUROBI(mip=True, msg=True, MIPgap=mipGap, LogFile="/tmp/gurobi.log"))
 
         except Exception as e:
             logging.info(e)
@@ -284,8 +286,6 @@ def optimizeDD(jobName, increment, dataMunged, salesPen):
         else:
             masterSummary['Status'].loc[climate, tier] = LpStatus[NewOptim.status]
             masterSummary['Objective Value'].loc[climate, tier] = 0
-    masterData.to_csv('dividedTest.csv',sep=",")
-    masterSummary.to_csv('dividedSummary.csv',sep=",")
     return (masterData,masterSummary) # (longOutput)#,wideOutput)
 
 # if __name__ == '__main__':
