@@ -48,7 +48,7 @@ def optimizeTrad(jobName,Stores,Categories,spaceBound,increment,dataMunged,sales
                 logging.info('{} has been changed to {}'.format(search,searchParam))
                 return searchParam
             except:
-                return None
+                return True
         else:
             return None
 
@@ -110,7 +110,11 @@ def optimizeTrad(jobName,Stores,Categories,spaceBound,increment,dataMunged,sales
         """
         return max(bound, (1 * increment) / row)
 
-    locBalBackBoundAdj = locSpaceToFill.apply(lambda row: adjustForTwoIncr(row, bI, increment))
+    incrAdj = searchParam('ADJ', jobName)
+    if incrAdj == None:
+        locBalBackBoundAdj = locSpaceToFill.apply(lambda row: adjustForTwoIncr(row, bI, increment))
+    else:
+        locBalBackBoundAdj = locSpaceToFill.apply(lambda row: adjustForOneIncr(row, bI, increment))
 
     # locBalBackBoundAdj = pd.Series(0,index=locSpaceToFill)
     logging.info('created balance back vector')
