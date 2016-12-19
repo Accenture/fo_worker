@@ -152,9 +152,6 @@ def run(body):
     #     tieredResult = fetchLong(msg['artifacts']['tieredResultArtifactId'])
     # except:
     #     tieredResult = None
-    filtCategory = 'MISSESJRS'
-
-
     try:
         sales = fetchTransactions(msg["artifacts"]["salesArtifactId"])
     except:
@@ -168,6 +165,7 @@ def run(body):
     try:
         space = fetchSpace(msg["artifacts"]["spaceArtifactId"])
     except:
+        filtCategory = msg['category']
         space = fetchLong(
             msg['artifacts']['tieredResultArtifactId'],filtCategory)
     logging.info('uploaded space')
@@ -348,7 +346,7 @@ def run(body):
             longOutput[0][
                 ['Store', 'Category', 'Climate', 'VSG', 'Sales Penetration', 'Result Space',
                  'Optimal Space']]))
-        analyticsID = None
+        analyticsID = str(create_output_artifact_from_dataframe(optimRes[1]))
         # try:
         summaryID = str(create_output_artifact_from_dataframe(createTieredSummary(longOutput[int(0)])))
         # except:  # since type == "Drill Down"

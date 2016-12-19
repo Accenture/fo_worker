@@ -19,11 +19,9 @@ def dataMerge(jobName,jobType,optimizationType,transactions,space,brandExit=None
     :return:
     """
     try:
-        print(transactions)
         space.rename(columns={'VSG ': 'VSG','Category': 'Product'}, inplace=True)
         Categories = transactions[[*np.arange(len(transactions.columns))[1::9]]].loc[0].reset_index(
             drop=True).values.astype(str)
-        print('\n\n\n in Data Merging{} \n\n\n'.format(Categories))
         space=space.apply(lambda x: pd.to_numeric(x, errors='ignore'))
         # space['Store'] = list(map(int, space['Store'].values.tolist()))
         Stores = space['Store']
