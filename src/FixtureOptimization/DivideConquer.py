@@ -53,7 +53,6 @@ def optimizeDD(jobName, increment, dataMunged, salesPen,mipGap = None):
     masterData = pd.DataFrame(columns=dataMunged.columns)
     masterData['Result Space'] = pd.Series(index=masterData.index)
 
-    # print(masterData)
     masterSummary = pd.DataFrame(list(product(Climates,Tiers)),columns=['Climate','Tier'])
     masterSummary['Status'] = ''
     masterSummary['Objective Value'] = 0
@@ -107,7 +106,8 @@ def optimizeDD(jobName, increment, dataMunged, salesPen,mipGap = None):
         st = LpVariable.dicts('ST', (Stores, Categories, Levels), 0, upBound=1, cat='Binary')
         logging.info('tiers created')
 
-        exec("%d_%s" % (str(jobName+"_"+key), LpProblem(jobName, LpMinimize)))  # Define Optimization Problem/
+        # exec("%d_%s" % (str(jobName+"_"+key), LpProblem(jobName, LpMinimize)))  # Define Optimization Problem/
+        NewOptim = LpProblem(jobName, LpMinimize)  # Define Optimization Problem/
 
         logging.info('Brand Exit Done')
         BA = np.zeros((len(Stores), len(Categories), len(Levels)))
@@ -276,9 +276,9 @@ def optimizeDD(jobName, increment, dataMunged, salesPen,mipGap = None):
             # masterData= dataMunged.copy()
 
             # masterData = pd.merge(loopData,Results,on=['Store','Category'])
-            print('the columns of masterData are the following \n {}'.format(masterData.columns))
-            print('there are {} unique values for result space in masterData'.format(len(masterData['Result Space'].unique())))
-            print('masterData is now {} rows'.format(len(masterData)))
+            logging.info('the columns of masterData are the following \n {}'.format(masterData.columns))
+            logging.info('there are {} unique values for result space in masterData'.format(len(masterData['Result Space'].unique())))
+            logging.info('masterData is now {} rows'.format(len(masterData)))
             masterSummary['Status'].loc[climate, tier] = LpStatus[NewOptim.status]
             masterSummary['Objective Value'].loc[climate, tier] = value(NewOptim.objective)
             runTime=optimization_end_time - optimization_start_time

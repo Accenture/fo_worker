@@ -341,7 +341,7 @@ def optimizeEnh(methodology,jobType,jobName,Stores,Categories,increment,weights,
                 except:
                     return None
             else:
-                return None
+                return 0
 
         print("to the solver we go")
 

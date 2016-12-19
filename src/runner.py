@@ -152,9 +152,6 @@ def run(body):
     #     tieredResult = fetchLong(msg['artifacts']['tieredResultArtifactId'])
     # except:
     #     tieredResult = None
-    filtCategory = 'MISSESJRS'
-
-
     try:
         sales = fetchTransactions(msg["artifacts"]["salesArtifactId"])
     except:
@@ -168,6 +165,7 @@ def run(body):
     try:
         space = fetchSpace(msg["artifacts"]["spaceArtifactId"])
     except:
+        filtCategory = msg['category']
         space = fetchLong(
             msg['artifacts']['tieredResultArtifactId'],filtCategory)
     logging.info('uploaded space')
@@ -370,7 +368,6 @@ def run(body):
             {'_id': job_id},
             {
                 "$set": {
-                    'statusID': 'optimal',
                     'optimization_end_time': end_time,
                     "artifactResults": {
                         'long_table': longID,
