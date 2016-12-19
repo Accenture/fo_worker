@@ -49,7 +49,7 @@ def optimizeDD(jobName, increment, dataMunged, salesPen,mipGap = None):
                 logging.info('{} has been changed to {}'.format(search,searchParam))
                 return searchParam
             except:
-                return None
+                return True
         else:
             return None
 
@@ -106,7 +106,21 @@ def optimizeDD(jobName, increment, dataMunged, salesPen,mipGap = None):
             :return: Returns an adjusted vector of percentages by which individual store space should be held
             """
             return max(bound, (2 * increment) / row)
-        locBalBackBoundAdj = locSpaceToFill.apply(lambda row: adjustForTwoIncr(row, bI, increment))
+        def adjustForOneIncr(row, bound, increment):
+            """
+            Returns a vector with the maximum percent of the original total store space between two increment sizes and 10 percent of the store space
+            :param row: Individual row of Total Space Available in Store
+            :param bound: Percent Bounding for Balance Back
+            :param increment: Increment Size Determined by the User in the UI
+            :return: Returns an adjusted vector of percentages by which individual store space should be held
+            """
+            return max(bound, (increment) / row)
+
+        incrAdj = searchParam('ADJ', jobName)
+        if incrAdj == None:
+            locBalBackBoundAdj = locSpaceToFill.apply(lambda row: adjustForTwoIncr(row, bI, increment))
+        else:
+            locBalBackBoundAdj = locSpaceToFill.apply(lambda row: adjustForOneIncr(row, bI, increment))
 
         logging.info('creating levels')
         minLevel = loopData['Optimal Space'].min()
