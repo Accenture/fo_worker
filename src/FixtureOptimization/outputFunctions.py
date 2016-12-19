@@ -14,8 +14,8 @@ def createLong(jobType, optimizationType, lInput):
     :param lInput: Optimization Output
     :return: Creates a long table output for user and a version for internal testing
     """
-    print('Inside createLong')
-    print(lInput.columns)
+    logging.info('Inside createLong')
+    logging.info(lInput.columns)
 
     def tierColCreate(dfI):
         """
@@ -39,10 +39,10 @@ def createLong(jobType, optimizationType, lInput):
     lOutput = lInput.apply(lambda x: pd.to_numeric(x, errors='ignore'))
     # Merge the optimize output with the curve-fitting output (which was already merged with the preoptimize output)
     if optimizationType == 'enhanced':
-        print('initial merge')
+        logging.info('initial merge')
         # lOutput['Penetration']= ""
         # lOutput['Optimal Space']= ""
-        print('Set Optimal & Penetration to 0')
+        logging.info('Set Optimal & Penetration to 0')
 
         variables = ["Sales", "Profit", "Units"]
         for v in variables:
@@ -64,10 +64,10 @@ def createLong(jobType, optimizationType, lInput):
                                                  lOutput["Scaled_Alpha_" + v] * erf(
                                                      (lOutput["Space"] - lOutput["Scaled_Shift_" + v]).div(
                                                      math.sqrt(2) * lOutput["Scaled_Beta_" + v])))
-        print("Finished Forecasting")
-        print('Dropped Columns')
-        print('Dropped more Columns')
-        print('Dropped Group Columns')
+        logging.info("Finished Forecasting")
+        logging.info('Dropped Columns')
+        logging.info('Dropped more Columns')
+        logging.info('Dropped Group Columns')
         lOutput.rename(
             columns={'Sales': 'Current Sales $', 'Profit': 'Current Profit $', 'Units': 'Current Sales Units',
                      'Space': 'Current Space', 'Current Estimated Sales': 'Current Estimated Sales $',
@@ -79,34 +79,34 @@ def createLong(jobType, optimizationType, lInput):
                      'Optimal Estimated Profit': 'Optimal Estimated Profit $',
                      'Optimal Estimated Units': 'Optimal Estimated Sales Units', 'Space_to_Fill': 'Total Store Space'},
             inplace=True)
-        print('finished renaming')
+        logging.info('finished renaming')
         lOutput = tierColCreate(lOutput)
-        print(lOutput['Tier'])
+        logging.info(lOutput['Tier'])
         fullData = lOutput.copy()
-        print('created copy')
+        logging.info('created copy')
         lOutput = lOutput[
             ['Store', 'Category', 'Climate', 'VSG', 'Result Space', 'Current Space', 'Optimal Space',
              'Current Sales $', 'Current Profit $', 'Current Sales Units', 'Result Estimated Sales $',
              'Result Estimated Profit $', 'Result Estimated Sales Units', 'Optimal Estimated Sales $',
              'Optimal Estimated Profit $', 'Optimal Estimated Sales Units', 'Total Store Space', 'Sales Penetration',
              'Exit Flag', 'Tier']]
-        print('selected interesting columns')
+        logging.info('selected interesting columns')
     else:
-        print('went to else')
+        logging.info('went to else')
         if jobType != 'drilldown':
             lOutput.drop('Current Space', axis=1, inplace=True)
-        print('Dropped Old Current Space')
+        logging.info('Dropped Old Current Space')
         lOutput.rename(columns={'New Space': 'Total Store Space','Historical Space': 'Current Space'},inplace=True)
-        print('Renamed the columns')
+        logging.info('Renamed the columns')
         if jobType == 'drillDown':
             lOutput['Current Space'] = lOutput['Total Store Space'] * lOutput['Sales Penetration']
-            print('created the fake current space')
+            logging.info('created the fake current space')
         else:
             lOutput = tierColCreate(lOutput)
-            print('Created tier column')
+            logging.info('Created tier column')
         fullData = lOutput.copy()
-        print('created the copy')
-        print('current columns {}'.format(lOutput.columns))
+        logging.info('created the copy')
+        logging.info('current columns {}'.format(lOutput.columns))
         if jobType != 'drilldown':
             lOutput = lOutput[
                 ['Store', 'Category', 'Climate', 'VSG', 'Result Space', 'Current Space',
@@ -115,7 +115,7 @@ def createLong(jobType, optimizationType, lInput):
             lOutput = lOutput[
                 ['Store', 'Product', 'Category', 'Climate', 'VSG', 'Result Space', 'Current Space',
                  'Optimal Space', 'Sales Penetration', 'Exit Flag', 'Total Store Space', 'Tier']]
-        print('selected used columns')
+        logging.info('selected used columns')
     lOutput.sort(columns=['Store','Category'],axis=0,inplace=True)
     return (lOutput, fullData)
 
@@ -134,7 +134,7 @@ def createWide(long, jobType, optimizationType):
         columns={ "Result Space": "result", "Optimal Space": "optimal",'Current Space': 'current',
                  "Sales Penetration": "penetration"})
 
-    print('renamed the columns')
+    logging.info('renamed the columns')
     # Pivot to convert long table to wide, including Time in index for drill downs
     # if jobType == "tiered" or 'unconstrained':
     wide = pd.pivot_table(adjusted_long, values=["result", "current", "optimal", "penetration"],
@@ -145,31 +145,32 @@ def createWide(long, jobType, optimizationType):
     #                           index=["Store", "Time", "Climate", "VSG"], columns="Category", aggfunc=np.sum,
     #                           margins=True, margins_name="Total")
 
-    print('transpose the data')
+    logging.info('transpose the data')
     # Generate concatenated column titles by swapping levels and merging category name with metric name
     wide = wide.swaplevel(axis=1)
     wide.columns = ['_'.join(col) for col in wide.columns.values]
 
-    print('delete the last row')
+    logging.info('delete the last row')
     # Delete last row (which is a sum of column values)
     wide = wide.ix[:-1]  # drop last row
 
-    print('deleted last row')
+    logging.info('deleted last row')
     # Set up for column reordering
     cols = wide.columns.tolist()
     num_categories = int((len(cols)) / 4 - 1)  # find number of categories, for use in finding total column numbers
     tot_col = {"C": num_categories, "O": 2 * num_categories + 1, "R": 3 * num_categories + 2}
 
-    print('reorder columns prep')
+    logging.info('reorder columns prep')
     # Convert 0's back to blanks
-    if optimizationType == "enhanced":
+    # if optimizationType == "enhanced":
         # for i in range(tot_col["C"] + 1, tot_col["O"] + 1):
         #     wide[[i]] = ""
         # for i in range(tot_col["O"] + 1,tot_col["R"] + 1):
         #     wide[[i]] = ""
-        for i in range(tot_col["R"] + 1, len(cols)): # Actually hides Penetration
-            wide[[i]] = ""
+        # for i in range(tot_col["R"] + 1, len(cols)): # Actually hides Penetration
+        #     wide[[i]] = ""
     if jobType == 'drilldown':
+        # Hide Current Space
         for i in range(tot_col["C"] + 1, tot_col["O"] + 1):
             wide[[i]] = ""
         # for i in range(tot_col["O"] + 1,tot_col["R"] + 1):
@@ -184,7 +185,7 @@ def createWide(long, jobType, optimizationType):
     cols = cols[:tot_col["C"]] + cols[tot_col["C"] + 1:tot_col["O"]] + cols[tot_col["O"] + 1:tot_col[
                                                                                                          "R"]] + [
                cols[tot_col["C"]]] + [cols[tot_col["O"]]] + cols[tot_col["R"]:-1]
-    print('reordered columns')
+    logging.info('reordered columns')
     wide = wide[cols]
     wide.drop('Total_optimal',axis=1,inplace=True)
     wide.reset_index(inplace=True)
