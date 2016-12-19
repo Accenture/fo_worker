@@ -21,10 +21,10 @@ curvefitting_boundsetting<-function(master,bound_input,increment,pct_chg_limit,s
   # numStores=
   # medianSpace=
   #  Minimal Store-Category History Filters
-  space_filter <- 0.1
-  Sales_filter <- 20
-  Profit_filter <- 5
-  Units_filter <- 5
+  space_filter <- 0
+  Sales_filter <- 0
+  Profit_filter <- 0
+  Units_filter <- 0
 
   #  Minimal Category-Climate Group History Filters
   strcount_filter <- 100
