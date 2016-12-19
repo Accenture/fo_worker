@@ -221,11 +221,11 @@ def run(body):
         else:
             try:
                 msg['salesCategories'] = preOpt['Category'].unique()
-                # optimRes = optimizeDD(jobName=msg['meta']['name'], increment=msg["increment"], dataMunged=preOpt,
-                #                   salesPen=msg['salesPenetrationThreshold'],mipGap=fracGap)
-                result=pd.read_csv('dividedTest.csv',header=0)
-                summary=None
-                optimRes = (result,summary)
+                optimRes = optimizeDD(jobName=msg['meta']['name'], increment=msg["increment"], dataMunged=preOpt,
+                                  salesPen=msg['salesPenetrationThreshold'],mipGap=fracGap)
+                # result=pd.read_csv('dividedTest.csv',header=0)
+                # summary=None
+                # optimRes = (result,summary)
 
             except Exception:
                 logging.exception('A thing')
