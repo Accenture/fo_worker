@@ -32,10 +32,7 @@ def preoptimize(jobType,optimizationType,dataMunged, salesPenThreshold, mAdjustm
         :param metric: matrix of metric information
         :return: penetration matrix of a given metric
         """
-        metric.div(metric.sum(axis=1), axis=0)
-        metric.replace([np.inf, -np.inf], np.nan,inplace=True)
-        metric.fillna(0, inplace=True)
-        return metric
+        return metric.div(metric.sum(axis=1), axis=0)
 
     def spreadCalc(sales, boh, receipt, mAdjustment):
         """
@@ -87,11 +84,11 @@ def preoptimize(jobType,optimizationType,dataMunged, salesPenThreshold, mAdjustm
         :param receipts_units:
         :return: returns array of inventory turn
         """
+        calcPen(sold_units)
+        calcPen(boh_units + receipts_units)
         inv_turn = calcPen(sold_units).div(calcPen(boh_units + receipts_units), axis='index')
-        # inv_turn[np.isnan(inv_turn)] = 0
-        inv_turn.replace([np.inf, -np.inf], np.nan,inplace=True)
-        inv_turn.fillna(0, inplace=True)
-        # inv_turn[np.isinf(inv_turn)] = 0
+        inv_turn[np.isnan(inv_turn)] = 0
+        inv_turn[np.isinf(inv_turn)] = 0
         return calcPen(inv_turn)
 
     def roundArray(array, increment):
@@ -194,7 +191,6 @@ def preoptimize(jobType,optimizationType,dataMunged, salesPenThreshold, mAdjustm
         logging.info('attempting to keep sales pen')
         information = pd.merge(information,pd.melt(calcPen(sales).reset_index(),id_vars=['Store'], var_name='Category',value_name='Sales Penetration'),on=['Store','Category'])
         information = information.apply(lambda x: pd.to_numeric(x, errors='ignore'))
-        information.to_csv('LevisOutput.csv',sep=",")
         return information
     except Exception as e:
         logging.exception('A thing')
