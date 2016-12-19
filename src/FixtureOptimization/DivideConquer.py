@@ -34,7 +34,24 @@ def optimizeDD(jobName, increment, dataMunged, salesPen,mipGap = None):
             cVal = round(cVal, 3) - np.mod(round(cVal, 3), increment)
         return cVal
 
-
+    def searchParam(search, jobName):
+        if search in jobName:
+            begin = jobName.find(search)
+            length = 0
+            for char in jobName[(len(search) + begin)::]:
+                try:
+                    int(char)
+                    length = length + 1
+                except:
+                    break
+            try:
+                searchParam = int(jobName[(len(search) + begin):(len(search) + begin + length)]) / 100
+                logging.info('{} has been changed to {}'.format(search,searchParam))
+                return searchParam
+            except:
+                return None
+        else:
+            return None
 
     dataMunged['Optimal Space'] = dataMunged['Optimal Space'].apply(lambda x: roundValue(x, increment))
     dataMunged = dataMunged.apply(lambda x: pd.to_numeric(x, errors='ignore'))
@@ -72,8 +89,12 @@ def optimizeDD(jobName, increment, dataMunged, salesPen,mipGap = None):
         Categories = dataMunged['Category'].unique().tolist()
         logging.info("\n\n We are in loop number {} of {} \n Loop for {} and Climate {} \n We have {} store(s) for the {} optimization \n\n".format(loop + 1,len(dataMunged['ddKey'].unique()),tier,climate,len(Stores),key))
         # logging.info('We have {} many stores for the {} optimization'.format(len(Stores),key))
+
+
         b = .05
-        bI = .05
+        bI = searchParam('BBI', jobName)
+        if bI == None:
+            bI = .05
 
         locSpaceToFill = loopData.groupby('Store')['New Space'].agg(np.mean)
         def adjustForTwoIncr(row, bound, increment):
@@ -186,10 +207,12 @@ def optimizeDD(jobName, increment, dataMunged, salesPen,mipGap = None):
         # NewOptim.writeLP("Fixture_Optimization.lp")
         # NewOptim.writeMPS(str(jobName)+".mps")
         # NewOptim.solve(pulp.GUROBI(mip=True, msg=True, MIPgap=.01))
-        if mipGap < 1 or mipGap == None:
-            mipGap=99
+        optGap = searchParam('MIP', jobName)
+
+        if optGap == None:
+            optGap = .1
         try:
-            NewOptim.solve(pulp.GUROBI(mip=True, msg=True, MIPgap=mipGap, LogFile="/tmp/gurobi.log"))
+            NewOptim.solve(pulp.GUROBI(mip=True, msg=True, MIPgap=optGap, LogFile="/tmp/gurobi.log"))
 
         except Exception as e:
             logging.info(e)
