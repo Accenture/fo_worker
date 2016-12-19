@@ -222,7 +222,7 @@ def run(body):
             try:
                 msg['salesCategories'] = preOpt['Category'].unique()
                 optimRes = optimizeDD(jobName=msg['meta']['name'], increment=msg["increment"], dataMunged=preOpt,
-                                  salesPen=msg['salesPenetrationThreshold'],mipGap=fracGap)
+                                  salesPen=msg['salesPenetrationThreshold'])
                 # result=pd.read_csv('dividedTest.csv',header=0)
                 # summary=None
                 # optimRes = (result,summary)
