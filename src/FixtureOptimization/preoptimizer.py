@@ -168,12 +168,19 @@ def preoptimize(jobType,optimizationType,dataMunged, salesPenThreshold, mAdjustm
                 bfc = dataMunged.pivot(index='Store', columns='Category', values='Current Space')
             else:
                 bfc = calcPen(sales).multiply(dataMunged.pivot(index='Store',columns='Category',values='New Space'))
-            adj_p = (optimizedMetrics['spread'] * spreadCalc(sales, boh, receipt, mAdjustment)) + (optimizedMetrics[
-                'salesPenetration'] * calcPen(sales)) + (optimizedMetrics['salesPerSpaceUnit'] * metric_per_fixture(sales,
-                                                                                                                   bfc,
-                                                                                                                   mAdjustment)) + \
-                    (optimizedMetrics['grossMargin'] * calcPen(gm_perc)) + (optimizedMetrics['inventoryTurns'] * invTurn_Calc(
-                sold_units, boh_units, receipts_units))
+            if jobType != 'drilldown':
+                adj_p = (optimizedMetrics['spread'] * spreadCalc(sales, boh, receipt, mAdjustment)) + (optimizedMetrics[
+                    'salesPenetration'] * calcPen(sales)) + (optimizedMetrics['salesPerSpaceUnit'] * metric_per_fixture(sales,
+                                                                                                                       bfc,
+                                                                                                                       mAdjustment)) + \
+                        (optimizedMetrics['grossMargin'] * calcPen(gm_perc)) + (optimizedMetrics['inventoryTurns'] * invTurn_Calc(
+                    sold_units, boh_units, receipts_units))
+            else:
+                adj_p = (optimizedMetrics['spread'] * spreadCalc(sales, boh, receipt, mAdjustment)) + (optimizedMetrics[
+                    'salesPenetration'] * calcPen(sales)) + \
+                        (optimizedMetrics['grossMargin'] * calcPen(gm_perc)) + (optimizedMetrics['inventoryTurns'] * invTurn_Calc(
+                    sold_units, boh_units, receipts_units))
+
         else:
             adj_p = (optimizedMetrics['sales'] * sales) + (optimizedMetrics['profits'] * profit) + (optimizedMetrics['units'] * sold_units)
 

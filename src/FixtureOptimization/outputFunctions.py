@@ -114,7 +114,7 @@ def createLong(jobType, optimizationType, lInput):
         else:
             lOutput = lOutput[
                 ['Store', 'Product', 'Category', 'Climate', 'VSG', 'Result Space', 'Current Space',
-                 'Optimal Space', 'Sales Penetration', 'Exit Flag', 'Total Store Space', 'Tier']]
+                 'Optimal Space', 'Sales Penetration', 'Exit Flag', 'Total Store Space', 'Drill Down Group']]
         logging.info('selected used columns')
     lOutput.sort(columns=['Store','Category'],axis=0,inplace=True)
     return (lOutput, fullData)
@@ -185,11 +185,14 @@ def createWide(long, jobType, optimizationType):
     cols = cols[:tot_col["C"]] + cols[tot_col["C"] + 1:tot_col["O"]] + cols[tot_col["O"] + 1:tot_col[
                                                                                                          "R"]] + [
                cols[tot_col["C"]]] + [cols[tot_col["O"]]] + cols[tot_col["R"]:-1]
+
     logging.info('reordered columns')
     wide = wide[cols]
     wide.drop('Total_optimal',axis=1,inplace=True)
     wide.reset_index(inplace=True)
+    long.sort(columns=['Store'], axis=0, inplace=True)
     wide.sort(columns=['Store'],axis=0,inplace=True)
+    wide['Total_current']=long['Total Store Space']
     return wide
 
 # Create summary for user download that applies to Tiered optimizations (type == "Tiered")

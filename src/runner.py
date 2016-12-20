@@ -121,23 +121,20 @@ def run(body):
             :param df: Long Table to be given tiering information
             :return: tiered long table output
             """
-            try:
-                dfI.sort_values(by='Result Space', inplace=True)
-                tierVals = dfI.groupby('Category')
-                for (i, category) in tierVals:
-                    indices = category.index.values
-                    ranking = sorted(set(category['Result Space'].values.tolist()))
-                    dfI.loc[indices, 'Tier'] = category['Result Space'].apply(
-                        lambda x: 'Tier ' + str(ranking.index(x) + 1))
-                dfI.reset_index(drop=True)
-            except Exception:
-                logging.exception('This is what happened')
-                traceback.print_exception()
+            dfI.sort_values(by='Result Space', inplace=True)
+            tierVals = dfI.groupby('Category')
+            for (i, category) in tierVals:
+                indices = category.index.values
+                ranking = sorted(set(category['Result Space'].values.tolist()))
+                dfI.loc[indices, 'Tier'] = category['Result Space'].apply(
+                    lambda x: 'Tier ' + str(ranking.index(x) + 1))
+            dfI.reset_index(drop=True)
             return dfI
         file = fs.get(ObjectId(artifact_id))
         file = pd.read_csv(file,header=0)
-        file = file[(file['Category'] == filtCategory)]
+        file = file[(file.Category == filtCategory)]
         file = tierColCreate(file[['Store','VSG','Climate','Category','Result Space']])
+        print(file.columns)
         return file
     # Stores = msg['salesStores']
     # Categories = msg['salesCategories']
@@ -148,91 +145,123 @@ def run(body):
     logging.info('beginning of ' + msg['meta']['name'] + ' date of ' + dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
     logging.info("#####################################################################")
 
-    # try:
-    #     tieredResult = fetchLong(msg['artifacts']['tieredResultArtifactId'])
-    # except:
-    #     tieredResult = None
     try:
-        sales = fetchTransactions(msg["artifacts"]["salesArtifactId"])
-    except:
-        logging.info('attempting drill down')
-        sales = fetchTransactions(msg["artifacts"]["categorySalesArtifactId"])
-        logging.info(msg["artifacts"]["categorySalesArtifactId"])
-    # except:
-    #     logger.exception("Did not find categorySalesArtifactId")
-    logging.info('uploaded sales')
+        try:
+            sales = fetchTransactions(msg["artifacts"]["salesArtifactId"])
+        except:
+            sales = fetchTransactions(msg["artifacts"]["categorySalesArtifactId"])
+            logging.info(msg["artifacts"]["categorySalesArtifactId"])
+        logging.info('uploaded sales')
+    except Exception:
+        logging.exception('A thing')
+        traceback.print_exception()
 
     try:
-        space = fetchSpace(msg["artifacts"]["spaceArtifactId"])
-    except:
-        filtCategory = msg['category']
-        space = fetchLong(
-            msg['artifacts']['tieredResultArtifactId'],filtCategory)
+        try:
+            space = fetchSpace(msg["artifacts"]["spaceArtifactId"])
+            logging.info('uploaded space')
+        except:
+            space = fetchLong(msg['artifacts']['tieredResultArtifactId'],msg['category'][0])
+    except Exception:
+        logging.exception('A thing')
+        traceback.print_exception()
     logging.info('uploaded space')
 
     try:
-        futureSpace = fetchSpace(msg["artifacts"]["futureSpaceId"])
-        logging.info("Future Space was Uploaded")
-    except:
-        futureSpace = None
-        logging.info("Future Space was not Uploaded")
+        try:
+            futureSpace = fetchSpace(msg["artifacts"]["futureSpaceId"])
+            logging.info("Future Space was Uploaded")
+        except:
+            futureSpace = None
+            logging.info("Future Space was not Uploaded")
+    except Exception:
+        logging.exception('Future Space Failed')
+        traceback.print_exception()
+
     try:
-        brandExitArtifact = fetchExit(msg["artifacts"]["brandExitArtifactId"])
-        logging.info("Brand Exit was Uploaded")
-    except:
-        logging.info("Brand Exit was not Uploaded")
-        brandExitArtifact = None
+        try:
+            brandExitArtifact = fetchExit(msg["artifacts"]["brandExitArtifactId"])
+            logging.info("Brand Exit was Uploaded")
+        except:
+            logging.info("Brand Exit was not Uploaded")
+            brandExitArtifact = None
+    except Exception:
+        logging.exception('Brand Exit Failed')
+        traceback.print_exception('Brand Exit Failed')
+
+
     if msg['jobType'] == 'unconstrained' or msg['jobType'] == 'drilldown':
         msg['tierCounts'] = None
 
-    dataMerged = dataMerge(jobName=msg['meta']['name'], jobType=msg['jobType'],
-                           optimizationType=msg['optimizationType'], transactions=sales, space=space,
-                           brandExit=brandExitArtifact, futureSpace=futureSpace)
-    logging.info('finished data merging')
+    try:
+        dataMerged = dataMerge(jobName=msg['meta']['name'], jobType=msg['jobType'],
+                               optimizationType=msg['optimizationType'], transactions=sales, space=space,
+                               brandExit=brandExitArtifact, futureSpace=futureSpace)
+        logging.info('finished data merging')
+    except Exception:
+        logging.exception('Data Merging Failed')
+        traceback.print_exception()
+
     try:
         preOpt = preoptimize(jobType=msg['jobType'], optimizationType=msg['optimizationType'], dataMunged=dataMerged[1],
                              mAdjustment=float(msg["metricAdjustment"]),
                              salesPenThreshold=float(msg["salesPenetrationThreshold"]),
                              optimizedMetrics=msg["optimizedMetrics"], increment=msg["increment"])
-    except:
-        logging.exception('A thing')
+        logging.info('finished preoptimize')
+    except Exception:
+        logging.exception('Preoptimize Failed')
         traceback.print_exception()
-    logging.info('finished preoptimize')
+
+
     if msg['optimizationType'] == 'traditional':
         if msg['jobType'] == 'unconstrained' or msg['jobType'] == 'tiered':
-            logging.info('going to the optimization')
-            optimRes = optimizeTrad(jobName=msg['meta']['name'], Stores=msg['salesStores'],
-                                    Categories=msg['salesCategories'],
-                                    spaceBound=msg['spaceBounds'], increment=msg['increment'], dataMunged=preOpt,
-                                    salesPen=msg['salesPenetrationThreshold'], tierCounts = msg['tierCounts'])
+            try:
+                logging.info('going to the optimization')
+                optimRes = optimizeTrad(jobName=msg['meta']['name'], Stores=msg['salesStores'],
+                                        Categories=msg['salesCategories'],
+                                        spaceBound=msg['spaceBounds'], increment=msg['increment'], dataMunged=preOpt,
+                                        salesPen=msg['salesPenetrationThreshold'], tierCounts = msg['tierCounts'])
+            except Exception:
+                logging.exception('Traditional Optimization Failed')
+                traceback.print_exception()
         else:
             try:
                 msg['salesCategories'] = preOpt['Category'].unique()
                 optimRes = optimizeDD(jobName=msg['meta']['name'], increment=msg["increment"], dataMunged=preOpt,
                                   salesPen=msg['salesPenetrationThreshold'])
-                # result=pd.read_csv('dividedTest.csv',header=0)
-                # summary=None
-                # optimRes = (result,summary)
-
             except Exception:
-                logging.exception('A thing')
+                logging.exception('Drill Down Optimization Failed')
                 traceback.print_exception()
         cfbsArtifact=[None,None]
         scaledAnalyticsID = None
     else:
-        cfbsArtifact = curveFittingBS(dataMerged[0], msg['spaceBounds'], msg['increment'],
-                                    msg['storeCategoryBounds'],
-                                    float(msg["salesPenetrationThreshold"]), msg['jobType'],
-                                    msg['optimizationType'])
+        try:
+            cfbsArtifact = curveFittingBS(dataMerged[0], msg['spaceBounds'], msg['increment'],
+                                        msg['storeCategoryBounds'],
+                                        float(msg["salesPenetrationThreshold"]), msg['jobType'],
+                                        msg['optimizationType'])
+        except Exception:
+            logging.exception('Curve Fitting Failed')
+            traceback.print_exception()
         logging.info('finished curve fitting')
-        cfbsOptimal = optimizeSingleStore(cfbsArtifact[0].set_index(['Store', 'Category']), msg['increment'],
-                                        msg['optimizedMetrics'])
+        try:
+            cfbsOptimal = optimizeSingleStore(cfbsArtifact[0].set_index(['Store', 'Category']), msg['increment'],
+                                            msg['optimizedMetrics'])
+        except:
+            logging.exception('Single Store Optimization Failed')
+            traceback.print_exception()
         logging.info('finished single store')
-        optimRes = optimizeEnh(methodology=msg['optimizationType'], jobType=msg['jobType'], jobName=msg['meta']['name'],
-                             Stores=msg['salesStores'], Categories=msg['salesCategories'],
-                             increment=msg['increment'], weights=msg['optimizedMetrics'], cfbsOutput=cfbsOptimal[1],
-                             preOpt=preOpt, salesPen=msg['salesPenetrationThreshold'], tierCounts=msg['tierCounts'])
+
+        try:
+            optimRes = optimizeEnh(methodology=msg['optimizationType'], jobType=msg['jobType'], jobName=msg['meta']['name'],
+                                 Stores=msg['salesStores'], Categories=msg['salesCategories'],
+                                 increment=msg['increment'], weights=msg['optimizedMetrics'], cfbsOutput=cfbsOptimal[1],
+                                 preOpt=preOpt, salesPen=msg['salesPenetrationThreshold'], tierCounts=msg['tierCounts'])
+        except:
+            logging.exception('Enhanced Optimization Failed')
+            traceback.print_exception()
     logging.info('we just did the optimization')
+
     if msg['jobType'] == 'tiered' or msg['jobType'] == 'unconstrained':
         statusID = optimRes[0]
         logging.info(statusID)
@@ -330,9 +359,7 @@ def run(body):
             logging.exception('A thing')
             traceback.print_exception()
         longID = str(create_output_artifact_from_dataframe(
-            longOutput[0][
-                ['Store', 'Category', 'Climate', 'VSG', 'Sales Penetration', 'Result Space',
-                 'Optimal Space']]))
+            longOutput[0]))
         analyticsID = str(create_output_artifact_from_dataframe(optimRes[1]))
         # try:
         summaryID = str(create_output_artifact_from_dataframe(createTieredSummary(longOutput[int(0)])))
@@ -356,6 +383,7 @@ def run(body):
             {
                 "$set": {
                     'optimization_end_time': end_time,
+                    "status": 'Optimal',
                     "artifactResults": {
                         'long_table': longID,
                         'wide_table': wideID,
