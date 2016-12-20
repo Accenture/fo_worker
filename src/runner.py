@@ -184,19 +184,6 @@ def run(body):
         brandExitArtifact = None
     if msg['jobType'] == 'unconstrained' or msg['jobType'] == 'drilldown':
         msg['tierCounts'] = None
-    if msg['jobType'] == 'drilldown':
-        # msg['optimizedMetrics'] = \
-        #     {
-        #         "spread": 100,
-        #         "salesPenetration": 0,
-        #         "salesPerSpaceUnit": 0,
-        #         "inventoryTurns": 0,
-        #         "grossMargin": 0
-        #     }
-        # msg['increment'] = 1
-        msg['salesStores'] = space['Store'].unique()
-        # msg['metricAdjustment'] = 0
-        # msg["salesPenetrationThreshold"] = .02
 
     dataMerged = dataMerge(jobName=msg['meta']['name'], jobType=msg['jobType'],
                            optimizationType=msg['optimizationType'], transactions=sales, space=space,
