@@ -187,7 +187,7 @@ def run(body):
             brandExitArtifact = None
     except Exception:
         logging.exception('Brand Exit Failed')
-        traceback.print_exception('Brand Exit Failed')
+        traceback.print_exception()
 
 
     if msg['jobType'] == 'unconstrained' or msg['jobType'] == 'drilldown':
@@ -247,7 +247,7 @@ def run(body):
         try:
             cfbsOptimal = optimizeSingleStore(cfbsArtifact[0].set_index(['Store', 'Category']), msg['increment'],
                                             msg['optimizedMetrics'])
-        except:
+        except Exception:
             logging.exception('Single Store Optimization Failed')
             traceback.print_exception()
         logging.info('finished single store')
@@ -257,14 +257,13 @@ def run(body):
                                  Stores=msg['salesStores'], Categories=msg['salesCategories'],
                                  increment=msg['increment'], weights=msg['optimizedMetrics'], cfbsOutput=cfbsOptimal[1],
                                  preOpt=preOpt, salesPen=msg['salesPenetrationThreshold'], tierCounts=msg['tierCounts'])
-        except:
+        except Exception:
             logging.exception('Enhanced Optimization Failed')
             traceback.print_exception()
     logging.info('we just did the optimization')
 
     if msg['jobType'] == 'tiered' or msg['jobType'] == 'unconstrained':
         statusID = optimRes[0]
-        logging.info(statusID)
         logging.info('Set the Status')
         if statusID == 'Optimal' or 'Infeasible':
             # Call functions to create output information
@@ -297,11 +296,13 @@ def run(body):
             try:
                 invalids = outputValidation(df=longOutput[0], jobType=msg['jobType'], tierCounts=msg['tierCounts'],
                                             increment=msg['increment'])
-            except Exception as e:
-                logging.exception('Not entirely sure what is happening')
+                logging.info('set the invalids')
+            except Exception:
+                logging.exception('Output Validation Failed')
+                traceback.print_exception()
+
                 return
                 # traceback.logging.info_exc(e)
-            logging.info('set the invalids')
 
             end_time = dt.datetime.utcnow()
             logging.info('created the end time')
@@ -350,27 +351,19 @@ def run(body):
         try:
             longOutput=createLong(msg['jobType'],msg['optimizationType'],optimRes[0])
         except Exception:
-            logging.exception('A thing')
+            logging.exception('Long Table Creation Failed')
             traceback.print_exception()
         try:
             wideID = str(
                 create_output_artifact_from_dataframe(createWide(longOutput[0], msg['jobType'], msg['optimizationType'])))
         except Exception:
-            logging.exception('A thing')
+            logging.exception('Wide Table Creation Failed')
             traceback.print_exception()
         longID = str(create_output_artifact_from_dataframe(
             longOutput[0]))
         analyticsID = str(create_output_artifact_from_dataframe(optimRes[1]))
-        # try:
         summaryID = str(create_output_artifact_from_dataframe(createTieredSummary(longOutput[int(0)])))
-        # except:  # since type == "Drill Down"
-        #     summaryID = str(create_output_artifact_from_dataframe(createDrillDownSummary(longOutput[int(0)])))
-        # try:
-        #     invalids = outputValidation(df=longOutput[0], jobType=msg['jobType'], tierCounts=msg['tierCounts'],
-        #                                 increment=msg['increment'])
-        # except Exception as e:
-        #     logging.exception('Not entirely sure what is happening \n not a big deal')
-        #     return
+
             # traceback.logging.info_exc(e)
         logging.info('set the invalids')
 
@@ -394,15 +387,9 @@ def run(body):
             }
         )
 
-
-
-    # logging.info('end of ' + msg['meta']['name'])
-
     logging.info("#####################################################################")
-    logging.info(dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+    logging.info('End of ' + msg['meta']['name'] + ' date of ' + dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
     logging.info("#####################################################################")
-
-    logging.info("Job complete")
 
 if __name__ == '__main__':
     # LOGGER.debug('hello from {}'.format(__name__))
