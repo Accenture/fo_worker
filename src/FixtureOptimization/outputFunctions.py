@@ -192,7 +192,8 @@ def createWide(long, jobType, optimizationType):
     wide.reset_index(inplace=True)
     long.sort(columns=['Store'], axis=0, inplace=True)
     wide.sort(columns=['Store'],axis=0,inplace=True)
-    wide['Total_current']=long['Total Store Space']
+    if jobType == 'drilldown':
+        wide['Total_current']=long['Total Store Space']
     return wide
 
 # Create summary for user download that applies to Tiered optimizations (type == "Tiered")
