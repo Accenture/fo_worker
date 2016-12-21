@@ -55,11 +55,6 @@ def run(body):
         db.authenticate(MONGO_USERNAME, MONGO_PASSWORD, mechanism='SCRAM-SHA-1')
 
     fs = gridfs.GridFS(db)
-    
-    # mq_conn = BlockingConnection(ConnectionParameters(host=RMQ_HOST,
-    #                                                   port=RMQ_PORT))
-    # ch = mq_conn.channel()
-    # ch.queue_declare(queue=RMQ_QUEUE_SINK, durable=True)
 
     def create_output_artifact_from_dataframe(dataframe, *args, **kwargs):
         """
@@ -67,11 +62,6 @@ def run(body):
 
         """
         return fs.put(dataframe.to_csv(index=False).encode(), **kwargs)
-
-    def fetch_artifact(artifact_id):
-        file = fs.get(ObjectId(artifact_id))
-        file = pd.read_csv(file, header=0)
-        return file
 
     msg = json.loads(body.decode('utf-8'))
     # Find job to check status of job
@@ -82,8 +72,6 @@ def run(body):
         logging.info('Job Not Found')
         return False
 
-    # current_user = job['userId']
-    # job_status = job['status']
     worker_start_time = dt.datetime.utcnow()
     db.jobs.update_one(
         {'_id': job['_id']},
@@ -94,10 +82,6 @@ def run(body):
             }
         }
     )
-    # res = dict(user_id=job['userId'], status='running')
-    # ch.basic_publish(exchange='',
-    #          routing_key=RMQ_QUEUE_SINK,
-    #          body=json.dumps(res))
 
     def fetchTransactions(artifact_id):
         file = fs.get(ObjectId(artifact_id))
@@ -136,10 +120,6 @@ def run(body):
         file = tierColCreate(file[['Store','VSG','Climate','Category','Result Space']])
         print(file.columns)
         return file
-    # Stores = msg['salesStores']
-    # Categories = msg['salesCategories']
-
-    # logging.info('beginning of ' + msg['meta']['name'])
 
     logging.info("#####################################################################")
     logging.info('beginning of ' + msg['meta']['name'] + ' date of ' + dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
@@ -150,22 +130,20 @@ def run(body):
             sales = fetchTransactions(msg["artifacts"]["salesArtifactId"])
         except:
             sales = fetchTransactions(msg["artifacts"]["categorySalesArtifactId"])
-            logging.info(msg["artifacts"]["categorySalesArtifactId"])
-        logging.info('uploaded sales')
+        logging.info('Uploaded Sales')
     except Exception:
-        logging.exception('A thing')
+        logging.exception('Sales Upload Failed')
         traceback.print_exception()
 
     try:
         try:
             space = fetchSpace(msg["artifacts"]["spaceArtifactId"])
-            logging.info('uploaded space')
         except:
             space = fetchLong(msg['artifacts']['tieredResultArtifactId'],msg['category'][0])
+        logging.info('Uploaded Space')
     except Exception:
-        logging.exception('A thing')
+        logging.exception('Space Upload Failed')
         traceback.print_exception()
-    logging.info('uploaded space')
 
     try:
         try:
@@ -189,7 +167,7 @@ def run(body):
         logging.exception('Brand Exit Failed')
         traceback.print_exception()
 
-
+    # Implement this in
     if msg['jobType'] == 'unconstrained' or msg['jobType'] == 'drilldown':
         msg['tierCounts'] = None
 
@@ -197,7 +175,7 @@ def run(body):
         dataMerged = dataMerge(jobName=msg['meta']['name'], jobType=msg['jobType'],
                                optimizationType=msg['optimizationType'], transactions=sales, space=space,
                                brandExit=brandExitArtifact, futureSpace=futureSpace)
-        logging.info('finished data merging')
+        logging.info('Finished Data Merging')
     except Exception:
         logging.exception('Data Merging Failed')
         traceback.print_exception()
@@ -207,20 +185,21 @@ def run(body):
                              mAdjustment=float(msg["metricAdjustment"]),
                              salesPenThreshold=float(msg["salesPenetrationThreshold"]),
                              optimizedMetrics=msg["optimizedMetrics"], increment=msg["increment"])
-        logging.info('finished preoptimize')
+        logging.info('Finished Preoptimize')
     except Exception:
         logging.exception('Preoptimize Failed')
         traceback.print_exception()
 
+    print('\n\n\n\n\n {} \n\n\n\n\n'.format(msg['spaceBounds']))
 
     if msg['optimizationType'] == 'traditional':
         if msg['jobType'] == 'unconstrained' or msg['jobType'] == 'tiered':
             try:
-                logging.info('going to the optimization')
                 optimRes = optimizeTrad(jobName=msg['meta']['name'], Stores=msg['salesStores'],
                                         Categories=msg['salesCategories'],
                                         spaceBound=msg['spaceBounds'], increment=msg['increment'], dataMunged=preOpt,
                                         salesPen=msg['salesPenetrationThreshold'], tierCounts = msg['tierCounts'])
+                logging.info('Completed the Traditional Optimization')
             except Exception:
                 logging.exception('Traditional Optimization Failed')
                 traceback.print_exception()
@@ -229,38 +208,39 @@ def run(body):
                 msg['salesCategories'] = preOpt['Category'].unique()
                 optimRes = optimizeDD(jobName=msg['meta']['name'], increment=msg["increment"], dataMunged=preOpt,
                                   salesPen=msg['salesPenetrationThreshold'])
+                logging.info('Completed a DrilL Down Optimization')
             except Exception:
                 logging.exception('Drill Down Optimization Failed')
                 traceback.print_exception()
         cfbsArtifact=[None,None]
         scaledAnalyticsID = None
-    else:
+    else: #For Enhanced Jobs
         try:
             cfbsArtifact = curveFittingBS(dataMerged[0], msg['spaceBounds'], msg['increment'],
                                         msg['storeCategoryBounds'],
                                         float(msg["salesPenetrationThreshold"]), msg['jobType'],
                                         msg['optimizationType'])
+            logging.info('Finished Curve Fitting')
         except Exception:
             logging.exception('Curve Fitting Failed')
             traceback.print_exception()
-        logging.info('finished curve fitting')
         try:
             cfbsOptimal = optimizeSingleStore(cfbsArtifact[0].set_index(['Store', 'Category']), msg['increment'],
                                             msg['optimizedMetrics'])
+            logging.info('Finished Single Store')
         except Exception:
             logging.exception('Single Store Optimization Failed')
             traceback.print_exception()
-        logging.info('finished single store')
 
         try:
             optimRes = optimizeEnh(methodology=msg['optimizationType'], jobType=msg['jobType'], jobName=msg['meta']['name'],
                                  Stores=msg['salesStores'], Categories=msg['salesCategories'],
                                  increment=msg['increment'], weights=msg['optimizedMetrics'], cfbsOutput=cfbsOptimal[1],
                                  preOpt=preOpt, salesPen=msg['salesPenetrationThreshold'], tierCounts=msg['tierCounts'])
+            logging.info('Completed the Enhanced Optimization')
         except Exception:
             logging.exception('Enhanced Optimization Failed')
             traceback.print_exception()
-    logging.info('we just did the optimization')
 
     if msg['jobType'] == 'tiered' or msg['jobType'] == 'unconstrained':
         statusID = optimRes[0]
@@ -303,6 +283,7 @@ def run(body):
 
                 return
                 # traceback.logging.info_exc(e)
+            masterID = str(create_output_artifact_from_dataframe(longOutput[1]))
 
             end_time = dt.datetime.utcnow()
             logging.info('created the end time')
@@ -319,7 +300,8 @@ def run(body):
                             'long_table':longID,
                             'wide_table':wideID,
                             'summary_report': summaryID,
-                            'analytic_data': analyticsID
+                            'analytic_data': analyticsID,
+                            'master_data': masterID
                         },
                         "outputErrors": {
                             'invalidValues': invalids[0],
@@ -331,7 +313,6 @@ def run(body):
                     }
                 }
             )
-                # traceback.logging.info_exc(e)
         else:
             end_time = dt.datetime.utcnow()
             logging.info('created the end time')
@@ -393,4 +374,4 @@ def run(body):
 
 if __name__ == '__main__':
     # LOGGER.debug('hello from {}'.format(__name__))
-    logger.debug('hello from {}'.format(__name__))
+    logging.debug('hello from {}'.format(__name__))
