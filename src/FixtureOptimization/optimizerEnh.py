@@ -52,6 +52,25 @@ def optimizeEnh(methodology,jobType,jobName,Stores,Categories,increment,weights,
             cVal = round(cVal, 3) - np.mod(round(cVal, 3), increment)
         return cVal
 
+    def searchParam(search, jobName):
+        if search in jobName:
+            begin = jobName.find(search)
+            length = 0
+            for char in jobName[(len(search) + begin)::]:
+                try:
+                    int(char)
+                    length = length + 1
+                except:
+                    break
+            try:
+                searchParam = int(jobName[(len(search) + begin):(len(search) + begin + length)]) / 100
+                logging.info('{} has been changed to {}'.format(search,searchParam))
+                return searchParam
+            except:
+                return True
+        else:
+            return None
+
     if jobType == 'tiered' or 'unconstrained':
         def createLevels(mergedPreOptCF, increment):
             """
@@ -148,6 +167,17 @@ def optimizeEnh(methodology,jobType,jobName,Stores,Categories,increment,weights,
             return error
 
         # Adjust location balance back tolerance limit so that it's at least 2 increments
+        def adjustForOneIncr(row, bound, increment):
+            """
+            Returns a vector with the maximum percent of the original total store space between two increment sizes and 10 percent of the store space
+            :param row: Individual row of Total Space Available in Store
+            :param bound: Percent Bounding for Balance Back
+            :param increment: Increment Size Determined by the User in the UI
+            :return: Returns an adjusted vector of percentages by which individual store space should be held
+            """
+            return max(bound, increment / row)
+
+        # Adjust location balance back tolerance limit so that it's at least 2 increments
         def adjustForTwoIncr(row,bound,increment):
             """
             Returns a vector with the maximum percent of the original total store space between two increment sizes and 10 percent of the store space
@@ -187,7 +217,11 @@ def optimizeEnh(methodology,jobType,jobName,Stores,Categories,increment,weights,
         #     print("Divide by 0. \n There is a store that doesn't have any space assigned whatsoever.")
         #     return False
 
-        locBalBackBoundAdj = locSpaceToFill.apply(lambda row:adjustForTwoIncr(row,locBalBackBound,increment))
+        incrAdj = searchParam('ADJ', jobName)
+        if incrAdj == None:
+            locBalBackBoundAdj = locSpaceToFill.apply(lambda row: adjustForOneIncr(row, bI, increment))
+        else:
+            locBalBackBoundAdj = locSpaceToFill.apply(lambda row: adjustForTwoIncr(row, bI, increment))
 
         print('we have local balance back')
         # EXPLORATORY ONLY: ELASTIC BALANCE BACK

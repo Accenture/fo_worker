@@ -27,7 +27,6 @@ def optimizeDD(jobName, increment, dataMunged, salesPen,mipGap = None):
     Synopsis:
         I just wrapped the script from Ken in a callable - DCE
     """
-    print('Data Munged Columns {}'.format(dataMunged.head()))
     def roundValue(cVal, increment):
         if np.mod(round(cVal, 3), increment) > increment / 2:
             cVal = round(cVal, 3) + (increment - (np.mod(round(cVal, 3), increment)))
@@ -60,12 +59,8 @@ def optimizeDD(jobName, increment, dataMunged, salesPen,mipGap = None):
     start_time = dt.datetime.today().hour * 60 * 60 + dt.datetime.today().minute * 60 + dt.datetime.today().second
     Tiers = dataMunged['Tier'].unique().tolist()
     Climates = dataMunged['Climate'].unique().tolist()
-    # dataMunged.set_index(['Climate','Tier'],inplace=True)
-    # dataMunged['ddKey'] = dataMunged['Climate'] + "|" + dataMunged['Tier']
     dataMunged['Drill Down Group'] = dataMunged[['Climate', 'Tier']].apply(lambda x: '|'.join(x), axis=1)
     Categories = dataMunged['Category'].unique().tolist()
-    # Concat/ Merge Approach
-    # masterData = pd.DataFrame(list(product(dataMunged['Store'].unique().tolist(), Categories)), columns=['Store', 'Category'])
 
     # Append Approach
     masterData = pd.DataFrame(columns=dataMunged.columns)
@@ -77,20 +72,15 @@ def optimizeDD(jobName, increment, dataMunged, salesPen,mipGap = None):
     masterSummary['Optimization Run Time'] = pd.Series(dtype=type(dt.datetime.utcnow()-dt.datetime.utcnow()),index=masterSummary.index)
     masterSummary.set_index(['Climate','Tier'],inplace=True)
     for (loop,key) in enumerate(dataMunged['Drill Down Group'].unique()):
-        # logging.info("We are in loop number {}".format(loop+1))
         optimization_start_time = dt.datetime.utcnow()
         climate = key.split('|',1)[0]
         tier = key.rsplit('|', 1)[1]
-        # logging.info("Loop for {} and Climate {}".format(tier,climate))
         loopData = dataMunged[(dataMunged.Climate == climate) & (dataMunged.Tier == tier)]
-        # loopData = dataMunged.filter(like= str(climate) and str(tier) ,axis=0)
         salesPenetration = loopData.pivot(index='Store', columns='Category', values='Sales Penetration')
         opt_amt= loopData.pivot(index='Store', columns='Category', values='Optimal Space')
         Stores = loopData['Store'].unique().tolist()
         Categories = dataMunged['Category'].unique().tolist()
         logging.info("\n\n We are in loop number {} of {} \n Loop for {} and Climate {} \n We have {} store(s) for the {} optimization \n\n".format(loop + 1,len(dataMunged['Drill Down Group'].unique()),tier,climate,len(Stores),key))
-        # logging.info('We have {} many stores for the {} optimization'.format(len(Stores),key))
-
 
         b = .05
         bI = searchParam('BBI', jobName)
