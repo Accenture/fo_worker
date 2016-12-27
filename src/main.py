@@ -22,14 +22,14 @@ def main(num_processes):
     :param num_processes:
     :return:
     """
-    pool = []
+    process_pool = []
     try:
         for _ in range(num_processes):
             p = Process(target=start_worker)
-            pool.append(p)
+            process_pool.append(p)
             p.start()
     except KeyboardInterrupt:
-        for p in pool:
+        for p in process_pool:
             p.terminate()
             p.join()
 
