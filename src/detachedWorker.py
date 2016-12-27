@@ -18,7 +18,6 @@ from FixtureOptimization.optimizerTrad import optimizeTrad
 from FixtureOptimization.optimizerEnh import optimizeEnh
 from FixtureOptimization.outputFunctions import createLong, createWide, createDrillDownSummary, createTieredSummary, outputValidation
 from FixtureOptimization.optimizerDD import optimizeDD
-from FixtureOptimization.optimizerDDEnh import optimizeEnhDD
 from pika import BlockingConnection, ConnectionParameters
 from FixtureOptimization.SingleStoreOptimization import optimizeSingleStore
 import logging
