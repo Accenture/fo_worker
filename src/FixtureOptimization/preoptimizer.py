@@ -12,8 +12,6 @@ import traceback
 # Need to change functions to allow for TFC as result of Future Space/ Brand Entry
 # Need to create a max & min for category level informaiton to be passed as bounds in a long table format // Matching format to Bounding Info that is added to job context
 
-# import os
-
 def preoptimize(jobType,optimizationType,dataMunged, salesPenThreshold, mAdjustment, optimizedMetrics, increment):
     """
     Conducts the preoptimization based upon legacy R2 code to determine optimal space for traditional optimizations

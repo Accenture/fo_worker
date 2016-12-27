@@ -40,8 +40,6 @@ def createLong(jobType, optimizationType, lInput):
     # Merge the optimize output with the curve-fitting output (which was already merged with the preoptimize output)
     if optimizationType == 'enhanced':
         logging.info('initial merge')
-        # lOutput['Penetration']= ""
-        # lOutput['Optimal Space']= ""
         logging.info('Set Optimal & Penetration to 0')
 
         variables = ["Sales", "Profit", "Units"]
@@ -136,15 +134,11 @@ def createWide(long, jobType, optimizationType):
 
     logging.info('renamed the columns')
     # Pivot to convert long table to wide, including Time in index for drill downs
-    # if jobType == "tiered" or 'unconstrained':
+    
     wide = pd.pivot_table(adjusted_long, values=["result", "current", "optimal", "penetration"],
                           index=["Store", "Climate", "VSG"], columns="Category", aggfunc=np.sum, margins=True,
                           margins_name="Total")
-    # else:  # since type == Drill Down
-    #     wide = pd.pivot_table(adjusted_long, values=["result", "current", "optimal", "penetration"],
-    #                           index=["Store", "Time", "Climate", "VSG"], columns="Category", aggfunc=np.sum,
-    #                           margins=True, margins_name="Total")
-
+    
     logging.info('transpose the data')
     # Generate concatenated column titles by swapping levels and merging category name with metric name
     wide = wide.swaplevel(axis=1)
@@ -161,27 +155,11 @@ def createWide(long, jobType, optimizationType):
     tot_col = {"C": num_categories, "O": 2 * num_categories + 1, "R": 3 * num_categories + 2}
 
     logging.info('reorder columns prep')
-    # Convert 0's back to blanks
-    # if optimizationType == "enhanced":
-        # for i in range(tot_col["C"] + 1, tot_col["O"] + 1):
-        #     wide[[i]] = ""
-        # for i in range(tot_col["O"] + 1,tot_col["R"] + 1):
-        #     wide[[i]] = ""
-        # for i in range(tot_col["R"] + 1, len(cols)): # Actually hides Penetration
-        #     wide[[i]] = ""
     if jobType == 'drilldown':
         # Hide Current Space
         for i in range(tot_col["C"] + 1, tot_col["O"] + 1):
             wide[[i]] = ""
-        # for i in range(tot_col["O"] + 1,tot_col["R"] + 1):
-        #     wide[[i]] = ""
 
-
-    # Reorder columns and drop total penetration
-    # cols = cols[:tot_col["C"]] + cols[tot_col["C"] + 1:tot_col["O"]] + cols[tot_col["O"] + 1:tot_col[
-    #                                                                                                      "R"]] + [
-    #            cols[tot_col["C"]]] + cols[tot_col["R"]:-1]
-    #
     cols = cols[:tot_col["C"]] + cols[tot_col["C"] + 1:tot_col["O"]] + cols[tot_col["O"] + 1:tot_col[
                                                                                                          "R"]] + [
                cols[tot_col["C"]]] + [cols[tot_col["O"]]] + cols[tot_col["R"]:-1]
@@ -205,7 +183,7 @@ def createTieredSummary(finalLong) :
     tieredSummaryPivot.rename(columns = {'All':'Total Store Count'}, inplace = True)
     #delete the last row of the pivot, as it is a sum of all the values in the column and has no business value in this context
     tieredSummaryPivot = tieredSummaryPivot.ix[:-1]
-    # tieredSummaryPivot.to_excel('outputs.xlsx',sheet_name='Summary_Table')
+    
     tieredSummaryPivot.reset_index(inplace=True)
     return tieredSummaryPivot
 
@@ -275,15 +253,6 @@ def outputValidation(df, jobType, tierCounts, increment):
         spValidation = 1 if sum(spVector) > 0 else 0
         bbValidation = 1 if sum(bbVector) > 0 else 0
 
-        # if df['Result Space'] > min(df['Future Space'] * 1.1, df['Future Space'] + increment * 2) and df[
-
-        #     'Result Space'] < max(df['Future Space'] * 0, 9, df['Future Space'] - increment * 2):
-        #     bbVector=0
-        # else:
-        #     bbVector=1
-
-
         return (nullTest, tcValidation, exitValidation, spValidation, bbValidation)
     except Exception:
-        logging.exception('Not entirely sure what is happening')
-        # traceback.print_exc()
+        logging.exception('Not entirely sure what is happening')        

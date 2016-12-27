@@ -23,7 +23,6 @@ def dataMerge(jobName,jobType,optimizationType,transactions,space,brandExit=None
         Categories = transactions[[*np.arange(len(transactions.columns))[1::9]]].loc[0].reset_index(
             drop=True).values.astype(str)
         space=space.apply(lambda x: pd.to_numeric(x, errors='ignore'))
-        # space['Store'] = list(map(int, space['Store'].values.tolist()))
         Stores = space['Store']
         def transactionMerge(spaceData,transactions,Stores,Categories,jobType):
             Metrics = transactions.loc[1, 1:9].reset_index(drop=True)

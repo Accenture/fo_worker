@@ -132,7 +132,6 @@ def optimizeDD(jobName, increment, dataMunged, salesPen,mipGap = None):
         st = LpVariable.dicts('ST', (Stores, Categories, Levels), 0, upBound=1, cat='Binary')
         logging.info('tiers created')
 
-        # exec("%d_%s" % (str(jobName+"_"+key), LpProblem(jobName, LpMinimize)))  # Define Optimization Problem/
         NewOptim = LpProblem(jobName, LpMinimize)  # Define Optimization Problem/
 
         logging.info('Brand Exit Done')
@@ -163,22 +162,6 @@ def optimizeDD(jobName, increment, dataMunged, salesPen,mipGap = None):
             NewOptim += lpSum(
                 [(st[Store][Category][Level]) * Level for (j, Category) in enumerate(Categories) for (k, Level) in
                  enumerate(Levels)]) <= locSpaceToFill[Store] * (1 + locBalBackBoundAdj[Store])  # , "Location Balance Back Upper Limit - STR " + str(Store)
-        # for (i, Store) in enumerate(Stores):
-        #     # Conditional for Balance Back regarding if in Fixtures || 2 Increment Min & Max instead
-        #     if TFC[Store] * bI > increment * 2:
-        #         NewOptim += lpSum(
-        #             [(st[Store][Category][Level]) * Level for (j, Category) in enumerate(Categories) for (k, Level) in
-        #              enumerate(Levels)]) <= TFC[Store] * (1 + bI)  # , "Upper Bound for Fixtures per Store"
-        #         NewOptim += lpSum(
-        #             [(st[Store][Category][Level]) * Level for (j, Category) in enumerate(Categories) for (k, Level) in
-        #              enumerate(Levels)]) >= TFC[Store] * (1 - bI)  # , "Lower Bound for Fixtures per Store"
-        #     else:
-        #         NewOptim += lpSum(
-        #             [(st[Store][Category][Level]) * Level for (j, Category) in enumerate(Categories) for (k, Level) in
-        #              enumerate(Levels)]) <= TFC[Store] + (increment * 2)  # , "Upper Bound for Fixtures per Store"
-        #         NewOptim += lpSum(
-        #             [(st[Store][Category][Level]) * Level for (j, Category) in enumerate(Categories) for (k, Level) in
-        #              enumerate(Levels)]) >= TFC[Store] - (increment * 2)  # , "Lower Bound for Fixtures per Store"
         #     # One Space per Store Category
             # Makes sure that the number of fixtures, by store, does not go above or below some percentage of the total number of fixtures within the store
             for (j, Category) in enumerate(Categories):
@@ -209,9 +192,6 @@ def optimizeDD(jobName, increment, dataMunged, salesPen,mipGap = None):
         logging.info("The problem has been formulated")
 
         # Solving the Problem
-        # NewOptim.writeLP("Fixture_Optimization.lp")
-        # NewOptim.writeMPS(str(jobName)+".mps")
-        # NewOptim.solve(pulp.GUROBI(mip=True, msg=True, MIPgap=.01))
         optGap = searchParam('MIP', jobName)
 
         if optGap == None:
@@ -222,66 +202,10 @@ def optimizeDD(jobName, increment, dataMunged, salesPen,mipGap = None):
         except Exception as e:
             logging.info(e)
 
-        # #Debugging
+        #Debugging
         logging.info("#####################################################################")
         logging.info(LpStatus[NewOptim.status])
         logging.info("#####################################################################")
-        # # Debugging
-        # NegativeCount = 0
-        # LowCount = 0
-        # TrueCount = 0
-        # OneCount = 0
-        # for (i, Store) in enumerate(Stores):
-        #     for (j, Category) in enumerate(Categories):
-        #         for (k, Level) in enumerate(Levels):
-        #             if value(st[Store][Category][Level]) == 1:
-        #                 # logging.info(st[Store][Category][Level]) #These values should only be a one or a zero
-        #                 OneCount += 1
-        #             elif value(st[Store][Category][Level]) > 0:
-        #                 # logging.info(st[Store][Category][Level],"Value is: ",value(st[Store][Category][Level])) #These values should only be a one or a zero
-        #                 TrueCount += 1
-        #             elif value(st[Store][Category][Level]) == 0:
-        #                 # logging.info(value(st[Store][Category][Level])) #These values should only be a one or a zero
-        #                 LowCount += 1
-        #             elif value(st[Store][Category][Level]) < 0:
-        #                 # logging.info(st[Store][Category][Level],"Value is: ",value(st[Store][Category][Level])) #These values should only be a one or a zero
-        #                 NegativeCount += 1
-        # if tierCounts is not None:
-        #     ctNegativeCount = 0
-        #     ctLowCount = 0
-        #     ctTrueCount = 0
-        #     ctOneCount = 0
-        #
-        #     for (j, Category) in enumerate(Categories):
-        #         for (k, Level) in enumerate(Levels):
-        #             if value(ct[Category][Level]) == 1:
-        #                 # logging.info(value(ct[Store][Category][Level])) #These values should only be a one or a zero
-        #                 ctOneCount += 1
-        #             elif value(ct[Category][Level]) > 0:
-        #                 # logging.info(ct[Store][Category][Level],"Value is: ",value(st[Store][Category][Level])) #These values should only be a one or a zero
-        #                 ctTrueCount += 1
-        #             elif value(ct[Category][Level]) == 0:
-        #                 # logging.info(value(ct[Category][Level])) #These values should only be a one or a zero
-        #                 ctLowCount += 1
-        #             elif value(ct[Category][Level]) < 0:
-        #                 # logging.info(ct[Category][Level],"Value is: ",value(st[Store][Category][Level])) #These values should only be a one or a zero
-        #                 ctNegativeCount += 1
-        #
-        # logging.info("Status:", LpStatus[NewOptim.status])
-        # logging.info("---------------------------------------------------")
-        # logging.info("For Selected Tiers")
-        # logging.info("Number of Negatives Count is: ", NegativeCount)
-        # logging.info("Number of Zeroes Count is: ", LowCount)
-        # logging.info("Number Above 0 and Below 1 Count is: ", TrueCount)
-        # logging.info("Number of Selected Tiers: ", OneCount)
-        # logging.info("---------------------------------------------------")
-        # if tierCounts is not None:
-        #     logging.info("For Created Tiers")
-        #     logging.info("Number of Negatives Count is: ", ctNegativeCount)
-        #     logging.info("Number of Zeroes Count is: ", ctLowCount)
-        #     logging.info("Number Above 0 and Below 1 Count is: ", ctTrueCount)
-        #     logging.info("Number of Created Tiers: ", ctOneCount)
-        #     logging.info("Creating Outputs")
         optimization_end_time = dt.datetime.utcnow()
         if LpStatus[NewOptim.status] == 'Optimal':
             logging.info('Found an optimal solution')
@@ -298,12 +222,6 @@ def optimizeDD(jobName, increment, dataMunged, salesPen,mipGap = None):
             # Either Append this
             loopData = pd.merge(loopData, Results, on=['Store', 'Category'])
             masterData = masterData.append(loopData, ignore_index=True)
-
-            #Or Concatenate this
-            # dataMunged = pd.concat([dataMunged,Results],axis=1)
-            # masterData= dataMunged.copy()
-
-            # masterData = pd.merge(loopData,Results,on=['Store','Category'])
             logging.info('the columns of masterData are the following \n {}'.format(masterData.columns))
             logging.info('there are {} unique values for result space in masterData'.format(len(masterData['Result Space'].unique())))
             logging.info('masterData is now {} rows'.format(len(masterData)))
@@ -315,7 +233,3 @@ def optimizeDD(jobName, increment, dataMunged, salesPen,mipGap = None):
             masterSummary['Status'].loc[climate, tier] = LpStatus[NewOptim.status]
             masterSummary['Objective Value'].loc[climate, tier] = 0
     return (masterData,masterSummary) # (longOutput)#,wideOutput)
-
-# if __name__ == '__main__':
-#     df = pd.DataFrame(np.random.randn(10, 5), columns=['a', 'b', 'c', 'd', 'e'])
-#     create_output_artifact_from_dataframe(df, filename='hello.csv')

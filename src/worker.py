@@ -74,8 +74,8 @@ def main():
             else:
                 raise ProcessError
 
-    def logging_db(db,id):
-        db.jobs.update_one(
+    def logging_db(current_db,id):
+        current_db.jobs.update_one(
             {'_id': ObjectId(id)},
             {
                 "$set": {
@@ -88,8 +88,8 @@ def main():
         )
         print('Updated job with logging info.')
 
-    def reconcile_db(db, id):
-        db.jobs.update_one(
+    def reconcile_db(current_db, id):
+        current_db.jobs.update_one(
             {'_id': ObjectId(id)},
             {
                 "$set": {
@@ -103,9 +103,9 @@ def main():
         )
         print('RECONCILE DB')
 
-    def updateEnd(db, id):
+    def updateEnd(current_db, id):
         end_time = dt.datetime.utcnow()
-        db.jobs.update_one(
+        current_db.jobs.update_one(
             {'_id': ObjectId(id)},
             {
                 "$set": {
@@ -118,8 +118,8 @@ def main():
             }
         )
         print('update failed time')
-    def divByZero(db, id):
-        db.jobs.update_one(
+    def divByZero(current_db, id):
+        current_db.jobs.update_one(
             {'_id': ObjectId(id)},
             {
                 "$set": {
@@ -139,16 +139,12 @@ def main():
                  routing_key=RMQ_QUEUE_SINK,
                  body=json.dumps(res))
 
-    # logging.basicConfig(level=logging.INFO,
-    #                     format=LOG_FORMAT,
-    #                     filename=LOG_FILE)
-    #
 
     logging.info('main thread pid: %s', getpid())
 
-    db = MongoClient(host=MONGO_HOST, port=MONGO_PORT)[MONGO_NAME]
+    current_db = MongoClient(host=MONGO_HOST, port=MONGO_PORT)[MONGO_NAME]
     if strtobool(IS_AUTH_MONGO):
-        db.authenticate(MONGO_USERNAME, MONGO_PASSWORD, mechanism='SCRAM-SHA-1')
+        current_db.authenticate(MONGO_USERNAME, MONGO_PASSWORD, mechanism='SCRAM-SHA-1')
 
     credentials = PlainCredentials(env.RMQ_USERNAME, env.RMQ_PASSWORD)
     mq_conn = BlockingConnection(ConnectionParameters(host=RMQ_HOST,
@@ -168,7 +164,7 @@ def main():
                 process_job(run, body)
                 _id = json.loads(body.decode('utf-8'))['_id']
                 userId = json.loads(body.decode('utf-8'))['userId']
-                logging_db(db, _id)
+                logging_db(current_db, _id)
                 send_notification(ch, userId, 'done')
             except (ZeroDivisionError):
                 logging.error('Division by Zero Error')
@@ -176,7 +172,7 @@ def main():
                                 requeue=False)
                 _id = json.loads(body.decode('utf-8'))['_id']
                 userId = json.loads(body.decode('utf-8'))['userId']
-                divByZero(db, _id)
+                divByZero(current_db, _id)
                 send_notification(ch, userId, 'failed')
             except (TimeoutError, ProcessError):
                 print("Job has failed")
@@ -185,8 +181,8 @@ def main():
                                 requeue=False)
                 _id = json.loads(body.decode('utf-8'))['_id']
                 userId = json.loads(body.decode('utf-8'))['userId']
-                updateEnd(db, _id)
-                reconcile_db(db, _id)
+                updateEnd(current_db, _id)
+                reconcile_db(current_db, _id)
                 send_notification(ch, userId, 'failed')
             except Exception as ex:
                 print('Solver failure: ', ex)
@@ -199,7 +195,7 @@ def main():
         ch.close()
 
     mq_conn.close()
-    db_conn.close()
+    current_db.close()
 
 if __name__ == '__main__':
     main()

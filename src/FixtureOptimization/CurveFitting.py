@@ -8,15 +8,12 @@ import gridfs
 import config
 
 
-# db = pm.MongoClient(config.MONGO_CON)['app']
-# fs = gridfs.GridFS(db)
 
 def curveFittingBS(big_master_data,bound_input,increment_size,PCT_Space_Change_Limit,salesPen,jobType,optimType):
 
     pandas2ri.activate()
     bound_input=pd.DataFrame.from_dict(bound_input).T.reset_index()
     bound_input.columns=['Categories', 'Space Lower Limit', 'Space Upper Limit', 'PCT_Space_Lower_Limit', 'PCT_Space_Upper_Limit']
-    # bound_inpunput.columns=['Category','Space Lower Limit','Space Upper Limit','PCT_Space_Lower_Limit','PCT_Space_Upper_Limit']
     gdata = importr("gdata")
     pracma = importr("pracma")
     nloptr = importr("nloptr")

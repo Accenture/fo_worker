@@ -15,13 +15,6 @@ import datetime as dt
 # Run tiered optimization algorithm
 def optimizeProto(methodology, jobName, Stores, Categories, tierCounts, increment, weights, cfbsOutput, preOpt, salesPen):
     print('in the new optimization')
-    # Helper function for optimize function, to create eligible space levels
-    # print(cfbsOutput.columns)
-    # print(preOpt.columns)
-    # preOpt.set_index(['Store','Category'],inplace=True)
-    # print(preOpt.index)
-    # mergedPreOptCF = pd.merge(cfbsOutput, preOpt[['Penetration','Exit Flag','Sales Penetration']])
-
 
     cfbsOutput.reset_index(inplace=True)
     cfbsOutput.rename(columns={'level_0': 'Store', 'level_1': 'Category'}, inplace=True)
@@ -45,7 +38,7 @@ def optimizeProto(methodology, jobName, Stores, Categories, tierCounts, incremen
         if 0.0 not in Levels:
             Levels.append(np.abs(0.0))
 
-        # print(Levels)  # for unit testing
+        
 
         return Levels
 
@@ -157,7 +150,7 @@ def optimizeProto(methodology, jobName, Stores, Categories, tierCounts, incremen
 
     print('completed all of the function definitions')
     # Identify the total amount of space to fill in the optimization for each location and for all locations
-    # locSpaceToFill = pd.Series(mergedPreOptCF.groupby('Store')['Space_to_Fill'].sum())
+    
     locSpaceToFill = mergedPreOptCF.groupby(level=0)['Space_to_Fill'].agg(np.mean)
     aggSpaceToFill = locSpaceToFill.sum()
 
@@ -166,30 +159,15 @@ def optimizeProto(methodology, jobName, Stores, Categories, tierCounts, incremen
     locBalBackBound = 0.10  # 10%
 
     print('now have balance back bounds')
-    # EXPLORATORY ONLY: ELASTIC BALANCE BACK
-    # Hard-coded tolerance limits for balance back constraints without penalty
-    # The free bounds are the % difference from space to fill that is allowed without penalty
-    # The penalty is incurred if the filled space goes beyond the free bound % difference from space to fill
-    # The tighter the bounds and/or higher the penalties, the slower the optimization run time
-    # The penalty incurred should be different for Traditional vs Enhanced as the scale of the objective function differs
-    # aggBalBackFreeBound = 0.01 #exploratory, value would have to be determined through exploratory analysis
-    # aggBalBackPenalty = increment*10 #exploratory, value would have to be determined through exploratory analysis
-    # locBalBackFreeBound = 0.05 #exploratory, value would have to be determined through exploratory analysis
-    # locBalBackPenalty = increment #exploratory, value would have to be determined through exploratory analysis
 
-    # try:
-    #     locBalBackBoundAdj = locSpaceToFill.apply(lambda row:adjustForTwoIncr(row,locBalBackBound,increment))
-    # except:
-    #     print("Divide by 0. \n There is a store that doesn't have any space assigned whatsoever.")
-    #     return False
 
     locBalBackBoundAdj = locSpaceToFill.apply(lambda row: adjustForTwoIncr(row, locBalBackBound, increment))
-    # locBalBackBoundAdj.to_csv(str(jobName)+'balanceBackVector.csv',sep=",")
+   
 
 
     print('we have local balance back')
     # EXPLORATORY ONLY: ELASTIC BALANCE BACK
-    # locBalBackFreeBoundAdj = locSpaceToFill.apply(lambda row:adjustForTwoIncr(row,locBalBackFreeBound,increment))
+    
 
     # Set up created tier decision variable - has a value of 1 if that space level for that category will be a tier, else 0
     ct = LpVariable.dicts('CT', (Categories, range(int(kMax))), 0, upBound=1, cat='Binary')
@@ -197,22 +175,6 @@ def optimizeProto(methodology, jobName, Stores, Categories, tierCounts, incremen
     # Set up selected tier decision variable - has a value of 1 if a store will be assigned to the tier at that space level for that category, else 0
     st = LpVariable.dicts('ST', (Stores, Categories, range(int(kMax))), 0, upBound=1, cat='Binary')
     print('we have selected tiers')
-    # EXPLORATORY ONLY: MINIMUM STORES PER TIER
-    # m = 50 #minimum stores per tier
-
-    # EXPLORATORY ONLY: SET INITIAL VALUES
-    # Could potentially reduce run time
-    # This feature is not implemented for CBC or Gurobi solvers but is believed to be implemented for CPLEX (not tested)
-    # Could also set initial values for created tiers and/or use a heuristic to set for both in such a way that they align
-    # Sets initial value for the selected tier decision variables to single store optimal (only works for Traditional)
-    # Other ways to set would include the historical space or the average of the store-category bounds
-    # for (i, Store) in enumerate(Stores):
-    #     for (j, Category) in enumerate(Categories):
-    #         for (k, Level) in enumerate(Levels):
-    #             if opt_amt[Category].iloc[i] == k:
-    #                 st[Store][Category][Level].setInitialValue(1)
-    #             else:
-    #                 st[Store][Category][Level].setInitialValue(0)
 
     # Initialize the optimization problem
     NewOptim = LpProblem(jobName, LpMinimize)
@@ -245,13 +207,6 @@ def optimizeProto(methodology, jobName, Stores, Categories, tierCounts, incremen
              range(int(kMax))]) <= locSpaceToFill[Store] * (
                     1 + locBalBackBoundAdj[Store]), "Location Balance Back Upper Limit: STR " + str(Store)
 
-        # EXPLORATORY ONLY: ELASTIC BALANCE BACK
-        # Penalize balance back by introducing an elastic subproblem constraint
-        # Increases optimization run time
-        # makeElasticSubProblem only works on minimize problems, so Enhanced must be written as minimize negative SPU
-        # eLocSpace = lpSum([(st[Store][Category][Level]) * Level for (j, Category) in enumerate(Categories) for (k, Level) in enumerate(Levels)])
-        # cLocBalBackPenalty = LpConstraint(e=eLocSpace, sense=LpConstraintEQ, name="Location Balance Back Penalty: Store " + str(Store),rhs=locSpaceToFill[Store])
-        # NewOptim.extend(cLocBalBackPenalty.makeElasticSubProblem(penalty=locBalBackPenalty,proportionFreeBound=locBalBackFreeBoundAdj[Store]))
 
         for (j, Category) in enumerate(Categories):
             # print('we got through the first part')
@@ -264,9 +219,9 @@ def optimizeProto(methodology, jobName, Stores, Categories, tierCounts, incremen
                 NewOptim += st[Store][Category][0] == 1
 
     print('finished first block of constraints')
-    # totalTiers=0
+    
     for (j, Category) in enumerate(Categories):
-        # totalTiers=totalTiers+tierCounts[Category][1]
+        
         # The number of created tiers must be within the tier count limits for each product.
         try:
             NewOptim += lpSum([ct[Category][k] for k in range(int(kMax))]) >= tierCounts[Category][
@@ -286,14 +241,8 @@ def optimizeProto(methodology, jobName, Stores, Categories, tierCounts, incremen
                 print(k)
             print('end of second')
 
-            # EXPLORATORY ONLY: MINIMUM STORES PER TIER
-            # Increases optimization run time
-            # if Level > 0:
-            #        NewOptim += lpSum([st[Store][Category][Level] for (i, Store) in enumerate(Stores)]) >= m * ct[Category][Level], "Minimum Stores per Tier: CAT " + Category + ", LEV: " + str(Level)
+            
     print('finished second block of constraints')
-
-    # NewOptim += lpSum([ct[Category][Level] for (j, Category) in enumerate(Categories) for (k, Level) in enumerate(Levels)]) <= totalTiers
-    # print('finished total tiers constraint')
 
     # The total space allocated to products across all locations must be within the aggregate balance back tolerance limit.
     NewOptim += lpSum([st[Store][Category][k] * indexDict[Category,Store,k] for (i, Store) in enumerate(Stores) for (j, Category) in
@@ -303,35 +252,9 @@ def optimizeProto(methodology, jobName, Stores, Categories, tierCounts, incremen
                        enumerate(Categories) for k in range(int(kMax))]) <= aggSpaceToFill * (
                 1 + aggBalBackBound), "Aggregate Balance Back Upper Limit"
 
-    # EXPLORATORY ONLY: ELASTIC BALANCE BACK
-    # Penalize balance back by introducing an elastic subproblem constraint
-    # Increases optimization run time
-    # makeElasticSubProblem only works on minimize problems, so Enhanced must be written as minimize negative SPU
-    # eAggSpace = lpSum([st[Store][Category][Level] * Level for (i, Store) in enumerate(Stores) for (j, Category) in enumerate(Categories) for (k, Level) in enumerate(Levels)])
-    # cAggBalBackPenalty = LpConstraint(e=eAggSpace,sense=LpConstraintEQ,name="Aggregate Balance Back Penalty",rhs = aggSpaceToFill)
-    # NewOptim.extend(cAggBalBackPenalty.makeElasticSubProblem(penalty= aggBalBackPenalty,proportionFreeBound = aggBalBackFreeBound))
-
-    # Time stamp for optimization solve time
-    # start_seconds = dt.datetime.today().hour*60*60+ dt.datetime.today().minute*60 + dt.datetime.today().second
     print("to the solver we go")
-    # NewOptim.solve()
 
-
-    # mergedPreOptCF.to_csv(str(jobName) + '.csv', index=True, sep=',')
-    # NewOptim.writeMPS(str(jobName)+".mps")
-    # return
-    # Solve the problem using open source solver
     NewOptim.solve(pulp.PULP_CBC_CMD(msg=2, threads=4, maxSeconds=115200))#,fracGap=.5))
-    # solver = "CBC" #for unit testing
-
-    # Solve the problem using Gurobi
-    # NewOptim.solve(pulp.GUROBI())
-    # solver = "Gurobi" #for unit testing
-
-    # Time stamp for optimization solve time
-    # solve_end_seconds = dt.datetime.today().hour*60*60 + dt.datetime.today().minute*60 + dt.datetime.today().second
-    # solve_seconds = solve_end_seconds - start_seconds
-    # print("Time taken to solve optimization was:" + str(solve_seconds)) #for unit testing
 
     # Debugging
     print("#####################################################################")
@@ -346,16 +269,16 @@ def optimizeProto(methodology, jobName, Stores, Categories, tierCounts, incremen
         for (j, Category) in enumerate(Categories):
             for (k, Level) in enumerate(Levels):
                 if value(st[Store][Category][Level]) == 1:
-                    # print(st[Store][Category][Level]) #These values should only be a one or a zero
+                    
                     OneCount += 1
                 elif value(st[Store][Category][Level]) > 0:
-                    # print(st[Store][Category][Level],"Value is: ",value(st[Store][Category][Level])) #These values should only be a one or a zero
+                    
                     TrueCount += 1
                 elif value(st[Store][Category][Level]) == 0:
-                    # print(value(st[Store][Category][Level])) #These values should only be a one or a zero
+                    
                     LowCount += 1
                 elif value(st[Store][Category][Level]) < 0:
-                    # print(st[Store][Category][Level],"Value is: ",value(st[Store][Category][Level])) #These values should only be a one or a zero
+                    
                     NegativeCount += 1
 
     ctNegativeCount = 0
@@ -366,16 +289,16 @@ def optimizeProto(methodology, jobName, Stores, Categories, tierCounts, incremen
     for (j, Category) in enumerate(Categories):
         for (k, Level) in enumerate(Levels):
             if value(ct[Category][Level]) == 1:
-                # print(value(ct[Store][Category][Level])) #These values should only be a one or a zero
+                
                 ctOneCount += 1
             elif value(ct[Category][Level]) > 0:
-                # print(ct[Store][Category][Level],"Value is: ",value(st[Store][Category][Level])) #These values should only be a one or a zero
+                
                 ctTrueCount += 1
             elif value(ct[Category][Level]) == 0:
-                # print(value(ct[Category][Level])) #These values should only be a one or a zero
+                
                 ctLowCount += 1
             elif value(ct[Category][Level]) < 0:
-                # print(ct[Category][Level],"Value is: ",value(st[Store][Category][Level])) #These values should only be a one or a zero
+                
                 ctNegativeCount += 1
 
     print("Status:", LpStatus[NewOptim.status])
@@ -402,9 +325,7 @@ def optimizeProto(methodology, jobName, Stores, Categories, tierCounts, incremen
 
     Results.reset_index(inplace=True)
     Results.columns.values[0] = 'Store'
-    # Results.rename(
-    #     columns={'level_0': 'Store'},
-    #     inplace=True)
+
     Results = pd.melt(Results.reset_index(), id_vars=['Store'], var_name='Category', value_name='Result Space')
     Results = Results.apply(lambda x: pd.to_numeric(x, errors='ignore'))
     mergedPreOptCF.reset_index(inplace=True)
