@@ -304,9 +304,8 @@ def optimizeEnh(methodology,jobType,jobName,Stores,Categories,increment,weights,
                 NewOptim += lpSum([st[Store][Category][Level] * Level for (k,Level) in enumerate(Levels)] ) <= mergedPreOptCF["Upper_Limit"].loc[Store,Category],"Space Upper Limit - STR " + str(Store) + ", CAT " + str(Category)
                 if mergedPreOptCF['Sales Penetration'].loc[Store,Category] < salesPen:
                     NewOptim += st[Store][Category][0] == 1
-
         logging.info('finished first block of constraints')
-        # totalTiers=0
+
         try:
             if jobType == 'tiered':
                 logging.info('we have tier counts')
