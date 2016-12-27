@@ -345,7 +345,7 @@ def run(body):
         analyticsID = str(create_output_artifact_from_dataframe(optimRes[1]))
         summaryID = str(create_output_artifact_from_dataframe(createTieredSummary(longOutput[int(0)])))
 
-            # traceback.logging.info_exc(e)
+        # traceback.logging.info_exc(e)
         logging.info('set the invalids')
 
         end_time = dt.datetime.utcnow()
@@ -372,6 +372,5 @@ def run(body):
     logging.info('End of ' + msg['meta']['name'] + ' date of ' + dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
     logging.info("#####################################################################")
 
-if __name__ == '__main__':
-    # LOGGER.debug('hello from {}'.format(__name__))
+if __name__ == '__main__':    
     logging.debug('hello from {}'.format(__name__))
