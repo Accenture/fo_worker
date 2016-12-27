@@ -186,7 +186,14 @@ def optimizeTrad(jobName,Stores,Categories,spaceBound,increment,dataMunged,sales
                 BA[i][j][k] = opt_amt[Category].iloc[i]
                 error[i][j][k] = np.absolute(BA[i][j][k] - Level)
 
-    NewOptim += lpSum([(st[Store][Category][Level] * error[i][j][k]) for (i, Store) in enumerate(Stores) for (j, Category) in enumerate(Categories) for (k, Level) in enumerate(Levels)]), ""
+    NewOptim += lpSum(
+        [(st[Store][Category][Level] * error[i][j][k]) for (i, Store) in enumerate(Stores) for (j, Category) in
+         enumerate(Categories) for (k, Level) in enumerate(Levels)]), "Optimal Space Objective"
+    for (i, Store) in enumerate(Stores):
+        NewOptim += lpSum(
+            [(st[Store][Category][Level]) * Level for (j, Category) in enumerate(Categories) for (k, Level)
+             in
+             enumerate(Levels)]) - locSpaceToFill[Store], "BB Objective " + str(Store)
     logging.info('created objective function')
 ###############################################################################################################
 ############################################### Constraints
@@ -195,9 +202,9 @@ def optimizeTrad(jobName,Stores,Categories,spaceBound,increment,dataMunged,sales
     for (i, Store) in enumerate(Stores):
     #     TODO: Exploratory analysis on impact of balance back on financials for Enhanced
     #     Store-level balance back constraint: the total space allocated to products at each location must be within the individual location balance back tolerance limit
-    #     NewOptim += lpSum(
-    #         [(st[Store][Category][Level]) * Level for (j, Category) in enumerate(Categories) for (k, Level) in
-    #          enumerate(Levels)]) >= locSpaceToFill[Store] * (1 - locBalBackBoundAdj[Store]) , "Location Balance Back Lower Limit-Store" + str(Store)
+        NewOptim += lpSum(
+            [(st[Store][Category][Level]) * Level for (j, Category) in enumerate(Categories) for (k, Level) in
+             enumerate(Levels)]) - locSpaceToFill[Store] * (1 - locBalBackBoundAdj[Store]) , "Location Balance Back Lower Limit-Store" + str(Store)
         NewOptim += lpSum(
             [(st[Store][Category][Level]) * Level for (j, Category) in enumerate(Categories) for (k, Level) in
              enumerate(Levels)]) <= locSpaceToFill[Store] * (1 + locBalBackBoundAdj[Store]) , "Location Balance Back Upper Limit_Store" + str(Store)
