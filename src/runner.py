@@ -11,15 +11,15 @@ import pandas as pd
 import pika
 from bson.objectid import ObjectId
 from pymongo import MongoClient
-from FixtureOptimization.CurveFitting import curveFittingBS
+from FixtureOptimization.curveFitting import curveFittingBS
 from FixtureOptimization.dataMerging import dataMerge
 from FixtureOptimization.preoptimizer import preoptimize
 from FixtureOptimization.optimizerTrad import optimizeTrad
 from FixtureOptimization.optimizerEnh import optimizeEnh
 from FixtureOptimization.outputFunctions import createLong, createWide, createDrillDownSummary, createTieredSummary, outputValidation
-from FixtureOptimization.DivideConquer import optimizeDD
+from FixtureOptimization.divideConquer import optimizeDD
 from pika import BlockingConnection, ConnectionParameters
-from FixtureOptimization.SingleStoreOptimization import optimizeSingleStore
+from FixtureOptimization.singleStoreOptimization import optimizeSingleStore
 import logging
 import traceback
 from distutils.util import strtobool
