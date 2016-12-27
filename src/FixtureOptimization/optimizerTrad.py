@@ -111,11 +111,31 @@ def optimizeTrad(jobName,Stores,Categories,spaceBound,increment,dataMunged,sales
         """
         return max(bound, (1 * increment) / row)
 
+    def adjustForDblIncr(row, bound, increment):
+        """
+        Returns a vector with the maximum percent of the original total store space between two increment sizes and 10 percent of the store space
+        :param row: Individual row of Total Space Available in Store
+        :param bound: Percent Bounding for Balance Back
+        :param increment: Increment Size Determined by the User in the UI
+        :return: Returns an adjusted vector of percentages by which individual store space should be held
+        """
+        return (2 * increment) / row
+
+    def adjustForSglIncr(row, bound, increment):
+        """
+        Returns a vector with the maximum percent of the original total store space between two increment sizes and 10 percent of the store space
+        :param row: Individual row of Total Space Available in Store
+        :param bound: Percent Bounding for Balance Back
+        :param increment: Increment Size Determined by the User in the UI
+        :return: Returns an adjusted vector of percentages by which individual store space should be held
+        """
+        return (1 * increment) / row
+
     incrAdj = searchParam('ADJ', jobName)
     if incrAdj == None:
-        locBalBackBoundAdj = locSpaceToFill.apply(lambda row: adjustForOneIncr(row, bI, increment))
+        locBalBackBoundAdj = locSpaceToFill.apply(lambda row: adjustForSglIncr(row, bI, increment))
     else:
-        locBalBackBoundAdj = locSpaceToFill.apply(lambda row: adjustForTwoIncr(row, bI, increment))
+        locBalBackBoundAdj = locSpaceToFill.apply(lambda row: adjustForDblIncr(row, bI, increment))
 
     # locBalBackBoundAdj = pd.Series(0,index=locSpaceToFill)
     logging.info('created balance back vector')
@@ -175,9 +195,9 @@ def optimizeTrad(jobName,Stores,Categories,spaceBound,increment,dataMunged,sales
     for (i, Store) in enumerate(Stores):
     #     TODO: Exploratory analysis on impact of balance back on financials for Enhanced
     #     Store-level balance back constraint: the total space allocated to products at each location must be within the individual location balance back tolerance limit
-        NewOptim += lpSum(
-            [(st[Store][Category][Level]) * Level for (j, Category) in enumerate(Categories) for (k, Level) in
-             enumerate(Levels)]) >= locSpaceToFill[Store] * (1 - locBalBackBoundAdj[Store]) , "Location Balance Back Lower Limit-Store" + str(Store)
+    #     NewOptim += lpSum(
+    #         [(st[Store][Category][Level]) * Level for (j, Category) in enumerate(Categories) for (k, Level) in
+    #          enumerate(Levels)]) >= locSpaceToFill[Store] * (1 - locBalBackBoundAdj[Store]) , "Location Balance Back Lower Limit-Store" + str(Store)
         NewOptim += lpSum(
             [(st[Store][Category][Level]) * Level for (j, Category) in enumerate(Categories) for (k, Level) in
              enumerate(Levels)]) <= locSpaceToFill[Store] * (1 + locBalBackBoundAdj[Store]) , "Location Balance Back Upper Limit_Store" + str(Store)
