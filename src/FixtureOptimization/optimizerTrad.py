@@ -229,7 +229,7 @@ def optimizeTrad(jobName,Stores,Categories,spaceBound,increment,dataMunged,sales
         for (j,Category) in enumerate(Categories):
             # totalTiers=totalTiers+tierCounts[Category][1]
             NewOptim += lpSum([ct[Category][Level] for (k,Level) in enumerate(Levels)]) >= tierCounts[Category][0], "Tier_Count_Lower_Limit-Category_" + str(Category)
-            NewOptim += lpSum([ct[Category][Level] for (k,Level) in enumerate(Levels)]) <= tierCounts[Category][1], "Tier Count Lower Limit-Category_" + str(Category)
+            NewOptim += lpSum([ct[Category][Level] for (k,Level) in enumerate(Levels)]) <= tierCounts[Category][1], "Tier Count Upper Limit-Category_" + str(Category)
     #Relationship between Selected Tiers & Created Tiers
         #Verify that we still cannot use a constraint if not using a sum - Look to improve efficiency
             for (k,Level) in enumerate(Levels):
