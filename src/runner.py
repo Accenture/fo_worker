@@ -18,7 +18,6 @@ from FixtureOptimization.optimizerTrad import optimizeTrad
 from FixtureOptimization.optimizerEnh import optimizeEnh
 from FixtureOptimization.outputFunctions import createLong, createWide, createDrillDownSummary, createTieredSummary, outputValidation
 from FixtureOptimization.DivideConquer import optimizeDD
-from FixtureOptimization.optimizerDDEnh import optimizeEnhDD
 from pika import BlockingConnection, ConnectionParameters
 from FixtureOptimization.SingleStoreOptimization import optimizeSingleStore
 import logging
@@ -190,8 +189,6 @@ def run(body):
         logging.exception('Preoptimize Failed')
         traceback.print_exception()
 
-    print('\n\n\n\n\n {} \n\n\n\n\n'.format(msg['spaceBounds']))
-
     if msg['optimizationType'] == 'traditional':
         if msg['jobType'] == 'unconstrained' or msg['jobType'] == 'tiered':
             try:
@@ -267,10 +264,10 @@ def run(body):
                 analyticsID=None
                 logging.info('Set analytics ID to None')
 
-            if msg['jobType'] == "tiered" or 'unconstrained':
-                summaryID = str(create_output_artifact_from_dataframe(createTieredSummary(longOutput[int(0)])))
-            else:  # since type == "Drill Down"
-                summaryID = str(create_output_artifact_from_dataframe(createDrillDownSummary(longOutput[int(0)])))
+            # if msg['jobType'] == "tiered" or 'unconstrained':
+            summaryID = str(create_output_artifact_from_dataframe(createTieredSummary(longOutput[int(0)])))
+            # else:  # since type == "Drill Down"
+            #     summaryID = str(create_output_artifact_from_dataframe(createDrillDownSummary(longOutput[int(0)])))
             logging.info('Set the summary IDs')
 
             try:

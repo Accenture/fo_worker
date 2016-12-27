@@ -31,19 +31,19 @@ def optimizeEnh(methodology,jobType,jobName,Stores,Categories,increment,weights,
     :param fractGap: The optimiality gap to be used by the solver for the optimization
     :return: Optimization Status, DataFrame of all information, objective function value
     """
-    print('in the new optimization')
+    logging.info('in the new optimization')
     # Helper function for optimize function, to create eligible space levels
     cfbsOutput.reset_index(inplace=True)
     cfbsOutput.rename(columns={'level_0': 'Store', 'level_1': 'Category'}, inplace=True)
-    # print(cfbsOutput.columns)
-    # print(preOpt.columns)
+    # logging.info(cfbsOutput.columns)
+    # logging.info(preOpt.columns)
     mergedPreOptCF = pd.merge(cfbsOutput, preOpt[['Store', 'Category', 'VSG', 'Store Space', 'Penetration','Exit Flag','Sales Penetration','BOH $', 'Receipts  $','BOH Units', 'Receipts Units', 'Profit %','CC Count w/ BOH',]],on=['Store', 'Category'])
-    print('just finished merge')
+    logging.info('just finished merge')
     mergedPreOptCF = mergedPreOptCF.apply(lambda x: pd.to_numeric(x, errors='ignore'))
-    print('set the index')
+    logging.info('set the index')
     mergedPreOptCF.set_index(['Store','Category'],inplace=True)
 
-    print('merged the files in the new optimization')
+    logging.info('merged the files in the new optimization')
 
     def roundValue(cVal, increment):
         if np.mod(round(cVal, 3), increment) > increment / 2:
@@ -86,7 +86,7 @@ def optimizeEnh(methodology,jobType,jobName,Stores,Categories,increment,weights,
             if 0.0 not in Levels:
                 Levels.append(np.abs(0.0))
 
-            # print(Levels)  # for unit testing
+            # logging.info(Levels)  # for unit testing
 
             return Levels
 
@@ -132,7 +132,7 @@ def optimizeEnh(methodology,jobType,jobName,Stores,Categories,increment,weights,
             pL = "profits"
             uL = "units"
 
-            print('forecasting outputs')
+            logging.info('forecasting outputs')
             # Calculate SPU by level
             for (i, Store) in enumerate(Stores):
                 for (j, Category) in enumerate(Categories):
@@ -143,7 +143,7 @@ def optimizeEnh(methodology,jobType,jobName,Stores,Categories,increment,weights,
                                                                                                                   Level,
                                                                                                                   pU) + (
                         enhMetrics[uL] / 100) * forecast(str_cat, Level, uU))
-            print('finished forecasting')
+            logging.info('finished forecasting')
             return est_neg_spu_by_lev
 
         # Helper function for optimize function, to create objective function of error by level for Traditional optimizations
@@ -188,7 +188,7 @@ def optimizeEnh(methodology,jobType,jobName,Stores,Categories,increment,weights,
             """
             return max(bound,(2*increment)/row)
 
-        print('completed all of the function definitions')
+        logging.info('completed all of the function definitions')
         # Identify the total amount of space to fill in the optimization for each location and for all locations
         # locSpaceToFill = pd.Series(mergedPreOptCF.groupby('Store')['Space_to_Fill'].sum())
         locSpaceToFill = mergedPreOptCF.groupby(level=0)['Space_to_Fill'].agg(np.mean)
@@ -199,7 +199,7 @@ def optimizeEnh(methodology,jobType,jobName,Stores,Categories,increment,weights,
         aggBalBackBound = 0.05 # 5%
         locBalBackBound = 0.05 # 10%
 
-        print('now have balance back bounds')
+        logging.info('now have balance back bounds')
         # EXPLORATORY ONLY: ELASTIC BALANCE BACK
         # Hard-coded tolerance limits for balance back constraints without penalty
         # The free bounds are the % difference from space to fill that is allowed without penalty
@@ -214,7 +214,7 @@ def optimizeEnh(methodology,jobType,jobName,Stores,Categories,increment,weights,
         # try:
         #     locBalBackBoundAdj = locSpaceToFill.apply(lambda row:adjustForTwoIncr(row,locBalBackBound,increment))
         # except:
-        #     print("Divide by 0. \n There is a store that doesn't have any space assigned whatsoever.")
+        #     logging.info("Divide by 0. \n There is a store that doesn't have any space assigned whatsoever.")
         #     return False
 
         incrAdj = searchParam('ADJ', jobName)
@@ -223,7 +223,7 @@ def optimizeEnh(methodology,jobType,jobName,Stores,Categories,increment,weights,
         else:
             locBalBackBoundAdj = locSpaceToFill.apply(lambda row: adjustForTwoIncr(row, bI, increment))
 
-        print('we have local balance back')
+        logging.info('we have local balance back')
         # EXPLORATORY ONLY: ELASTIC BALANCE BACK
         # locBalBackFreeBoundAdj = locSpaceToFill.apply(lambda row:adjustForTwoIncr(row,locBalBackFreeBound,increment))
 
@@ -231,14 +231,14 @@ def optimizeEnh(methodology,jobType,jobName,Stores,Categories,increment,weights,
         mergedPreOptCF["Upper_Limit"] = mergedPreOptCF["Upper_Limit"].apply(lambda x: roundValue(x,increment))
         mergedPreOptCF["Lower_Limit"] = mergedPreOptCF["Lower_Limit"].apply(lambda x: roundValue(x,increment))
         Levels = createLevels(mergedPreOptCF, increment)
-        print('we have levels')
+        logging.info('we have levels')
         # Set up created tier decision variable - has a value of 1 if that space level for that category will be a tier, else 0
         # if jobType == 'tiered':
         ct = LpVariable.dicts('CT', (Categories, Levels), 0, upBound=1, cat='Binary')
-        print('we have created tiers')
+        logging.info('we have created tiers')
         # Set up selected tier decision variable - has a value of 1 if a store will be assigned to the tier at that space level for that category, else 0
         st = LpVariable.dicts('ST', (Stores, Categories, Levels), 0, upBound=1, cat='Binary')
-        print('we have selected tiers')
+        logging.info('we have selected tiers')
         # EXPLORATORY ONLY: MINIMUM STORES PER TIER
         #m = 50 #minimum stores per tier
 
@@ -258,7 +258,7 @@ def optimizeEnh(methodology,jobType,jobName,Stores,Categories,increment,weights,
 
         # Initialize the optimization problem
         NewOptim = LpProblem(jobName, LpMinimize)
-        print('initialized problem')
+        logging.info('initialized problem')
 
         # Create objective function data
         if methodology == "traditional":
@@ -270,12 +270,12 @@ def optimizeEnh(methodology,jobType,jobName,Stores,Categories,increment,weights,
             objectivetype = "Total Negative SPU"
 
         # pd.DataFrame(objective).to_csv(str(jobName)+'objective.csv',sep=",")
-        print('created objective function data')
+        logging.info('created objective function data')
         # Add the objective function to the optimization problem
         NewOptim += lpSum(
             [(st[Store][Category][Level] * objective[i][j][k]) for (i, Store) in enumerate(Stores) for (j, Category)
              in enumerate(Categories) for (k, Level) in enumerate(Levels)])#, objectivetype
-        print('created objective function')
+        logging.info('created objective function')
         # Begin CONSTRAINT SETUP
 
         for (i,Store) in enumerate(Stores):
@@ -295,7 +295,7 @@ def optimizeEnh(methodology,jobType,jobName,Stores,Categories,increment,weights,
             # NewOptim.extend(cLocBalBackPenalty.makeElasticSubProblem(penalty=locBalBackPenalty,proportionFreeBound=locBalBackFreeBoundAdj[Store]))
 
             for (j,Category) in enumerate(Categories):
-                # print('we got through the first part')
+                # logging.info('we got through the first part')
                 # Only one selected tier can be turned on for each product at each location.
                 NewOptim += lpSum([st[Store][Category][Level] for (k,Level) in enumerate(Levels)]) == 1#, "One Tier per Location - STR " + str(Store) + ", CAT " + str(Category)
 
@@ -305,11 +305,11 @@ def optimizeEnh(methodology,jobType,jobName,Stores,Categories,increment,weights,
                 if mergedPreOptCF['Sales Penetration'].loc[Store,Category] < salesPen:
                     NewOptim += st[Store][Category][0] == 1
 
-        print('finished first block of constraints')
+        logging.info('finished first block of constraints')
         # totalTiers=0
         try:
             if jobType == 'tiered':
-                print('we have tier counts')
+                logging.info('we have tier counts')
                 for (j,Category) in enumerate(Categories):
                     # totalTiers=totalTiers+tierCounts[Category][1]
                     # The number of created tiers must be within the tier count limits for each product.
@@ -323,11 +323,11 @@ def optimizeEnh(methodology,jobType,jobName,Stores,Categories,increment,weights,
                     # Increases optimization run time
                     # if Level > 0:
                     #        NewOptim += lpSum([st[Store][Category][Level] for (i, Store) in enumerate(Stores)]) >= m * ct[Category][Level], "Minimum Stores per Tier: CAT " + Category + ", LEV: " + str(Level)
-            print('finished second block of constraints')
+            logging.info('finished second block of constraints')
         except Exception as e:
-            print(e)
+            logging.info(e)
 
-        # print('finished total tiers constraint')
+        # logging.info('finished total tiers constraint')
         # The total space allocated to products across all locations must be within the aggregate balance back tolerance limit.
         NewOptim += lpSum([st[Store][Category][Level] * Level for (i, Store) in enumerate(Stores) for (j, Category) in enumerate(Categories) for (k, Level) in enumerate(Levels)]) >= aggSpaceToFill * (1 - aggBalBackBound), "Aggregate Balance Back Lower Limit"
         NewOptim += lpSum([st[Store][Category][Level] * Level for (i, Store) in enumerate(Stores) for (j, Category) in enumerate(Categories) for (k, Level) in enumerate(Levels)]) <= aggSpaceToFill * (1 + aggBalBackBound), "Aggregate Balance Back Upper Limit"
@@ -352,7 +352,7 @@ def optimizeEnh(methodology,jobType,jobName,Stores,Categories,increment,weights,
         #     fractGap=int(jobName[4:6])
 
         # Solve the problem using open source solver
-        print('optional hidden parameters')
+        logging.info('optional hidden parameters')
 
         if 'PreSolve' in jobName:
             preSolving = True
@@ -377,7 +377,7 @@ def optimizeEnh(methodology,jobType,jobName,Stores,Categories,increment,weights,
             else:
                 return None
 
-        print("to the solver we go")
+        logging.info("to the solver we go")
 
         #Solve the problem using Gurobi
         NewOptim.solve(pulp.GUROBI(mip=True, msg=True, MIPgap=.01, LogFile="/tmp/gurobi.log"))
@@ -388,24 +388,24 @@ def optimizeEnh(methodology,jobType,jobName,Stores,Categories,increment,weights,
         # Solve the problem using Gurobi
         # NewOptim.solve(pulp.GUROBI(mip=True, msg=True, MIPgap=.01, IISMethod=1))
         # NewOptim.constraints
-        print('out of the solver')
+        logging.info('out of the solver')
 
         # except Exception as ex:
-            # print('Solver failure: ', ex)
+            # logging.info('Solver failure: ', ex)
             # return
-            # print(traceback.print_stack())
-            # print(repr(traceback.format_stack()))
+            # logging.info(traceback.print_stack())
+            # logging.info(repr(traceback.format_stack()))
 
         # Time stamp for optimization solve time
         solve_end_seconds = dt.datetime.today().hour*60*60 + dt.datetime.today().minute*60 + dt.datetime.today().second
         solve_seconds = solve_end_seconds - start_seconds
-        print("Time taken to solve optimization was:" + str(solve_seconds)) #for unit testing
+        logging.info("Time taken to solve optimization was:" + str(solve_seconds)) #for unit testing
 
 
         # Debugging
-        print("#####################################################################")
-        print(LpStatus[NewOptim.status])
-        print("#####################################################################")
+        logging.info("#####################################################################")
+        logging.info(LpStatus[NewOptim.status])
+        logging.info("#####################################################################")
         # # Debugging
         # NegativeCount = 0
         # LowCount = 0
@@ -415,16 +415,16 @@ def optimizeEnh(methodology,jobType,jobName,Stores,Categories,increment,weights,
         #     for (j, Category) in enumerate(Categories):
         #         for (k, Level) in enumerate(Levels):
         #             if value(st[Store][Category][Level]) == 1:
-        #                 # print(st[Store][Category][Level]) #These values should only be a one or a zero
+        #                 # logging.info(st[Store][Category][Level]) #These values should only be a one or a zero
         #                 OneCount += 1
         #             elif value(st[Store][Category][Level]) > 0:
-        #                 # print(st[Store][Category][Level],"Value is: ",value(st[Store][Category][Level])) #These values should only be a one or a zero
+        #                 # logging.info(st[Store][Category][Level],"Value is: ",value(st[Store][Category][Level])) #These values should only be a one or a zero
         #                 TrueCount += 1
         #             elif value(st[Store][Category][Level]) == 0:
-        #                 # print(value(st[Store][Category][Level])) #These values should only be a one or a zero
+        #                 # logging.info(value(st[Store][Category][Level])) #These values should only be a one or a zero
         #                 LowCount += 1
         #             elif value(st[Store][Category][Level]) < 0:
-        #                 # print(st[Store][Category][Level],"Value is: ",value(st[Store][Category][Level])) #These values should only be a one or a zero
+        #                 # logging.info(st[Store][Category][Level],"Value is: ",value(st[Store][Category][Level])) #These values should only be a one or a zero
         #                 NegativeCount += 1
         # if tierCounts is not None:
         #     ctNegativeCount = 0
@@ -435,37 +435,37 @@ def optimizeEnh(methodology,jobType,jobName,Stores,Categories,increment,weights,
         #     for (j, Category) in enumerate(Categories):
         #         for (k, Level) in enumerate(Levels):
         #             if value(ct[Category][Level]) == 1:
-        #                 # print(value(ct[Store][Category][Level])) #These values should only be a one or a zero
+        #                 # logging.info(value(ct[Store][Category][Level])) #These values should only be a one or a zero
         #                 ctOneCount += 1
         #             elif value(ct[Category][Level]) > 0:
-        #                 # print(ct[Store][Category][Level],"Value is: ",value(st[Store][Category][Level])) #These values should only be a one or a zero
+        #                 # logging.info(ct[Store][Category][Level],"Value is: ",value(st[Store][Category][Level])) #These values should only be a one or a zero
         #                 ctTrueCount += 1
         #             elif value(ct[Category][Level]) == 0:
-        #                 # print(value(ct[Category][Level])) #These values should only be a one or a zero
+        #                 # logging.info(value(ct[Category][Level])) #These values should only be a one or a zero
         #                 ctLowCount += 1
         #             elif value(ct[Category][Level]) < 0:
-        #                 # print(ct[Category][Level],"Value is: ",value(st[Store][Category][Level])) #These values should only be a one or a zero
+        #                 # logging.info(ct[Category][Level],"Value is: ",value(st[Store][Category][Level])) #These values should only be a one or a zero
         #                 ctNegativeCount += 1
         #
-        # print("Status:", LpStatus[NewOptim.status])
-        # print("---------------------------------------------------")
-        # print("For Selected Tiers")
-        # print("Number of Negatives Count is: ", NegativeCount)
-        # print("Number of Zeroes Count is: ", LowCount)
-        # print("Number Above 0 and Below 1 Count is: ", TrueCount)
-        # print("Number of Selected Tiers: ", OneCount)
-        # print("---------------------------------------------------")
+        # logging.info("Status:", LpStatus[NewOptim.status])
+        # logging.info("---------------------------------------------------")
+        # logging.info("For Selected Tiers")
+        # logging.info("Number of Negatives Count is: ", NegativeCount)
+        # logging.info("Number of Zeroes Count is: ", LowCount)
+        # logging.info("Number Above 0 and Below 1 Count is: ", TrueCount)
+        # logging.info("Number of Selected Tiers: ", OneCount)
+        # logging.info("---------------------------------------------------")
         # if tierCounts is not None:
-        #     print("For Created Tiers")
-        #     print("Number of Negatives Count is: ", ctNegativeCount)
-        #     print("Number of Zeroes Count is: ", ctLowCount)
-        #     print("Number Above 0 and Below 1 Count is: ", ctTrueCount)
-        #     print("Number of Created Tiers: ", ctOneCount)
-        #     print("Creating Outputs")
+        #     logging.info("For Created Tiers")
+        #     logging.info("Number of Negatives Count is: ", ctNegativeCount)
+        #     logging.info("Number of Zeroes Count is: ", ctLowCount)
+        #     logging.info("Number Above 0 and Below 1 Count is: ", ctTrueCount)
+        #     logging.info("Number of Created Tiers: ", ctOneCount)
+        #     logging.info("Creating Outputs")
         #
-        # print('creating results')
+        # logging.info('creating results')
         if LpStatus[NewOptim.status] == 'Optimal':
-            print('Found an optimal solution')
+            logging.info('Found an optimal solution')
             Results=pd.DataFrame(index=Stores,columns=Categories)
             for (i,Store) in enumerate(Stores):
                 for (j,Category) in enumerate(Categories):

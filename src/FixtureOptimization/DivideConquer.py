@@ -45,10 +45,11 @@ def optimizeDD(jobName, increment, dataMunged, salesPen,mipGap = None):
                 except:
                     break
             try:
-                searchParam = int(jobName[(len(search) + begin):(len(search) + begin + length)]) / 100
-                logging.info('{} has been changed to {}'.format(search,searchParam))
-                return searchParam
+                sParam = int(jobName[(len(search) + begin):(len(search) + begin + length)]) / 100
+                logging.info('{} has been changed to {}'.format(search,sParam))
+                return sParam
             except:
+                logging.info('{} has been changed to {}'.format(search,True))
                 return True
         else:
             return None

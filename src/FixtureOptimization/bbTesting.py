@@ -14,7 +14,7 @@ import datetime as dt
 import logging as logging
 
 
-def optimizeTrad(jobName,Stores,Categories,spaceBound,increment,dataMunged,salesPen,tierCounts=None):
+def optimizeTradBB(jobName,Stores,Categories,spaceBound,increment,dataMunged,salesPen,tierCounts=None):
     """
     Run an LP-based optimization
 
@@ -52,6 +52,8 @@ def optimizeTrad(jobName,Stores,Categories,spaceBound,increment,dataMunged,sales
                 return True
         else:
             return None
+
+
 
     dataMunged['Optimal Space']=dataMunged['Optimal Space'].apply(lambda x: roundValue(x, increment))
     spaceBound = pd.DataFrame.from_dict(spaceBound).T.reset_index()
@@ -158,37 +160,39 @@ def optimizeTrad(jobName,Stores,Categories,spaceBound,increment,dataMunged,sales
         #         tier_count["Upper_Bound"][Category] = tier_count["Upper_Bound"][Category] + 1
 
     logging.info('Brand Exit Done')
-    BA = np.zeros((len(Stores), len(Categories), len(Levels)))
-    error = np.zeros((len(Stores), len(Categories), len(Levels)))
-    for (i, Store) in enumerate(Stores):
-        for (j, Category) in enumerate(Categories):
-            for (k, Level) in enumerate(Levels):
-                BA[i][j][k] = opt_amt[Category].iloc[i]
-                error[i][j][k] = np.absolute(BA[i][j][k] - Level)
+    optType = searchParam('optType',jobName)
+    if optType == 'optimalSpace' or optType == None:
+        BA = np.zeros((len(Stores), len(Categories), len(Levels)))
+        error = np.zeros((len(Stores), len(Categories), len(Levels)))
+        for (i, Store) in enumerate(Stores):
+            for (j, Category) in enumerate(Categories):
+                for (k, Level) in enumerate(Levels):
+                    BA[i][j][k] = opt_amt[Category].iloc[i]
+                    error[i][j][k] = np.absolute(BA[i][j][k] - Level)
+        NewOptim += lpSum([(st[Store][Category][Level] * error[i][j][k]) for (i, Store) in enumerate(Stores) for (j, Category) in enumerate(Categories) for (k, Level) in enumerate(Levels)]), ""
+    else:
+        NewOptim += lpSum()
 
-    NewOptim += lpSum([(st[Store][Category][Level] * error[i][j][k]) for (i, Store) in enumerate(Stores) for (j, Category) in enumerate(Categories) for (k, Level) in enumerate(Levels)]), ""
     logging.info('created objective function')
-###############################################################################################################
-############################################### Constraints
-###############################################################################################################
-#Makes is to that there is only one Selected tier for each Store/ Category Combination
+# Constraints
+# Makes is to that there is only one Selected tier for each Store/ Category Combination
     for (i, Store) in enumerate(Stores):
-    #     TODO: Exploratory analysis on impact of balance back on financials for Enhanced
-    #     Store-level balance back constraint: the total space allocated to products at each location must be within the individual location balance back tolerance limit
+        # TODO: Exploratory analysis on impact of balance back on financials for Enhanced
+        # Store-level balance back constraint: the total space allocated to products at each location must be within the individual location balance back tolerance limit
         NewOptim += lpSum(
             [(st[Store][Category][Level]) * Level for (j, Category) in enumerate(Categories) for (k, Level) in
-             enumerate(Levels)]) >= locSpaceToFill[Store] * (1 - locBalBackBoundAdj[Store]) , "Location Balance Back Lower Limit-Store" + str(Store)
+             enumerate(Levels)]) >= locSpaceToFill[Store] * (1 - locBalBackBoundAdj[Store]), "Location Balance Back Lower Limit-Store" + str(Store)
         NewOptim += lpSum(
             [(st[Store][Category][Level]) * Level for (j, Category) in enumerate(Categories) for (k, Level) in
-             enumerate(Levels)]) <= locSpaceToFill[Store] * (1 + locBalBackBoundAdj[Store]) , "Location Balance Back Upper Limit_Store" + str(Store)
+             enumerate(Levels)]) <= locSpaceToFill[Store], "Location Balance Back Upper Limit_Store" + str(Store)
 
         # Testing Out Exact Balance Back
         # NewOptim += lpSum(
         #     [(st[Store][Category][Level]) * Level for (j, Category) in enumerate(Categories) for (k, Level) in
         #      enumerate(Levels)]) == locSpaceToFill[Store]  # , "Location Balance Back Lower Limit - STR " + str(Store)
 
-#One Space per Store Category
-    #Makes sure that the number of fixtures, by store, does not go above or below some percentage of the total number of fixtures within the store 
+    #One Space per Store Category
+    #Makes sure that the number of fixtures, by store, does not go above or below some percentage of the total number of fixtures within the store
         for (j,Category) in enumerate(Categories):
             NewOptim += lpSum([st[Store][Category][Level] for (k,Level) in enumerate(Levels)]) == 1#, "One_Level_per_Store-Category_Combination"
         # Test Again to check if better performance when done on ct level
@@ -203,7 +207,7 @@ def optimizeTrad(jobName,Stores,Categories,spaceBound,increment,dataMunged,sales
 
 
     logging.info("After Space Bounds")
-#Tier Counts Enhancement
+    #Tier Counts Enhancement
     # totalTiers=0
     if tierCounts is not None:
         for (j,Category) in enumerate(Categories):
@@ -215,17 +219,18 @@ def optimizeTrad(jobName,Stores,Categories,spaceBound,increment,dataMunged,sales
             for (k,Level) in enumerate(Levels):
                 NewOptim += lpSum([st[Store][Category][Level] for (i,Store) in enumerate(Stores)])/len(Stores) <= ct[Category][Level], "Relationship between_"+str(Store)+"_"+str(Category)+"_"+str(Level)
 
-#Global Balance Back
+    #Global Balance Back
     NewOptim += lpSum(
         [st[Store][Category][Level] * Level for (i, Store) in enumerate(Stores) for (j, Category) in enumerate(Categories) for
          (k, Level) in enumerate(Levels)]) >= W * (1 - b), "All Stores Lower Bound Balance Back Constraint"
     NewOptim += lpSum(
         [st[Store][Category][Level] * Level for (i, Store) in enumerate(Stores) for (j, Category) in enumerate(Categories) for
          (k, Level) in enumerate(Levels)]) <= W * (1 + b), "All Stores Upper Bound Balance Back Constraint"
+
     # NewOptim.writeLP("Fixture_Optimization.lp")
     logging.info("The problem has been formulated")
 
-#Solving the Problem
+    #Solving the Problem
     # NewOptim.writeLP("Fixture_Optimization.lp")
     # NewOptim.writeMPS(str(jobName)+".mps")
     # Solve the problem using Gurobi
