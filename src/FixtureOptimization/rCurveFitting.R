@@ -2,47 +2,25 @@
 # This code contains Accenture Materials; the code and the concepts used in it are subject to the 
 # Top Down Macro Space Optimization Approach agreement between Accenture & Kohl's.  
 
-# rm(list=ls())  #Clear historical data from R server
-
-# curr_prod_name <- "TEST"
-# setwd(paste0("C:\\Users\\alison.stern\\Documents\\Kohls\\FO Enhancements\\R Code\\Testing 09.29.2016\\",curr_prod_name))
-
-#library(tidyr)  #For data manipulation
-#library(gdata)
-
 # Curve Fitting and Bound Setting Function
 curvefitting_boundsetting<-function(master,bound_input,increment,pct_chg_limit,sls_pen_thresh,jobType,methodology){
   library(nloptr) #For running optimization to find unscaled coefficients
   library(pracma) #For error function
+  library(gdata)
   # BEGIN curve-fitting
 
   ##TODO: Create dynamic filters based upon optimization type
-  # numStores=
-  # medianSpace=
-
-#  Minimal Store-Category History Filters
+  #  Minimal Store-Category History Filters
   space_filter <- 0.1
   Sales_filter <- 20
   Profit_filter <- 5
   Units_filter <- 5
 
-#  Minimal Category-Climate Group History Filters
+  #  Minimal Category-Climate Group History Filters
   strcount_filter <- 100
   avgSales_filter <- 200
   avgProfit_filter <- 50
   avgUnits_filter <- 50
-
-#  Minimal Store-Category History Filters
-#  space_filter <- 0
-#  Sales_filter <- 0
-#  Profit_filter <- 0
-#  Units_filter <- 0
-
-#  Minimal Category-Climate Group History Filters
-#  strcount_filter <- 0
-#  avgSales_filter <- 0
-#  avgProfit_filter <- 0
-#  avgUnits_filter <- 0
 
   get_mode <- function(x) {
     ux <- unique(x)
@@ -67,7 +45,7 @@ curvefitting_boundsetting<-function(master,bound_input,increment,pct_chg_limit,s
 
   # Assign Climate Groups
   master$Climate_Group <- as.character(master$Climate)
-  if(jobType == "tiered"){
+  if((jobType == "tiered")||(jobType=="unconstrained")){
     master$Climate_Group <- "NA"
   } else {
     master$Climate_Group <- ifelse((master$Climate_Group == "HOT" | master$Climate_Group == "SUPER HOT"), "HOT & SH", master$Climate_Group)
@@ -137,7 +115,7 @@ curvefitting_boundsetting<-function(master,bound_input,increment,pct_chg_limit,s
 
     # Assign Store Groups
     eligible[paste0("Store_Group_",target)] <- "NA"
-    if(jobType == "tiered"){
+    if((jobType == "tiered")||(jobType=="unconstrained")){
       eligible[paste0("Store_Group_",target)] <- eligible[,paste0("BA_Prod_Group_",target)]
     } else {
       eligible[paste0("Store_Group_",target)] <- paste0(eligible$Climate_Group,":",eligible[,paste0("BA_Prod_Group_",target)])
@@ -370,7 +348,7 @@ curvefitting_boundsetting<-function(master,bound_input,increment,pct_chg_limit,s
   master$PCT_of_Space_Upper_Limit <- ceiling(master$PCT_Space_Upper_Limit*master$Space_to_Fill/increment)*increment
   
   # Apply percent space change bound to store-category level (does not apply to drill-downs, so dummy values are used)
-  if(jobType=="tiered"){
+  if((jobType == "tiered")||(jobType=="unconstrained")){
     master$PCT_Change_Lower_Limit <- pmax(0,floor(master$Space*(1-pct_chg_limit)/increment)*increment)
     master$PCT_Change_Upper_Limit <- ceiling(master$Space*(1+pct_chg_limit)/increment)*increment
   } else {
@@ -399,35 +377,8 @@ curvefitting_boundsetting<-function(master,bound_input,increment,pct_chg_limit,s
   print('end enhanced only')
   # END bound-setting
   
-  #master <- master[c("Store","Category","Lower_Limit","Upper_Limit",
-   #                  "Scaled_Alpha_Sales","Scaled_Shift_Sales","Scaled_Beta_Sales","Scaled_BP_Sales",
-    #                 "Scaled_Alpha_Units","Scaled_Shift_Units","Scaled_Beta_Units","Scaled_BP_Units",
-     #                "Scaled_Alpha_Profit","Scaled_Shift_Profit","Scaled_Beta_Profit","Scaled_BP_Profit")]
   final_out <- list(master,ref) 
   
   return (final_out)
   
 }
-
-# # Initial parameter setting for curve fitting
-# incr_test <- .25
-# pct_chg_limit_test <- 5
-# sls_pen_thresh_test <- 0
-# type_test <-"tiered"
-# meth_test <- "Traditional"
-
-# # Read in data as CSV
-# master_test <- read.csv(paste0(curr_prod_name,"_Data_Merging_Output_Adj.csv"), header=TRUE, sep=",")
-# bound_input_test <- read.csv(paste0(curr_prod_name,"_Bound_Input.csv"), header=TRUE, sep=",")
-
-# # Call function
-# ptm <- proc.time()
-# result = curvefitting_boundsetting(master_test,bound_input_test,incr_test,pct_chg_limit_test,sls_pen_thresh_test,type_test,meth_test)
-# print(proc.time() - ptm)
-
-# str_cat_results = as.data.frame(result[1])
-# analytics_reference = as.data.frame(result[2])
-
-# # Write output to CSV
-# write.csv(str_cat_results,paste0(curr_prod_name,"_Curve_Fitting_Results.csv"),row.names = FALSE)
-# write.csv(analytics_reference,paste0(curr_prod_name,"_Analytics_Reference.csv"),row.names = FALSE)

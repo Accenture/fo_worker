@@ -2,16 +2,20 @@
 # -*- coding: utf-8 -*-
 
 import json
-import logging
 from multiprocessing import Pool, ProcessError
 from time import time
 from os import getpid
 from bson.objectid import ObjectId
 from pymongo import MongoClient
-from pika import BlockingConnection, ConnectionParameters
+from pika import BlockingConnection, ConnectionParameters, PlainCredentials
 from runner import run
 import config as env
 import datetime as dt
+import socket
+import logging
+from logging.config import fileConfig
+import traceback
+from distutils.util import strtobool
 
 #
 # ENV VARS
@@ -22,6 +26,9 @@ RMQ_PORT = env.RMQ_PORT
 MONGO_HOST = env.MONGO_HOST
 MONGO_PORT = env.MONGO_PORT
 MONGO_NAME = env.MONGO_NAME
+MONGO_USERNAME = env.MONGO_USERNAME
+MONGO_PASSWORD = env.MONGO_PASSWORD
+IS_AUTH_MONGO = env.IS_AUTH_MONGO
 
 #
 # MODULE CONSTANTS
@@ -36,10 +43,10 @@ TASK_TIMEOUT = 3600 * 48
 # LOGGING
 #
 
-LOG_FORMAT = ('%(levelname) -10s %(asctime)s %(name) -30s %(funcName) '
-              '-35s %(lineno) -5d: %(message)s')
-LOG_FILE = None
-LOGGER = logging.getLogger(__name__)
+fileConfig('src/logging_config.ini')
+
+logging = logging.getLogger(__name__)
+
 
 def main():
 
@@ -55,7 +62,7 @@ def main():
                 raise TimeoutError
 
             if not result.ready():
-                LOGGER.info('Sleeping...')
+                # logging.info('Sleeping...')
                 mq_conn.sleep(RMQ_SLEEP)
                 continue
 
@@ -67,34 +74,60 @@ def main():
             else:
                 raise ProcessError
 
-    def reconcile_db(db, id):
-        db.jobs.update_one(
+    def logging_db(current_db,id):
+        current_db.jobs.update_one(
             {'_id': ObjectId(id)},
             {
                 "$set": {
-                    "status": "failed"
+                    "logging": {
+                        "server": socket.gethostname(),
+                        "pid": getpid()
+                    }
+                }
+            }
+        )
+        print('Updated job with logging info.')
+
+    def reconcile_db(current_db, id):
+        current_db.jobs.update_one(
+            {'_id': ObjectId(id)},
+            {
+                "$set": {
+                    "status": "failed",
+                    "logging": {
+                        "server": socket.gethostname(),
+                        "pid": getpid()
+                    }
                 }
             }
         )
         print('RECONCILE DB')
 
-    def updateEnd(db, id):
+    def updateEnd(current_db, id):
         end_time = dt.datetime.utcnow()
-        db.jobs.update_one(
+        current_db.jobs.update_one(
             {'_id': ObjectId(id)},
             {
                 "$set": {
-                    'optimization_end_time': end_time
+                    'optimization_end_time': end_time,
+                    "logging": {
+                        "server": socket.gethostname(),
+                        "pid": getpid()
+                    }
                 }
             }
         )
         print('update failed time')
-    def divByZero(db, id):
-        db.jobs.update_one(
+    def divByZero(current_db, id):
+        current_db.jobs.update_one(
             {'_id': ObjectId(id)},
             {
                 "$set": {
-                    "status": "Unbounded"
+                    "status": "Unbounded",
+                    "logging": {
+                        "server": socket.gethostname(),
+                        "pid": getpid()
+                    }
                 }
             }
         )
@@ -106,48 +139,55 @@ def main():
                  routing_key=RMQ_QUEUE_SINK,
                  body=json.dumps(res))
 
-    logging.basicConfig(level=logging.INFO,
-                        format=LOG_FORMAT,
-                        filename=LOG_FILE)
 
-    LOGGER.info('main thread pid: %s', getpid())
+    logging.info('main thread pid: %s', getpid())
 
-    db_conn = MongoClient(host=MONGO_HOST, port=MONGO_PORT)
-    db = db_conn[MONGO_NAME]
+    current_db = MongoClient(host=MONGO_HOST, port=MONGO_PORT)[MONGO_NAME]
+    if strtobool(IS_AUTH_MONGO):
+        current_db.authenticate(MONGO_USERNAME, MONGO_PASSWORD, mechanism='SCRAM-SHA-1')
+
+    credentials = PlainCredentials(env.RMQ_USERNAME, env.RMQ_PASSWORD)
     mq_conn = BlockingConnection(ConnectionParameters(host=RMQ_HOST,
-                                                      port=RMQ_PORT))
+                                                       port=RMQ_PORT,
+                                                       credentials=credentials))
     ch = mq_conn.channel()
     ch.queue_declare(queue=RMQ_QUEUE_SOURCE, durable=True)
     ch.queue_declare(queue=RMQ_QUEUE_SINK, durable=False)
     ch.basic_qos(prefetch_count=1)
    
-    messages = ch.consume(queue=RMQ_QUEUE_SOURCE)
+    messages = ch.consume(queue=RMQ_QUEUE_SOURCE, arguments={'server': socket.gethostname(), 'pid': getpid()})
 
     try:
         for method, properties, body in messages:
             try:
                 print("Running new job")
                 process_job(run, body)
+                _id = json.loads(body.decode('utf-8'))['_id']
                 userId = json.loads(body.decode('utf-8'))['userId']
+                logging_db(current_db, _id)
                 send_notification(ch, userId, 'done')
             except (ZeroDivisionError):
-                LOGGER.error('Division by Zero Error')
+                logging.error('Division by Zero Error')
                 ch.basic_reject(delivery_tag=method.delivery_tag,
                                 requeue=False)
                 _id = json.loads(body.decode('utf-8'))['_id']
                 userId = json.loads(body.decode('utf-8'))['userId']
-                divByZero(db, _id)
+                divByZero(current_db, _id)
                 send_notification(ch, userId, 'failed')
             except (TimeoutError, ProcessError):
                 print("Job has failed")
-                LOGGER.error('Process exited unexpectedly')
+                logging.error('Process exited unexpectedly')
                 ch.basic_reject(delivery_tag=method.delivery_tag,
                                 requeue=False)
                 _id = json.loads(body.decode('utf-8'))['_id']
                 userId = json.loads(body.decode('utf-8'))['userId']
-                updateEnd(db, _id)
-                reconcile_db(db, _id)
+                updateEnd(current_db, _id)
+                reconcile_db(current_db, _id)
                 send_notification(ch, userId, 'failed')
+            except Exception as ex:
+                print('Solver failure: ', ex)
+                print(traceback.print_stack())
+                print(repr(traceback.format_stack()))
             else:
                 ch.basic_ack(delivery_tag=method.delivery_tag)
     except KeyboardInterrupt:
@@ -155,7 +195,7 @@ def main():
         ch.close()
 
     mq_conn.close()
-    db_conn.close()
+    current_db.close()
 
 if __name__ == '__main__':
     main()
