@@ -170,12 +170,32 @@ def optimizeTradBB(jobName,Stores,Categories,spaceBound,increment,dataMunged,sal
                     BA[i][j][k] = opt_amt[Category].iloc[i]
                     error[i][j][k] = np.absolute(BA[i][j][k] - Level)
         NewOptim += lpSum([(st[Store][Category][Level] * error[i][j][k]) for (i, Store) in enumerate(Stores) for (j, Category) in enumerate(Categories) for (k, Level) in enumerate(Levels)]), ""
-    else:
-        NewOptim += lpSum()
 
-    logging.info('created objective function')
-# Constraints
-# Makes is to that there is only one Selected tier for each Store/ Category Combination
+        # Constraints
+        # Makes is to that there is only one Selected tier for each Store/ Category Combination
+        for (i, Store) in enumerate(Stores):
+            # TODO: Exploratory analysis on impact of balance back on financials for Enhanced
+            # Store-level balance back constraint: the total space allocated to products at each location must be within the individual location balance back tolerance limit
+            NewOptim += lpSum(
+                [(st[Store][Category][Level]) * Level for (j, Category) in enumerate(Categories) for (k, Level) in
+                 enumerate(Levels)]) >= locSpaceToFill[Store] * (1 - locBalBackBoundAdj[Store]), "Location Balance Back Lower Limit-Store" + str(Store)
+            NewOptim += lpSum(
+                [(st[Store][Category][Level]) * Level for (j, Category) in enumerate(Categories) for (k, Level) in
+                 enumerate(Levels)]) <= locSpaceToFill[Store], "Location Balance Back Upper Limit_Store" + str(Store)
+    else:
+        # Constraints
+        # Makes is to that there is only one Selected tier for each Store/ Category Combination
+        # Figure out how to get the matrix multiplication to work here
+        BA = np.ones((len(Stores), len(Categories), len(Levels)))
+        for (i, Store) in enumerate(Stores):
+            for (j, Category) in enumerate(Categories):
+                for (k, Level) in enumerate(Levels):
+                    objective = st[Store][Category][Level] * BA[i][j][k]
+
+
+        for (i, Store) in enumerate(Stores):
+            NewOptim += lpSum([(st[Store][Category][Level] * Level for (j, Category) in enumerate(Categories) for (k, Level) in enumerate(Levels)]) * locSpaceToFill[Store])
+
     for (i, Store) in enumerate(Stores):
         # TODO: Exploratory analysis on impact of balance back on financials for Enhanced
         # Store-level balance back constraint: the total space allocated to products at each location must be within the individual location balance back tolerance limit
