@@ -180,17 +180,17 @@ def run(body):
         logging.exception('Data Merging Failed')
         traceback.print_exception()
 
-    try:
-        preOpt = preoptimize(jobType=msg['jobType'], optimizationType=msg['optimizationType'], dataMunged=dataMerged[1],
-                             mAdjustment=float(msg["metricAdjustment"]),
-                             salesPenThreshold=float(msg["salesPenetrationThreshold"]),
-                             optimizedMetrics=msg["optimizedMetrics"], increment=msg["increment"])
-        logging.info('Finished Preoptimize')
-    except Exception:
-        logging.exception('Preoptimize Failed')
-        traceback.print_exception()
-
     if msg['optimizationType'] == 'traditional':
+        try:
+            preOpt = preoptimize(jobType=msg['jobType'], optimizationType=msg['optimizationType'],
+                                 dataMunged=dataMerged[1],
+                                 mAdjustment=float(msg["metricAdjustment"]),
+                                 salesPenThreshold=float(msg["salesPenetrationThreshold"]),
+                                 optimizedMetrics=msg["optimizedMetrics"], increment=msg["increment"])
+            logging.info('Finished Preoptimize')
+        except Exception:
+            logging.exception('Preoptimize Failed')
+            traceback.print_exception()
         if msg['jobType'] == 'unconstrained' or msg['jobType'] == 'tiered':
             try:
                 optimRes = optimizeTrad(jobName=msg['meta']['name'], Stores=msg['salesStores'],

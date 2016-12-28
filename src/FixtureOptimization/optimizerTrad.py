@@ -207,7 +207,7 @@ def optimizeTrad(jobName,Stores,Categories,spaceBound,increment,dataMunged,sales
              enumerate(Levels)]) - locSpaceToFill[Store] * (1 - locBalBackBoundAdj[Store]) , "Location Balance Back Lower Limit-Store" + str(Store)
         NewOptim += lpSum(
             [(st[Store][Category][Level]) * Level for (j, Category) in enumerate(Categories) for (k, Level) in
-             enumerate(Levels)]) <= locSpaceToFill[Store] * (1 + locBalBackBoundAdj[Store]) , "Location Balance Back Upper Limit_Store" + str(Store)
+             enumerate(Levels)]) <= locSpaceToFill[Store], "Location Balance Back Upper Limit_Store" + str(Store)  # * (1 + locBalBackBoundAdj[Store]) 
 
         # Testing Out Exact Balance Back
         # NewOptim += lpSum(

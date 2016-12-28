@@ -112,8 +112,10 @@ def optimizeTrad(jobName,Stores,Categories,spaceBound,increment,dataMunged,sales
     # The penalty is incurred if the filled space goes beyond the free bound % difference from space to fill
     # The tighter the bounds and/or higher the penalties, the slower the optimization run time
     # The penalty incurred should be different for Traditional vs Enhanced as the scale of the objective function differs
-    indBalBackFreeBound = pd.DataFrame(data=increment,index=Stores,columns=Categories) #exploratory, value would have to be determined through exploratory analysis
+    indBalBackFreeBound = pd.DataFrame(data=increment,index=Stores,columns=Categories) #pd.DataFrame(data=increment,index=Stores,columns=Categories) #exploratory, value would have to be determined through exploratory analysis
     indBalBackPenalty = increment #exploratory, value would have to be determined through exploratory analysis
+    # indBalBackFreeBoundAdj = pd.DataFrame(data=increment,index=Stores,columns=Categories)
+    # Option
     # indBalBackFreeBoundAdj = locSpaceToFill.apply(lambda row:adjustForOneIncr(row,locBalBackFreeBound,increment))
 
     logging.info('created balance back vector')
@@ -175,6 +177,8 @@ def optimizeTrad(jobName,Stores,Categories,spaceBound,increment,dataMunged,sales
 ###############################################################################################################
 #Makes is to that there is only one Selected tier for each Store/ Category Combination
     for (i, Store) in enumerate(Stores):
+        logging.info('Store # {}'.format(Store))
+        # Conditional because you can't take the absolute using PuLP
         if lpSum([(st[Store][Category][Level] * Level) for (j, Category) in enumerate(Categories) for
              (k, Level) in enumerate(Levels)]) - locSpaceToFill[Store] >= 0:
             NewOptim += lpSum(
@@ -192,7 +196,7 @@ def optimizeTrad(jobName,Stores,Categories,spaceBound,increment,dataMunged,sales
     #Makes sure that the number of fixtures, by store, does not go above or below some percentage of the total number of fixtures within the store
         for (j,Category) in enumerate(Categories):
             NewOptim += lpSum([st[Store][Category][Level] for (k,Level) in enumerate(Levels)]) == 1#, "One_Level_per_Store-Category_Combination"
-        # Test Again to check if better performance when done on ct level
+            # Test Again to check if better performance when done on ct level
             NewOptim += lpSum([st[Store][Category][Level] * Level for (k,Level) in enumerate(Levels)]) <= spaceBound['Space Upper Limit'].loc[Category], "Space_Upper_Limit-Store_" + str(Store) + ",Category_" + str(Category)
             # if brandExitArtifact is not None:
             #     if brandExitArtifact[Category].iloc[int(i)] == 0:
@@ -201,15 +205,19 @@ def optimizeTrad(jobName,Stores,Categories,spaceBound,increment,dataMunged,sales
             #         NewOptim += lpSum([st[Store][Category][Level] * Level for (k,Level) in enumerate(Levels)]) >= spaceBound[Category][0]
             # else:
             NewOptim += lpSum([st[Store][Category][Level] * Level for (k,Level) in enumerate(Levels)]) >= spaceBound['Space Lower Limit'].loc[Category], "Space_Lower_Limit-Store_" + str(Store) + ",Category_" + str(Category)
-            for (k, Level) in enumerate(Levels):
-                #Trying an Elastic Constraint for the Optimal Space
-                # NewOptim += lpSum(
+            eIndSpace = lpSum([(st[Store][Category][Level]) * Level for (k,Level) in enumerate(Levels)])
+            cIndBalBackPenalty = LpConstraint(e=eIndSpace, sense=LpConstraintEQ,
+                                              name="Optimal Space Balance Back Penalty:_" + str(Store) + str(
+                                                  Category), rhs=opt_amt[Category].loc[Store])
+            NewOptim.extend(cIndBalBackPenalty.makeElasticSubProblem(penalty=indBalBackPenalty,
+                                                                     proportionFreeBound=indBalBackFreeBound.loc[
+                                                                         Store, Category]))
+
+            # for (k, Level) in enumerate(Levels):
+            #     Trying an Elastic Constraint for the Optimal Space
+            #     NewOptim += lpSum(
                 # [(st[Store][Category][Level]) * Level for (j, Category) in enumerate(Categories) for (k, Level) in
                 #  enumerate(Levels)]) >= BA[i][j][k] * 1(test), "Optimal Space Balance Back Lower Limit-Store" + str(Store)
-                eIndSpace = lpSum([st[Store][Category][Level]]) * Level
-                cIndBalBackPenalty = LpConstraint(e=eIndSpace, sense=LpConstraintEQ, name="Optimal Space Balance Back Penalty:_" + str(Store)+str(Category)+str(Level), rhs=opt_amt[Category].loc[Store])
-                print(cIndBalBackPenalty)
-                NewOptim.extend(cIndBalBackPenalty.makeElasticSubProblem(penalty=indBalBackPenalty,proportionFreeBound=indBalBackFreeBound.loc[Store,Category]))
 
     logging.info("After Space Bounds")
 #Tier Counts Enhancement
@@ -256,7 +264,8 @@ def optimizeTrad(jobName,Stores,Categories,spaceBound,increment,dataMunged,sales
     logging.info("#####################################################################")
     logging.info('\n\n\n {} \n\n\n'.format(LpStatus[NewOptim.status]))
     logging.info("#####################################################################")
-    # # Debugging
+    logging.info("Creating Outputs")
+    # Debugging
     # NegativeCount = 0
     # LowCount = 0
     # TrueCount = 0
@@ -311,7 +320,6 @@ def optimizeTrad(jobName,Stores,Categories,spaceBound,increment,dataMunged,sales
     #     logging.info("Number of Zeroes Count is: ", ctLowCount)
     #     logging.info("Number Above 0 and Below 1 Count is: ", ctTrueCount)
     #     logging.info("Number of Created Tiers: ", ctOneCount)
-    #     logging.info("Creating Outputs")
     if LpStatus[NewOptim.status] == 'Optimal':
         logging.info('Found an optimal solution')
         Results=pd.DataFrame(index=Stores,columns=Categories)
