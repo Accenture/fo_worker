@@ -259,10 +259,11 @@ def run(body):
                 scaledAnalyticsID = str(create_output_artifact_from_dataframe(longOutput[1]))
                 logging.info('Created analytics ID')
             else:
-                longID = str(create_output_artifact_from_dataframe(
-                    longOutput[0][
-                        ['Store', 'Category', 'Climate', 'VSG', 'Sales Penetration', 'Result Space', 'Current Space',
-                         'Optimal Space']]))
+                longID = str(create_output_artifact_from_dataframe(longOutput[0]))
+                # longID = str(create_output_artifact_from_dataframe(
+                #     longOutput[0][
+                #         ['Store', 'Category', 'Climate', 'VSG', 'Sales Penetration', 'Result Space', 'Current Space',
+                #          'Optimal Space']]))
                 analyticsID=None
                 logging.info('Set analytics ID to None')
 

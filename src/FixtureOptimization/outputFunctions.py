@@ -110,11 +110,11 @@ def createLong(jobType, optimizationType, lInput):
         if jobType != 'drilldown':
             lOutput = lOutput[
                 ['Store', 'Category', 'Climate', 'VSG', 'Result Space', 'Current Space',
-                 'Optimal Space', 'Sales Penetration', 'Exit Flag', 'Total Store Space','Tier']]
+                 'Optimal Space', 'Sales Penetration', 'Penetration', 'Exit Flag', 'Total Store Space','Tier']]
         else:
             lOutput = lOutput[
                 ['Store', 'Product', 'Category', 'Climate', 'VSG', 'Result Space', 'Current Space',
-                 'Optimal Space', 'Sales Penetration', 'Exit Flag', 'Total Store Space', 'Drill Down Group']]
+                 'Optimal Space', 'Sales Penetration', 'Penetration', 'Exit Flag', 'Total Store Space', 'Drill Down Group']]
         logging.info('selected used columns')
     lOutput.sort(columns=['Store','Category'],axis=0,inplace=True)
     return (lOutput, fullData)
