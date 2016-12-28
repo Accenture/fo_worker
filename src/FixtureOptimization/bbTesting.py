@@ -169,15 +169,16 @@ def optimizeTrad(jobName,Stores,Categories,spaceBound,increment,dataMunged,sales
                 # st[Store][Category][Level].setInitialValue(BA[i][j][k])
                 error[i][j][k] = np.absolute(BA[i][j][k] - Level)
 
-    NewOptim += lpSum([(bbt[Store] for Store in Stores)])/len(Stores)
+    # NewOptim += lpSum([(bbt[Store] for Store in Stores)])/len(Stores)
+    NewOptim += lpSum([(bbt[Store] for Store in Stores)])
 
     logging.info('created objective function')
 ###############################################################################################################
 # Constraints
 ###############################################################################################################
 #Makes is to that there is only one Selected tier for each Store/ Category Combination
+    NewOptim += lpSum([bbt for (i, Store) in enumerate(Stores)])/len(Stores) <= .03
     for (i, Store) in enumerate(Stores):
-        logging.info('Store # {}'.format(Store))
         # Conditional because you can't take the absolute using PuLP
         if lpSum([(st[Store][Category][Level] * Level) for (j, Category) in enumerate(Categories) for
              (k, Level) in enumerate(Levels)]) - locSpaceToFill[Store] >= 0:
@@ -190,7 +191,6 @@ def optimizeTrad(jobName,Stores,Categories,spaceBound,increment,dataMunged,sales
                 [(st[Store][Category][Level] * Level) for (j, Category) in enumerate(Categories) for (k, Level)
                  in
                  enumerate(Levels)]) <= bbt[Store]
-            # NewOptim += lpSum(bbt/len(Stores)) <= .01
 
     #One Space per Store Category
     #Makes sure that the number of fixtures, by store, does not go above or below some percentage of the total number of fixtures within the store
