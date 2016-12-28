@@ -219,9 +219,9 @@ def optimizeEnh(methodology,jobType,jobName,Stores,Categories,increment,weights,
 
         incrAdj = searchParam('ADJ', jobName)
         if incrAdj == None:
-            locBalBackBoundAdj = locSpaceToFill.apply(lambda row: adjustForOneIncr(row, bI, increment))
+            locBalBackBoundAdj = locSpaceToFill.apply(lambda row: adjustForOneIncr(row, locBalBackBound, increment))
         else:
-            locBalBackBoundAdj = locSpaceToFill.apply(lambda row: adjustForTwoIncr(row, bI, increment))
+            locBalBackBoundAdj = locSpaceToFill.apply(lambda row: adjustForTwoIncr(row, locBalBackBound, increment))
 
         logging.info('we have local balance back')
         # EXPLORATORY ONLY: ELASTIC BALANCE BACK

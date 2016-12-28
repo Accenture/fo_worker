@@ -14,7 +14,7 @@ import datetime as dt
 import logging as logging
 
 
-def optimizeTradBB(jobName,Stores,Categories,spaceBound,increment,dataMunged,salesPen,tierCounts=None):
+def optimizeTrad(jobName,Stores,Categories,spaceBound,increment,dataMunged,salesPen,tierCounts=None):
     """
     Run an LP-based optimization
 
@@ -53,7 +53,15 @@ def optimizeTradBB(jobName,Stores,Categories,spaceBound,increment,dataMunged,sal
         else:
             return None
 
-
+    def adjustForOneIncr(row, bound, increment):
+        """
+        Returns a vector with the maximum percent of the original total store space between two increment sizes and 10 percent of the store space
+        :param row: Individual row of Total Space Available in Store
+        :param bound: Percent Bounding for Balance Back
+        :param increment: Increment Size Determined by the User in the UI
+        :return: Returns an adjusted vector of percentages by which individual store space should be held
+        """
+        return max(bound, increment / row)
 
     dataMunged['Optimal Space']=dataMunged['Optimal Space'].apply(lambda x: roundValue(x, increment))
     spaceBound = pd.DataFrame.from_dict(spaceBound).T.reset_index()
@@ -93,33 +101,21 @@ def optimizeTradBB(jobName,Stores,Categories,spaceBound,increment,dataMunged,sal
         bI = .05
 
     locSpaceToFill = dataMunged.groupby('Store')['New Space'].agg(np.mean)
-    def adjustForTwoIncr(row, bound, increment):
-        """
-        Returns a vector with the maximum percent of the original total store space between two increment sizes and 10 percent of the store space
-        :param row: Individual row of Total Space Available in Store
-        :param bound: Percent Bounding for Balance Back
-        :param increment: Increment Size Determined by the User in the UI
-        :return: Returns an adjusted vector of percentages by which individual store space should be held
-        """
-        return max(bound, (2 * increment) / row)
+    # Hard-coded tolerance limits for balance back constraints
+    aggBalBackBound = 0.05  # 5%
+    locBalBackBound = 0.05  # 10%
 
-    def adjustForOneIncr(row, bound, increment):
-        """
-        Returns a vector with the maximum percent of the original total store space between two increment sizes and 10 percent of the store space
-        :param row: Individual row of Total Space Available in Store
-        :param bound: Percent Bounding for Balance Back
-        :param increment: Increment Size Determined by the User in the UI
-        :return: Returns an adjusted vector of percentages by which individual store space should be held
-        """
-        return max(bound, (1 * increment) / row)
+    logging.info('now have balance back bounds')
+    # EXPLORATORY ONLY: ELASTIC BALANCE BACK
+    # Hard-coded tolerance limits for balance back constraints without penalty
+    # The free bounds are the % difference from space to fill that is allowed without penalty
+    # The penalty is incurred if the filled space goes beyond the free bound % difference from space to fill
+    # The tighter the bounds and/or higher the penalties, the slower the optimization run time
+    # The penalty incurred should be different for Traditional vs Enhanced as the scale of the objective function differs
+    indBalBackFreeBound = pd.DataFrame(data=increment,index=Stores,columns=Categories) #exploratory, value would have to be determined through exploratory analysis
+    indBalBackPenalty = increment #exploratory, value would have to be determined through exploratory analysis
+    # indBalBackFreeBoundAdj = locSpaceToFill.apply(lambda row:adjustForOneIncr(row,locBalBackFreeBound,increment))
 
-    incrAdj = searchParam('ADJ', jobName)
-    if incrAdj == None:
-        locBalBackBoundAdj = locSpaceToFill.apply(lambda row: adjustForOneIncr(row, bI, increment))
-    else:
-        locBalBackBoundAdj = locSpaceToFill.apply(lambda row: adjustForTwoIncr(row, bI, increment))
-
-    # locBalBackBoundAdj = pd.Series(0,index=locSpaceToFill)
     logging.info('created balance back vector')
 
     W = opt_amt.sum(axis=1).sum(axis=0)
@@ -129,6 +125,8 @@ def optimizeTradBB(jobName,Stores,Categories,spaceBound,increment,dataMunged,sal
         ct = LpVariable.dicts('CT', (Categories, Levels), 0, upBound=1,cat='Binary')
 
     st = LpVariable.dicts('ST', (Stores, Categories, Levels), 0,upBound=1, cat='Binary')
+
+    bbt = LpVariable.dicts('BBT', (Stores), 0,upBound=1, cat='Binary')
     logging.info('tiers created')
 
     NewOptim = LpProblem(jobName, LpMinimize)  # Define Optimization Problem/
@@ -160,56 +158,35 @@ def optimizeTradBB(jobName,Stores,Categories,spaceBound,increment,dataMunged,sal
         #         tier_count["Upper_Bound"][Category] = tier_count["Upper_Bound"][Category] + 1
 
     logging.info('Brand Exit Done')
-    optType = searchParam('optType',jobName)
-    if optType == 'optimalSpace' or optType == None:
-        BA = np.zeros((len(Stores), len(Categories), len(Levels)))
-        error = np.zeros((len(Stores), len(Categories), len(Levels)))
-        for (i, Store) in enumerate(Stores):
-            for (j, Category) in enumerate(Categories):
-                for (k, Level) in enumerate(Levels):
-                    BA[i][j][k] = opt_amt[Category].iloc[i]
-                    error[i][j][k] = np.absolute(BA[i][j][k] - Level)
-        NewOptim += lpSum([(st[Store][Category][Level] * error[i][j][k]) for (i, Store) in enumerate(Stores) for (j, Category) in enumerate(Categories) for (k, Level) in enumerate(Levels)]), ""
-
-        # Constraints
-        # Makes is to that there is only one Selected tier for each Store/ Category Combination
-        for (i, Store) in enumerate(Stores):
-            # TODO: Exploratory analysis on impact of balance back on financials for Enhanced
-            # Store-level balance back constraint: the total space allocated to products at each location must be within the individual location balance back tolerance limit
-            NewOptim += lpSum(
-                [(st[Store][Category][Level]) * Level for (j, Category) in enumerate(Categories) for (k, Level) in
-                 enumerate(Levels)]) >= locSpaceToFill[Store] * (1 - locBalBackBoundAdj[Store]), "Location Balance Back Lower Limit-Store" + str(Store)
-            NewOptim += lpSum(
-                [(st[Store][Category][Level]) * Level for (j, Category) in enumerate(Categories) for (k, Level) in
-                 enumerate(Levels)]) <= locSpaceToFill[Store], "Location Balance Back Upper Limit_Store" + str(Store)
-    else:
-        # Constraints
-        # Makes is to that there is only one Selected tier for each Store/ Category Combination
-        # Figure out how to get the matrix multiplication to work here
-        BA = np.ones((len(Stores), len(Categories), len(Levels)))
-        for (i, Store) in enumerate(Stores):
-            for (j, Category) in enumerate(Categories):
-                for (k, Level) in enumerate(Levels):
-                    objective = st[Store][Category][Level] * BA[i][j][k]
-
-
-        for (i, Store) in enumerate(Stores):
-            NewOptim += lpSum([(st[Store][Category][Level] * Level for (j, Category) in enumerate(Categories) for (k, Level) in enumerate(Levels)]) * locSpaceToFill[Store])
-
+    BA = np.zeros((len(Stores), len(Categories), len(Levels)))
+    error = np.zeros((len(Stores), len(Categories), len(Levels)))
     for (i, Store) in enumerate(Stores):
-        # TODO: Exploratory analysis on impact of balance back on financials for Enhanced
-        # Store-level balance back constraint: the total space allocated to products at each location must be within the individual location balance back tolerance limit
-        NewOptim += lpSum(
-            [(st[Store][Category][Level]) * Level for (j, Category) in enumerate(Categories) for (k, Level) in
-             enumerate(Levels)]) >= locSpaceToFill[Store] * (1 - locBalBackBoundAdj[Store]), "Location Balance Back Lower Limit-Store" + str(Store)
-        NewOptim += lpSum(
-            [(st[Store][Category][Level]) * Level for (j, Category) in enumerate(Categories) for (k, Level) in
-             enumerate(Levels)]) <= locSpaceToFill[Store], "Location Balance Back Upper Limit_Store" + str(Store)
+        for (j, Category) in enumerate(Categories):
+            for (k, Level) in enumerate(Levels):
+                BA[i][j][k] = opt_amt[Category].iloc[i]
+                # st[Store][Category][Level].setInitialValue(BA[i][j][k])
+                error[i][j][k] = np.absolute(BA[i][j][k] - Level)
 
-        # Testing Out Exact Balance Back
-        # NewOptim += lpSum(
-        #     [(st[Store][Category][Level]) * Level for (j, Category) in enumerate(Categories) for (k, Level) in
-        #      enumerate(Levels)]) == locSpaceToFill[Store]  # , "Location Balance Back Lower Limit - STR " + str(Store)
+    NewOptim += lpSum([(bbt[Store] for Store in Stores)])/len(Stores)
+
+    logging.info('created objective function')
+###############################################################################################################
+# Constraints
+###############################################################################################################
+#Makes is to that there is only one Selected tier for each Store/ Category Combination
+    for (i, Store) in enumerate(Stores):
+        if lpSum([(st[Store][Category][Level] * Level) for (j, Category) in enumerate(Categories) for
+             (k, Level) in enumerate(Levels)]) - locSpaceToFill[Store] >= 0:
+            NewOptim += lpSum(
+                [(st[Store][Category][Level] * Level) for (j, Category) in enumerate(Categories) for (k, Level)
+                 in
+                 enumerate(Levels)]) - locSpaceToFill[Store] <= bbt[Store]
+        else:
+            NewOptim += locSpaceToFill[Store] - lpSum(
+                [(st[Store][Category][Level] * Level) for (j, Category) in enumerate(Categories) for (k, Level)
+                 in
+                 enumerate(Levels)]) <= bbt[Store]
+            # NewOptim += lpSum(bbt/len(Stores)) <= .01
 
     #One Space per Store Category
     #Makes sure that the number of fixtures, by store, does not go above or below some percentage of the total number of fixtures within the store
@@ -224,33 +201,40 @@ def optimizeTradBB(jobName,Stores,Categories,spaceBound,increment,dataMunged,sal
             #         NewOptim += lpSum([st[Store][Category][Level] * Level for (k,Level) in enumerate(Levels)]) >= spaceBound[Category][0]
             # else:
             NewOptim += lpSum([st[Store][Category][Level] * Level for (k,Level) in enumerate(Levels)]) >= spaceBound['Space Lower Limit'].loc[Category], "Space_Lower_Limit-Store_" + str(Store) + ",Category_" + str(Category)
-
+            for (k, Level) in enumerate(Levels):
+                #Trying an Elastic Constraint for the Optimal Space
+                # NewOptim += lpSum(
+                # [(st[Store][Category][Level]) * Level for (j, Category) in enumerate(Categories) for (k, Level) in
+                #  enumerate(Levels)]) >= BA[i][j][k] * 1(test), "Optimal Space Balance Back Lower Limit-Store" + str(Store)
+                eIndSpace = lpSum([st[Store][Category][Level]]) * Level
+                cIndBalBackPenalty = LpConstraint(e=eIndSpace, sense=LpConstraintEQ, name="Optimal Space Balance Back Penalty:_" + str(Store)+str(Category)+str(Level), rhs=opt_amt[Category].loc[Store])
+                print(cIndBalBackPenalty)
+                NewOptim.extend(cIndBalBackPenalty.makeElasticSubProblem(penalty=indBalBackPenalty,proportionFreeBound=indBalBackFreeBound.loc[Store,Category]))
 
     logging.info("After Space Bounds")
-    #Tier Counts Enhancement
+#Tier Counts Enhancement
     # totalTiers=0
     if tierCounts is not None:
         for (j,Category) in enumerate(Categories):
             # totalTiers=totalTiers+tierCounts[Category][1]
             NewOptim += lpSum([ct[Category][Level] for (k,Level) in enumerate(Levels)]) >= tierCounts[Category][0], "Tier_Count_Lower_Limit-Category_" + str(Category)
-            NewOptim += lpSum([ct[Category][Level] for (k,Level) in enumerate(Levels)]) <= tierCounts[Category][1], "Tier Count Lower Limit-Category_" + str(Category)
+            NewOptim += lpSum([ct[Category][Level] for (k,Level) in enumerate(Levels)]) <= tierCounts[Category][1], "Tier Count Upper Limit-Category_" + str(Category)
     #Relationship between Selected Tiers & Created Tiers
         #Verify that we still cannot use a constraint if not using a sum - Look to improve efficiency
             for (k,Level) in enumerate(Levels):
                 NewOptim += lpSum([st[Store][Category][Level] for (i,Store) in enumerate(Stores)])/len(Stores) <= ct[Category][Level], "Relationship between_"+str(Store)+"_"+str(Category)+"_"+str(Level)
 
-    #Global Balance Back
+#Global Balance Back
     NewOptim += lpSum(
         [st[Store][Category][Level] * Level for (i, Store) in enumerate(Stores) for (j, Category) in enumerate(Categories) for
          (k, Level) in enumerate(Levels)]) >= W * (1 - b), "All Stores Lower Bound Balance Back Constraint"
     NewOptim += lpSum(
         [st[Store][Category][Level] * Level for (i, Store) in enumerate(Stores) for (j, Category) in enumerate(Categories) for
          (k, Level) in enumerate(Levels)]) <= W * (1 + b), "All Stores Upper Bound Balance Back Constraint"
-
     # NewOptim.writeLP("Fixture_Optimization.lp")
     logging.info("The problem has been formulated")
 
-    #Solving the Problem
+#Solving the Problem
     # NewOptim.writeLP("Fixture_Optimization.lp")
     # NewOptim.writeMPS(str(jobName)+".mps")
     # Solve the problem using Gurobi

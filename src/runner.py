@@ -14,7 +14,8 @@ from pymongo import MongoClient
 from FixtureOptimization.curveFitting import curveFittingBS
 from FixtureOptimization.dataMerging import dataMerge
 from FixtureOptimization.preoptimizer import preoptimize
-from FixtureOptimization.optimizerTrad import optimizeTrad
+# from FixtureOptimization.optimizerTrad import optimizeTrad
+from FixtureOptimization.bbTesting import optimizeTrad
 from FixtureOptimization.optimizerEnh import optimizeEnh
 from FixtureOptimization.outputFunctions import createLong, createWide, createDrillDownSummary, createTieredSummary, outputValidation
 from FixtureOptimization.divideConquer import optimizeDD
