@@ -175,7 +175,7 @@ def optimizeTrad(jobName,Stores,Categories,spaceBound,increment,dataMunged,sales
     logging.info('created objective function')
     ###############################################################################################################
     # Constraints
-    NewOptim += lpSum([bbt[Store] for (i, Store) in enumerate(Stores)])/len(Stores) <= .2
+    # NewOptim += lpSum([bbt[Store] for (i, Store) in enumerate(Stores)])/len(Stores) <= .2
     for (i, Store) in enumerate(Stores):
         # Conditional because you can't take the absolute using PuLP
         # if lpSum([(st[Store][Category][Level] * Level) for (j, Category) in enumerate(Categories) for
