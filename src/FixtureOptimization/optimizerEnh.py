@@ -191,6 +191,7 @@ def optimizeEnh(methodology,jobType,jobName,Stores,Categories,increment,weights,
         logging.info('completed all of the function definitions')
         # Identify the total amount of space to fill in the optimization for each location and for all locations
         # locSpaceToFill = pd.Series(mergedPreOptCF.groupby('Store')['Space_to_Fill'].sum())
+        mergedPreOptCF['Space_to_Fill'] = mergedPreOptCF['Space_to_Fill'].apply(lambda x: roundValue(x, increment))
         locSpaceToFill = mergedPreOptCF.groupby(level=0)['Space_to_Fill'].agg(np.mean)
 
         aggSpaceToFill = locSpaceToFill.sum()

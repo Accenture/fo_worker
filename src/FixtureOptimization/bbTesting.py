@@ -100,6 +100,7 @@ def optimizeTradProto(jobName,Stores,Categories,spaceBound,increment,dataMunged,
     if bI == None:
         bI = .05
 
+    dataMunged['New Space']=dataMunged['New Space'].apply(lambda x: roundValue(x, increment))
     locSpaceToFill = dataMunged.groupby('Store')['New Space'].agg(np.mean)
     # Hard-coded tolerance limits for balance back constraints
     aggBalBackBound = 0.05  # 5%

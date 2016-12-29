@@ -90,6 +90,7 @@ def optimizeTrad(jobName,Stores,Categories,spaceBound,increment,dataMunged,sales
     if bI == None:
         bI = .05
 
+    dataMunged['New Space'] = dataMunged['New Space'].apply(lambda x: roundValue(x, increment))
     locSpaceToFill = dataMunged.groupby('Store')['New Space'].agg(np.mean)
     def adjustForTwoIncr(row, bound, increment):
         """
