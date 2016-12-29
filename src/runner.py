@@ -14,8 +14,8 @@ from pymongo import MongoClient
 from FixtureOptimization.curveFitting import curveFittingBS
 from FixtureOptimization.dataMerging import dataMerge
 from FixtureOptimization.preoptimizer import preoptimize
-# from FixtureOptimization.optimizerTrad import optimizeTrad
-from FixtureOptimization.bbTesting import optimizeTrad
+from FixtureOptimization.optimizerTrad import optimizeTrad
+from FixtureOptimization.bbTesting import optimizeTradProto
 from FixtureOptimization.optimizerEnh import optimizeEnh
 from FixtureOptimization.outputFunctions import createLong, createWide, createDrillDownSummary, createTieredSummary, outputValidation
 from FixtureOptimization.divideConquer import optimizeDD
@@ -194,10 +194,16 @@ def run(body):
     if msg['optimizationType'] == 'traditional':
         if msg['jobType'] == 'unconstrained' or msg['jobType'] == 'tiered':
             try:
-                optimRes = optimizeTrad(jobName=msg['meta']['name'], Stores=msg['salesStores'],
-                                        Categories=msg['salesCategories'],
-                                        spaceBound=msg['spaceBounds'], increment=msg['increment'], dataMunged=preOpt,
-                                        salesPen=msg['salesPenetrationThreshold'], tierCounts = msg['tierCounts'])
+                if 'proto' in msg['meta']['name']:
+                    optimRes = optimizeTradProto(jobName=msg['meta']['name'], Stores=msg['salesStores'],
+                                            Categories=msg['salesCategories'],
+                                            spaceBound=msg['spaceBounds'], increment=msg['increment'], dataMunged=preOpt,
+                                            salesPen=msg['salesPenetrationThreshold'], tierCounts = msg['tierCounts'])
+                else:
+                    optimRes = optimizeTrad(jobName=msg['meta']['name'], Stores=msg['salesStores'],
+                                            Categories=msg['salesCategories'],
+                                            spaceBound=msg['spaceBounds'], increment=msg['increment'], dataMunged=preOpt,
+                                            salesPen=msg['salesPenetrationThreshold'], tierCounts = msg['tierCounts'])
                 logging.info('Completed the Traditional Optimization')
             except Exception:
                 logging.exception('Traditional Optimization Failed')

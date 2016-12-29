@@ -14,7 +14,7 @@ import datetime as dt
 import logging as logging
 
 
-def optimizeTrad(jobName,Stores,Categories,spaceBound,increment,dataMunged,salesPen,tierCounts=None):
+def optimizeTradProto(jobName,Stores,Categories,spaceBound,increment,dataMunged,salesPen,tierCounts=None):
     """
     Run an LP-based optimization
 
@@ -112,7 +112,7 @@ def optimizeTrad(jobName,Stores,Categories,spaceBound,increment,dataMunged,sales
     # The penalty is incurred if the filled space goes beyond the free bound % difference from space to fill
     # The tighter the bounds and/or higher the penalties, the slower the optimization run time
     # The penalty incurred should be different for Traditional vs Enhanced as the scale of the objective function differs
-    indBalBackFreeBound = pd.DataFrame(data=increment,index=Stores,columns=Categories) #pd.DataFrame(data=increment,index=Stores,columns=Categories) #exploratory, value would have to be determined through exploratory analysis
+    indBalBackFreeBound = .15 #pd.DataFrame(data=increment,index=Stores,columns=Categories) #exploratory, value would have to be determined through exploratory analysis
     indBalBackPenalty = increment #exploratory, value would have to be determined through exploratory analysis
     # indBalBackFreeBoundAdj = pd.DataFrame(data=increment,index=Stores,columns=Categories)
     # Option
@@ -128,7 +128,7 @@ def optimizeTrad(jobName,Stores,Categories,spaceBound,increment,dataMunged,sales
 
     st = LpVariable.dicts('ST', (Stores, Categories, Levels), 0,upBound=1, cat='Binary')
 
-    bbt = LpVariable.dicts('BBT', (Stores), 0,upBound=1, cat='Binary')
+    bbt = LpVariable.dicts('BBT', Stores, 0,upBound=1, cat=LpInteger)
     logging.info('tiers created')
 
     NewOptim = LpProblem(jobName, LpMinimize)  # Define Optimization Problem/
@@ -170,7 +170,7 @@ def optimizeTrad(jobName,Stores,Categories,spaceBound,increment,dataMunged,sales
                 error[i][j][k] = np.absolute(BA[i][j][k] - Level)
 
     # NewOptim += lpSum([(bbt[Store] for Store in Stores)])/len(Stores)
-    NewOptim += lpSum([(bbt[Store] for Store in Stores)])
+    NewOptim += (lpSum([(bbt[Store] for Store in Stores)])-min(locSpaceToFill))/(max(locSpaceToFill)-min(locSpaceToFill))
 
     logging.info('created objective function')
     ###############################################################################################################
@@ -189,11 +189,13 @@ def optimizeTrad(jobName,Stores,Categories,spaceBound,increment,dataMunged,sales
         #         [(st[Store][Category][Level] * Level) for (j, Category) in enumerate(Categories) for (k, Level)
         #          in
         #          enumerate(Levels)]) == bbt[Store]
-        if lpSum([st[Store][Category][Level] * Level for (j, Category) in enumerate(Categories) for
-             (k, Level) in enumerate(Levels)]) - locSpaceToFill[Store] != 0:
-            NewOptim += bbt[Store] == 1
-        else:
-            NewOptim += bbt[Store] == 0
+        # if lpSum([st[Store][Category][Level] * Level for (j, Category) in enumerate(Categories) for
+        #      (k, Level) in enumerate(Levels)]) - locSpaceToFill[Store] != 0:
+        #     NewOptim += bbt[Store] == 1
+        # else:
+        #     NewOptim += bbt[Store] == 0
+        NewOptim += (lpSum([(st[Store][Category][Level] * Level * 2) for (j, Category) in enumerate(Categories) for (k, Level) in
+               enumerate(Levels)]) - locSpaceToFill[Store]* 2) == bbt[Store]
 
 
     #One Space per Store Category
@@ -214,8 +216,7 @@ def optimizeTrad(jobName,Stores,Categories,spaceBound,increment,dataMunged,sales
                                               name="Optimal Space Balance Back Penalty:_" + str(Store) + str(
                                                   Category), rhs=opt_amt[Category].loc[Store])
             NewOptim.extend(cIndBalBackPenalty.makeElasticSubProblem(penalty=indBalBackPenalty,
-                                                                     proportionFreeBound=indBalBackFreeBound.loc[
-                                                                         Store, Category]))
+                                                                     proportionFreeBound=indBalBackFreeBound))
 
             # for (k, Level) in enumerate(Levels):
             #     Trying an Elastic Constraint for the Optimal Space

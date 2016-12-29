@@ -198,6 +198,8 @@ def preoptimize(jobType,optimizationType,dataMunged, salesPenThreshold, mAdjustm
         logging.info('attempting to keep sales pen')
         information = pd.merge(information,pd.melt(calcPen(sales).reset_index(),id_vars=['Store'], var_name='Category',value_name='Sales Penetration'),on=['Store','Category'])
         information = information.apply(lambda x: pd.to_numeric(x, errors='ignore'))
+        if optimizationType == 'enhanced':
+            information.rename(columns={'Optimal Space': 'Traditional Optimal Space'}, inplace=True)
         return information
     except Exception as e:
         logging.exception('A thing')

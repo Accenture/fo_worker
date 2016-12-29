@@ -217,15 +217,16 @@ def optimizeEnh(methodology,jobType,jobName,Stores,Categories,increment,weights,
         #     logging.info("Divide by 0. \n There is a store that doesn't have any space assigned whatsoever.")
         #     return False
 
-        incrAdj = searchParam('ADJ', jobName)
-        if incrAdj == None:
-            locBalBackBoundAdj = locSpaceToFill.apply(lambda row: adjustForOneIncr(row, locBalBackBound, increment))
-        else:
-            locBalBackBoundAdj = locSpaceToFill.apply(lambda row: adjustForTwoIncr(row, locBalBackBound, increment))
+        # incrAdj = searchParam('ADJ', jobName)
+        # if incrAdj == None:
+        #     locBalBackBoundAdj = locSpaceToFill.apply(lambda row: adjustForOneIncr(row, locBalBackBound, increment))
+        # else:
+        #     locBalBackBoundAdj = locSpaceToFill.apply(lambda row: adjustForTwoIncr(row, locBalBackBound, increment))
 
         logging.info('we have local balance back')
         # EXPLORATORY ONLY: ELASTIC BALANCE BACK
-        locBalBackFreeBoundAdj = locSpaceToFill.apply(lambda row:adjustForTwoIncr(row,locBalBackFreeBound,increment))
+        # locBalBackFreeBoundAdj = locSpaceToFill.apply(lambda row:adjustForTwoIncr(row,locBalBackFreeBound,increment))
+        locBalBackFreeBoundAdj = locBalBackFreeBound
 
         # Create eligible space levels
         mergedPreOptCF["Upper_Limit"] = mergedPreOptCF["Upper_Limit"].apply(lambda x: roundValue(x,increment))
@@ -292,7 +293,7 @@ def optimizeEnh(methodology,jobType,jobName,Stores,Categories,increment,weights,
             # makeElasticSubProblem only works on minimize problems, so Enhanced must be written as minimize negative SPU
             eLocSpace = lpSum([(st[Store][Category][Level]) * Level for (j, Category) in enumerate(Categories) for (k, Level) in enumerate(Levels)])
             cLocBalBackPenalty = LpConstraint(e=eLocSpace, sense=LpConstraintEQ, name="Location Balance Back Penalty: Store " + str(Store),rhs=locSpaceToFill[Store])
-            NewOptim.extend(cLocBalBackPenalty.makeElasticSubProblem(penalty=locBalBackPenalty,proportionFreeBound=locBalBackFreeBoundAdj[Store]))
+            NewOptim.extend(cLocBalBackPenalty.makeElasticSubProblem(penalty=locBalBackPenalty,proportionFreeBound=locBalBackFreeBoundAdj))
 
             for (j,Category) in enumerate(Categories):
                 # logging.info('we got through the first part')
@@ -327,16 +328,16 @@ def optimizeEnh(methodology,jobType,jobName,Stores,Categories,increment,weights,
 
         # logging.info('finished total tiers constraint')
         # The total space allocated to products across all locations must be within the aggregate balance back tolerance limit.
-        NewOptim += lpSum([st[Store][Category][Level] * Level for (i, Store) in enumerate(Stores) for (j, Category) in enumerate(Categories) for (k, Level) in enumerate(Levels)]) >= aggSpaceToFill * (1 - aggBalBackBound), "Aggregate Balance Back Lower Limit"
-        NewOptim += lpSum([st[Store][Category][Level] * Level for (i, Store) in enumerate(Stores) for (j, Category) in enumerate(Categories) for (k, Level) in enumerate(Levels)]) <= aggSpaceToFill * (1 + aggBalBackBound), "Aggregate Balance Back Upper Limit"
+        # NewOptim += lpSum([st[Store][Category][Level] * Level for (i, Store) in enumerate(Stores) for (j, Category) in enumerate(Categories) for (k, Level) in enumerate(Levels)]) >= aggSpaceToFill * (1 - aggBalBackBound), "Aggregate Balance Back Lower Limit"
+        # NewOptim += lpSum([st[Store][Category][Level] * Level for (i, Store) in enumerate(Stores) for (j, Category) in enumerate(Categories) for (k, Level) in enumerate(Levels)]) <= aggSpaceToFill * (1 + aggBalBackBound), "Aggregate Balance Back Upper Limit"
 
         # EXPLORATORY ONLY: ELASTIC BALANCE BACK
         # Penalize balance back by introducing an elastic subproblem constraint
         # Increases optimization run time
         # makeElasticSubProblem only works on minimize problems, so Enhanced must be written as minimize negative SPU
-        # eAggSpace = lpSum([st[Store][Category][Level] * Level for (i, Store) in enumerate(Stores) for (j, Category) in enumerate(Categories) for (k, Level) in enumerate(Levels)])
-        # cAggBalBackPenalty = LpConstraint(e=eAggSpace,sense=LpConstraintEQ,name="Aggregate Balance Back Penalty",rhs = aggSpaceToFill)
-        # NewOptim.extend(cAggBalBackPenalty.makeElasticSubProblem(penalty= aggBalBackPenalty,proportionFreeBound = aggBalBackFreeBound))
+        eAggSpace = lpSum([st[Store][Category][Level] * Level for (i, Store) in enumerate(Stores) for (j, Category) in enumerate(Categories) for (k, Level) in enumerate(Levels)])
+        cAggBalBackPenalty = LpConstraint(e=eAggSpace,sense=LpConstraintEQ,name="Aggregate Balance Back Penalty",rhs = aggSpaceToFill)
+        NewOptim.extend(cAggBalBackPenalty.makeElasticSubProblem(penalty= aggBalBackPenalty,proportionFreeBound = aggBalBackFreeBound))
 
         #Time stamp for optimization solve time
         start_seconds = dt.datetime.today().hour*60*60+ dt.datetime.today().minute*60 + dt.datetime.today().second
@@ -378,7 +379,10 @@ def optimizeEnh(methodology,jobType,jobName,Stores,Categories,increment,weights,
         logging.info("to the solver we go")
 
         #Solve the problem using Gurobi
-        NewOptim.solve(pulp.GUROBI(mip=True, msg=True, MIPgap=.01, LogFile="/tmp/gurobi.log"))
+        try:
+            NewOptim.solve(pulp.GUROBI(mip=True, msg=True, MIPgap=.01, LogFile="/tmp/gurobi.log"))
+        except Exception:
+            logging.exception('There was an issue with Gurobi')
 
         # local development - use CBC instead of gurobi
         # NewOptim.solve(pulp.PULP_CBC_CMD(msg=2, threads=6, fracGap=.1, presolve=True))

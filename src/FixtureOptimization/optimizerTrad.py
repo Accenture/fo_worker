@@ -131,13 +131,25 @@ def optimizeTrad(jobName,Stores,Categories,spaceBound,increment,dataMunged,sales
         """
         return (1 * increment) / row
 
-    incrAdj = searchParam('ADJ', jobName)
-    if incrAdj == None:
-        locBalBackBoundAdj = locSpaceToFill.apply(lambda row: adjustForSglIncr(row, bI, increment))
-    else:
-        locBalBackBoundAdj = locSpaceToFill.apply(lambda row: adjustForDblIncr(row, bI, increment))
+    # incrAdj = searchParam('ADJ', jobName)
+    # if incrAdj == None:
+    #     locBalBackBoundAdj = locSpaceToFill.apply(lambda row: adjustForSglIncr(row, bI, increment))
+    # else:
+    #     locBalBackBoundAdj = locSpaceToFill.apply(lambda row: adjustForDblIncr(row, bI, increment))
 
-    # locBalBackBoundAdj = pd.Series(0,index=locSpaceToFill)
+    # EXPLORATORY ONLY: ELASTIC BALANCE BACK
+    # Hard-coded tolerance limits for balance back constraints without penalty
+    # The free bounds are the % difference from space to fill that is allowed without penalty
+    # The penalty is incurred if the filled space goes beyond the free bound % difference from space to fill
+    # The tighter the bounds and/or higher the penalties, the slower the optimization run time
+    # The penalty incurred should be different for Traditional vs Enhanced as the scale of the objective function differs
+    aggBalBackFreeBound = 0.01  # exploratory, value would have to be determined through exploratory analysis
+    aggBalBackPenalty = increment * 10  # exploratory, value would have to be determined through exploratory analysis
+    locBalBackFreeBound = 0.01  # exploratory, value would have to be determined through exploratory analysis
+    locBalBackPenalty = increment  # exploratory, value would have to be determined through exploratory analysis
+    # EXPLORATORY ONLY: ELASTIC BALANCE BACK
+    # locBalBackFreeBoundAdj = locSpaceToFill.apply(lambda row:adjustForTwoIncr(row,locBalBackFreeBound,increment))
+    locBalBackFreeBoundAdj = locBalBackFreeBound
     logging.info('created balance back vector')
 
     W = locSpaceToFill.sum()
@@ -190,33 +202,35 @@ def optimizeTrad(jobName,Stores,Categories,spaceBound,increment,dataMunged,sales
     NewOptim += lpSum(
         [(st[Store][Category][Level] * error[i][j][k]) for (i, Store) in enumerate(Stores) for (j, Category) in
          enumerate(Categories) for (k, Level) in enumerate(Levels)]), "Optimal Space Objective"
-    for (i, Store) in enumerate(Stores):
-        NewOptim += lpSum(
-            [(st[Store][Category][Level]) * Level for (j, Category) in enumerate(Categories) for (k, Level)
-             in
-             enumerate(Levels)]) - locSpaceToFill[Store], "BB Objective " + str(Store)
     logging.info('created objective function')
-###############################################################################################################
-############################################### Constraints
-###############################################################################################################
-#Makes is to that there is only one Selected tier for each Store/ Category Combination
-    for (i, Store) in enumerate(Stores):
-    #     TODO: Exploratory analysis on impact of balance back on financials for Enhanced
-    #     Store-level balance back constraint: the total space allocated to products at each location must be within the individual location balance back tolerance limit
-        NewOptim += lpSum(
-            [(st[Store][Category][Level]) * Level for (j, Category) in enumerate(Categories) for (k, Level) in
-             enumerate(Levels)]) - locSpaceToFill[Store] * (1 - locBalBackBoundAdj[Store]) , "Location Balance Back Lower Limit-Store" + str(Store)
-        NewOptim += lpSum(
-            [(st[Store][Category][Level]) * Level for (j, Category) in enumerate(Categories) for (k, Level) in
-             enumerate(Levels)]) <= locSpaceToFill[Store], "Location Balance Back Upper Limit_Store" + str(Store)  # * (1 + locBalBackBoundAdj[Store]) 
 
-        # Testing Out Exact Balance Back
+    # Constraints
+    # Makes is to that there is only one Selected tier for each Store/ Category Combination
+    for (i, Store) in enumerate(Stores):
+        # TODO: Exploratory analysis on impact of balance back on financials for Enhanced
+        # Store-level balance back constraint: the total space allocated to products at each location must be within the individual location balance back tolerance limit
         # NewOptim += lpSum(
         #     [(st[Store][Category][Level]) * Level for (j, Category) in enumerate(Categories) for (k, Level) in
-        #      enumerate(Levels)]) == locSpaceToFill[Store]  # , "Location Balance Back Lower Limit - STR " + str(Store)
+        #      enumerate(Levels)]) >= locSpaceToFill[Store] * (1 - locBalBackBoundAdj[Store]) , "Location Balance Back Lower Limit-Store" + str(Store)
+        # NewOptim += lpSum(
+        #     [(st[Store][Category][Level]) * Level for (j, Category) in enumerate(Categories) for (k, Level) in
+        #      enumerate(Levels)]) <= locSpaceToFill[Store], "Location Balance Back Upper Limit_Store" + str(Store)  # * (1 + locBalBackBoundAdj[Store])
 
-#One Space per Store Category
-    #Makes sure that the number of fixtures, by store, does not go above or below some percentage of the total number of fixtures within the store 
+        # EXPLORATORY ONLY: ELASTIC BALANCE BACK
+        # Penalize balance back by introducing an elastic subproblem constraint
+        # Increases optimization run time
+        # makeElasticSubProblem only works on minimize problems, so Enhanced must be written as minimize negative SPU
+        eLocSpace = lpSum(
+            [(st[Store][Category][Level]) * Level for (j, Category) in enumerate(Categories) for (k, Level) in
+             enumerate(Levels)])
+        cLocBalBackPenalty = LpConstraint(e=eLocSpace, sense=LpConstraintEQ,
+                                          name="Location Balance Back Penalty: Store " + str(Store),
+                                          rhs=locSpaceToFill[Store])
+        NewOptim.extend(cLocBalBackPenalty.makeElasticSubProblem(penalty=locBalBackPenalty,
+                                                                 proportionFreeBound=locBalBackFreeBoundAdj))
+
+        # One Space per Store Category
+        # Makes sure that the number of fixtures, by store, does not go above or below some percentage of the total number of fixtures within the store
         for (j,Category) in enumerate(Categories):
             NewOptim += lpSum([st[Store][Category][Level] for (k,Level) in enumerate(Levels)]) == 1#, "One_Level_per_Store-Category_Combination"
         # Test Again to check if better performance when done on ct level
@@ -265,7 +279,7 @@ def optimizeTrad(jobName,Stores,Categories,spaceBound,increment,dataMunged,sales
     try:
         NewOptim.solve(pulp.GUROBI(mip=True, msg=True, MIPgap=optGap, LogFile="/tmp/gurobi.log"))
     except Exception:
-        logging.exception('A thing')
+        logging.exception('There was an issue with Gurobi')
 
 
     # local development uses CBC until
