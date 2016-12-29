@@ -140,7 +140,8 @@ def optimizeTrad(jobName,Stores,Categories,spaceBound,increment,dataMunged,sales
     # locBalBackBoundAdj = pd.Series(0,index=locSpaceToFill)
     logging.info('created balance back vector')
 
-    W = opt_amt.sum(axis=1).sum(axis=0)
+    W = locSpaceToFill.sum()
+
 
     logging.info('Balance Back Vector')
     if tierCounts is not None:

@@ -120,7 +120,7 @@ def optimizeTrad(jobName,Stores,Categories,spaceBound,increment,dataMunged,sales
 
     logging.info('created balance back vector')
 
-    W = opt_amt.sum(axis=1).sum(axis=0)
+    W = locSpaceToFill.sum()
 
     logging.info('Balance Back Vector')
     if tierCounts is not None:
@@ -189,7 +189,7 @@ def optimizeTrad(jobName,Stores,Categories,spaceBound,increment,dataMunged,sales
         #         [(st[Store][Category][Level] * Level) for (j, Category) in enumerate(Categories) for (k, Level)
         #          in
         #          enumerate(Levels)]) == bbt[Store]
-        if lpSum([(st[Store][Category][Level] * Level) for (j, Category) in enumerate(Categories) for
+        if lpSum([st[Store][Category][Level] * Level for (j, Category) in enumerate(Categories) for
              (k, Level) in enumerate(Levels)]) - locSpaceToFill[Store] != 0:
             NewOptim += bbt[Store] == 1
         else:
