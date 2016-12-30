@@ -215,19 +215,6 @@ Vagrant.configure("2") do |config|
     # so we will need to be explicit in our calls to anaconda during this script
     conda_path=$anaconda_home/anaconda3/bin
 
-    # create fo_api conda environment
-    cd /vagrant/fo_api
-    $conda_path/conda env create -f environment.yml
-
-    # install notifications dependencies
-    cd /vagrant/fo_notifications
-    npm install
-
-    # install web dependencies
-    cd /vagrant/fo_web
-    npm install
-    sudo npm install -g gulp@3.9.0
-
     # create fo_worker conda environment
     cd /vagrant/fo_worker
     $conda_path/conda env create -f environment.yml

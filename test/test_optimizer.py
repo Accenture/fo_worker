@@ -28,6 +28,16 @@ def test(test_dir):
 	toCsv(longOutput, _dir + 'output/longOutput.csv')
 	toCsv(wideOutput, _dir + 'output/wideOutput.csv')
 
+"""
+Test suite for unit testing all optimization scenarios.
+created one test case, for children data set.
+each test case takes input sales,space,brand_exit and future space date. In prod env, user will update these files.
+
+Additional config.json is required, which has other metrics like job type, no of min/max tiers etc.
+In prod env, UI will create this object and creates this message.json and add to the RabbitMQ.
+Then fo_worker daemon process gets the message from queue and process the job
+
+"""
 if __name__ == '__main__':
 	test('test_children_tiered_traditional/')
 	#test('test_small_children/test_tiered_traditional/')
