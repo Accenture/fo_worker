@@ -23,5 +23,7 @@ MONGO_NAME = env.get('MONGO_NAME', 'app')
 MONGO_USERNAME = env.get('MONGO_USERNAME', '')
 MONGO_PASSWORD = env.get('MONGO_PASSWORD', '')
 IS_AUTH_MONGO = env.get('IS_AUTH_MONGO', 'False')
+#currently we use CBC or GUROBI
+SOLVER = 'CBC'
 
 WORKER_NUM_PROCESSES = int(env.get('FO_WORKER_NUM_PROCESSES', '3'))

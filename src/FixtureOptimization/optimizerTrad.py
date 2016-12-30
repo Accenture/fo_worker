@@ -221,7 +221,12 @@ def optimizeTrad(jobName,Stores,Categories,spaceBound,increment,dataMunged,sales
         optGap = .1
 
     try:
-        NewOptim.solve(pulp.GUROBI(mip=True, msg=True, MIPgap=optGap, LogFile="/tmp/gurobi.log"))
+        #if config.SOLVER == 'GUROBI':
+        #    NewOptim.solve(pulp.GUROBI(mip=True, msg=True, MIPgap=optGap, LogFile="/tmp/gurobi.log"))
+        #else:
+
+        NewOptim.solve(pulp.PULP_CBC_CMD(msg=2))
+
     except Exception:
         logging.exception('A thing')
 
