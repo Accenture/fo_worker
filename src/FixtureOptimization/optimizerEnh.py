@@ -210,7 +210,7 @@ def optimizeEnh(methodology,jobType,jobName,Stores,Categories,increment,weights,
         aggBalBackFreeBound = 0.01 #exploratory, value would have to be determined through exploratory analysis
         aggBalBackPenalty = increment*10 #exploratory, value would have to be determined through exploratory analysis
         locBalBackFreeBound = 0.01 #exploratory, value would have to be determined through exploratory analysis
-        locBalBackPenalty = increment #exploratory, value would have to be determined through exploratory analysis
+        locBalBackPenalty = math.pow(increment,math.pow(increment,increment)) #exploratory, value would have to be determined through exploratory analysis
 
         # try:
         #     locBalBackBoundAdj = locSpaceToFill.apply(lambda row:adjustForTwoIncr(row,locBalBackBound,increment))
@@ -294,7 +294,7 @@ def optimizeEnh(methodology,jobType,jobName,Stores,Categories,increment,weights,
             # makeElasticSubProblem only works on minimize problems, so Enhanced must be written as minimize negative SPU
             eLocSpace = lpSum([(st[Store][Category][Level]) * Level for (j, Category) in enumerate(Categories) for (k, Level) in enumerate(Levels)])
             cLocBalBackPenalty = LpConstraint(e=eLocSpace, sense=LpConstraintEQ, name="Location Balance Back Penalty: Store " + str(Store),rhs=locSpaceToFill[Store])
-            NewOptim.extend(cLocBalBackPenalty.makeElasticSubProblem(penalty=locBalBackPenalty,proportionFreeBound=locBalBackFreeBoundAdj))
+            NewOptim.extend(cLocBalBackPenalty.makeElasticSubProblem(penalty=locBalBackPenalty,proportionFreeBoundList=[locBalBackFreeBoundAdj,0]))
 
             for (j,Category) in enumerate(Categories):
                 # logging.info('we got through the first part')
@@ -338,7 +338,7 @@ def optimizeEnh(methodology,jobType,jobName,Stores,Categories,increment,weights,
         # makeElasticSubProblem only works on minimize problems, so Enhanced must be written as minimize negative SPU
         eAggSpace = lpSum([st[Store][Category][Level] * Level for (i, Store) in enumerate(Stores) for (j, Category) in enumerate(Categories) for (k, Level) in enumerate(Levels)])
         cAggBalBackPenalty = LpConstraint(e=eAggSpace,sense=LpConstraintEQ,name="Aggregate Balance Back Penalty",rhs = aggSpaceToFill)
-        NewOptim.extend(cAggBalBackPenalty.makeElasticSubProblem(penalty= aggBalBackPenalty,proportionFreeBound = aggBalBackFreeBound))
+        NewOptim.extend(cAggBalBackPenalty.makeElasticSubProblem(penalty= aggBalBackPenalty,proportionFreeBoundList = [aggBalBackFreeBound,0]))
 
         #Time stamp for optimization solve time
         start_seconds = dt.datetime.today().hour*60*60+ dt.datetime.today().minute*60 + dt.datetime.today().second
