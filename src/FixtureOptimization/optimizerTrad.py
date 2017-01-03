@@ -12,6 +12,7 @@ import numpy as np
 import pandas as pd
 import datetime as dt
 import logging as logging
+import math
 
 
 def optimizeTrad(jobName,Stores,Categories,spaceBound,increment,dataMunged,salesPen,tierCounts=None):
@@ -147,7 +148,9 @@ def optimizeTrad(jobName,Stores,Categories,spaceBound,increment,dataMunged,sales
     aggBalBackFreeBound = 0.01  # exploratory, value would have to be determined through exploratory analysis
     aggBalBackPenalty = increment * 10  # exploratory, value would have to be determined through exploratory analysis
     locBalBackFreeBound = 0.01  # exploratory, value would have to be determined through exploratory analysis
-    locBalBackPenalty = increment  # exploratory, value would have to be determined through exploratory analysis
+    penaltyValue = maxLevel / increment
+    locBalBackPenalty = math.pow(penaltyValue, math.pow(penaltyValue,
+                                                        penaltyValue))  # exploratory, value would have to be determined through exploratory analysis
     # EXPLORATORY ONLY: ELASTIC BALANCE BACK
     # locBalBackFreeBoundAdj = locSpaceToFill.apply(lambda row:adjustForTwoIncr(row,locBalBackFreeBound,increment))
     locBalBackFreeBoundAdj = locBalBackFreeBound

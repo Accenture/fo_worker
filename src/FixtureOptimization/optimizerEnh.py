@@ -210,7 +210,8 @@ def optimizeEnh(methodology,jobType,jobName,Stores,Categories,increment,weights,
         aggBalBackFreeBound = 0.01 #exploratory, value would have to be determined through exploratory analysis
         aggBalBackPenalty = increment*10 #exploratory, value would have to be determined through exploratory analysis
         locBalBackFreeBound = 0.01 #exploratory, value would have to be determined through exploratory analysis
-        locBalBackPenalty = math.pow(increment,math.pow(increment,increment)) #exploratory, value would have to be determined through exploratory analysis
+        penaltyValue=maxLevel/increment
+        locBalBackPenalty = math.pow(penaltyValue,math.pow(penaltyValue,penaltyValue)) #exploratory, value would have to be determined through exploratory analysis
 
         # try:
         #     locBalBackBoundAdj = locSpaceToFill.apply(lambda row:adjustForTwoIncr(row,locBalBackBound,increment))
