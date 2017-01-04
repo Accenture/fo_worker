@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 import datetime as dt
 import logging
+from baseOptimizer import BaseOptimizer
 
 class TraditionalOptimizer(BaseOptimizer):
     """

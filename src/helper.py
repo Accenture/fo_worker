@@ -13,7 +13,7 @@ import sys
 sys.path.append('/vagrant/fo_api/src/')
 # The following path is the path for local env.
 sys.path.append('../fo_api/src/')
-from artifacts import ArtifactBuilder
+#from artifacts import ArtifactBuilder
 
 
 def toCsv(dataframe, filename):
