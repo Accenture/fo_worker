@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 from scipy.special import erf
 import math
+import logging
 import datetime as dt
 
 # Helper function for createSPU function(s), to forecast weighted combination of sales, profit, and units
@@ -53,11 +54,11 @@ def createSPUForSingleStoreOpt(strnum, Categories, curveFittingQuery, w, incr, m
 
 # Main function for single store optimization
 def optimizeSingleStore(curve_fitting,incr,w):
-    print('in single store')
+    logging.info('in single store')
     Stores = curve_fitting.index.levels[0].unique()
     Categories = curve_fitting.index.levels[1].unique()
     ss_optimals_wide=pd.DataFrame(index=Stores,columns=Categories)
-    print('entering giant loop')
+    logging.info('entering giant loop')
     for Store in Stores:
 
         # Select store info from curve fitting
@@ -129,7 +130,7 @@ def optimizeSingleStore(curve_fitting,incr,w):
         for (j, Category) in enumerate(Categories):
             ss_optimals_wide[Category][Store] = optimal[j]*incr
 
-    print('out of the loop')
+    logging.info('out of the loop')
     ss_optimals_long = pd.DataFrame(ss_optimals_wide.unstack()).swaplevel()
     ss_optimals_long.rename(columns={ss_optimals_long.columns[-1]: "Optimal Space"}, inplace=True)
     ss_optimals_long["Optimal Space"] = ss_optimals_long["Optimal Space"].astype(float)
