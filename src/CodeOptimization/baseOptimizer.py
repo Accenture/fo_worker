@@ -15,22 +15,44 @@ class BaseOptimizer(object):
     Optimization Algorithms
     """
 
-    def __init__(self,jobName,Stores,Categories,increment,salesPen,tierCounts=None):
-        self.jobName = jobName            
-        self.Stores = Stores
-        self.Categories = Categories      
+    def __init__(self,job_name,stores,categories,category_boundsincrement,sales_penetration_threshold):
+        self.job_name = job_name    
+        self.job_type = job_type        
+        self.stores = stores
+        self.categories = categories      
         self.increment = increment        
-        self.salesPen = salesPen
-        self.tierCounts = tierCounts
+        self.sales_penetration_threshold = sales_penetration_threshold
+        
 
-    def roundValue(cVal, increment):
+    def getDiagnostics(self):
+        #Todo
+        pass
+    def getSolver(self):
+        #Todo
+        pass
+    def setSolved(self):
+        #Todo
+        pass
+    def getMPS(self):
+        #Todo
+        pass
+    def getLP(self):
+        #Todo
+        pass
+    def solveLP(self):
+        #Todo
+        pass
+    def getModelDetails(self):
+        #Todo
+        pass
+    def roundValue(self,cVal, increment):
         if np.mod(round(cVal, 3), increment) > increment / 2:
             cVal = round(cVal, 3) + (increment - (np.mod(round(cVal, 3), increment)))
         else:
             cVal = round(cVal, 3) - np.mod(round(cVal, 3), increment)
         return cVal
 
-    def searchParam(search, jobName):
+    def searchParam(self,search, jobName):
         if search in jobName:
             begin = jobName.find(search)
             length = 0

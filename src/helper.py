@@ -28,14 +28,14 @@ def fetch_artifact(file):
 	file = pd.read_csv(file, header=0)
 	return file
 
-def fetchTransactions(file):
+def fetch_sales_data(file):
 	# file = fs.get(ObjectId(artifact_id))
 	file = pd.read_csv(file, header=None)
 	# print (file.loc[range(10), :])
 	# return file.loc[range(10), :]
 	return file
 
-def fetchSpace(file):
+def fetch_space_data(file):
 	# file = fs.get(ObjectId(artifact_id))
 	file = pd.read_csv(file, header=0, dtype={'Store': object}, skiprows=[1])
 	# print (file.loc[range(10), :])
@@ -68,14 +68,16 @@ def fetchLong(file,filtCategory):
     file = tierColCreate(file[['Store','VSG','Climate','Category','Result Space']])
     return file
 
-def fetchExit(file):
+def fetch_brand_exit_data(file):
 	# file = fs.get(ObjectId(artifact_id))
 	file = pd.read_csv(file, header=0, skiprows=[1])
 	return file
+
 def loadJson(file):
 	with open(file, "r") as f:
 		j = json.load(f)
 	return j
+
 def loadOptions(options):
 	err_lst = list()
 	_dir = options.input_dir if options.input_dir != None else err_lst.append('input dir')

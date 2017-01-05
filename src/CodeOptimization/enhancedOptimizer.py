@@ -12,7 +12,7 @@ import pymongo as pm
 import gridfs
 import config
 import datetime as dt
-from baseOptimizer import BaseOptmizer
+from codeoptimization.baseOptimizer import BaseOptimizer
 
 class EnhancedOptimizer(BaseOptimizer):
     """
