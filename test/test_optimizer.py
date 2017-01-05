@@ -8,9 +8,9 @@ from helper import *
 
 def test(test_dir):
 	_dir = test_dir
-	conf = _dir + 'input/config.json'
-	sales_data = _dir + 'input/Sales.csv'
-	space_data = _dir + 'input/Space.csv'
+	conf = _dir + 'balance_back_test/Mens.json'
+	sales_data = _dir + 'balance_back_test/Sales_data.csv'
+	space_data = _dir + 'balance_back_test/Space_data.csv'
 	future_space = None
 	#future_space = _dir + 'input/Future_Space_data.csv'
 
@@ -39,7 +39,7 @@ Then fo_worker daemon process gets the message from queue and process the job
 
 """
 if __name__ == '__main__':
+	#test('test_children_tiered_traditional/')
 	test('test_children_tiered_traditional/')
-	#test('test_small_children/test_tiered_traditional/')
 
 
