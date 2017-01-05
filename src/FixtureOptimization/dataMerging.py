@@ -6,134 +6,327 @@ import logging
 from itertools import product
 
 
-def dataMerge(jobName,jobType,optimizationType,transactions,space,brandExit=None,futureSpace=None):
+###############################################################################
+# OBSOLETE
+def convert_wide2long_sales(wide_data, stores, categories):
     """
+    Assigns names for each financial metric in the Transaction Data Set and converts it to a long table
+    :param wide_data: Individual Wide Table of Transaction Metric
+    :param stores: List of stores
+    :param categories: List of categories
+    :return: Returns a long table for an individual metric
+    """
+    wide_data.loc[0, :] = categories
+    wide_data = pd.concat([stores, wide_data], axis=1)
+    wide_data.columns = wide_data.loc[0,]
 
-    :param jobName:
-    :param jobType:
-    :param optimizationType:
-    :param transactions:
-    :param space:
-    :param brandExit:
-    :param futureSpace:
+    long_data = pd.melt(wide_data[2::], id_vars=['Store'], var_name='Category',
+                        value_name=pd.unique(wide_data.loc[1].dropna().values)[0])
+    long_data = long_data.apply(lambda x: pd.to_numeric(x, errors='ignore'))
+
+    return long_data
+
+
+###############################################################################
+# adds a category variable as 'Category' to a dataframe
+def add_category(data, category):
+    data.insert(1, 'Category', category)
+    return data
+
+
+###############################################################################
+#
+#                       Reads Sales data from a csv file
+#
+def read_sales_data(filename, jobType='tiered'):
+    """
+    It takes the data from the Sales file and places it into a dataframe
+    and cleans it up for the merger with other data
+
+    :param filename:
     :return:
     """
+
+    # reads in file, uses first row as headers
+    data = pd.read_csv(filename, header=0, dtype={'Store': object})
+
+    # print(tabulate(data, headers='keys', tablefmt='psql', floatfmt='.1f'))
+
+    # extracts the categories from first row in sales data
+    categories = data.columns[1::9].values
+
+    # Note: data comes with 2 header rows!
+
+    # copies the label in first row into second row
+    data.values[0][0] = data.columns[0]
+
+    # sets the header to the values from the first row
+    data.columns = data.values[0]
+
+    # drops the first row (includes just the category names)
+    data.drop(0, inplace=True)
+
+    # converts all space data to numeric (NOT THE CLEANEST WAY)
+    data = data.apply(lambda x: pd.to_numeric(x, errors='ignore'))
+
+    ##################################################################
+    # tiered or unconstrained
+    if  jobType in ('tiered', 'unconstrained'):
+
+        # for (c, category) in enumerate(categories):
+        #     print('=======================================')
+        #     print(c)
+        #     print(category)
+        #     d = data.ix[:, np.r_[0, c * 9 + 1:c * 9 + 10]]
+        #     print(d.insert(1, 'Category', category))
+
+        # extracts the metrics for each category and adds the Category column with category as its value
+        frames  = [add_category(data.ix[:, np.r_[0, c*9+1:c*9+10]], category) for (c, category) in enumerate(categories)]
+
+        # concatenates the individual dataframes to one
+        sales = pd.concat(frames)
+
+
+    ##################################################################
+    elif jobType == 'drilldown':
+
+        # NOT TESTED YET!!
+
+        test = pd.DataFrame(list(product(stores, categories)), columns=['Store', 'Category'])
+        # merging test (?) with long sales table
+        # extracts business metrics one at a time
+        for (m, metric) in enumerate(metrics):
+            a = convert_wide2long_sales(data.loc[:, int(m + 1)::9], pd.DataFrame(sales[0]), categories)
+            test = pd.merge(left=test, right=a, on=['Store', 'Category'])
+
+        # merges data on store
+        sales = pd.merge(left=data, right=test, on=['Store'], how='outer')
+
+    return sales
+
+
+###############################################################################
+#
+#                       Reads Space data from a csv file
+#
+def read_space_data(filename):
+    """
+    It takes the data from the Space file and places it into a dataframe
+    and cleans it up for the merger with other data
+
+    - renames 'VSG ' to 'VSG'
+    - adds 'Current Space' as a copy of Historical Space
+    - adds 'Store Space' as the total sum of space per store across all categories
+
+    :param filename:
+    :return:
+    """
+
+    ###############################################################################
+    #
+    #                       deals with Space data
+    #
+
+    # reads in file, uses first row as headers
+    data = pd.read_csv(filename, header=0, dtype={'Store': object})
+
+    # print(tabulate(data, headers='keys', tablefmt='psql', floatfmt='.1f'))
+
+    # removes the space in 'VSG '
+    data.rename(columns={'VSG ': 'VSG'}, inplace=True)
+
+    # drops the first value row which includes only 'Current Space' labels
+    data = data.drop([0])
+
+    # converts all space data to numeric
+    data = data.apply(lambda x: pd.to_numeric(x, errors='ignore'))
+
+    # un-pivoting: converts wide-format space data to long format
+    # uses previous column names as levels for column 'Category'
+    # and stores the data as 'Historical Space'
+    data = pd.melt(data,
+                    id_vars=['Store', 'Climate', 'VSG'],
+                    var_name='Category',
+                    value_name='Historical Space')
+
+    # adds a copy of Historical space as Current Space
+    data['Current Space'] = data['Historical Space']
+
+    # adds total space by store across all categories
+    store_space = data.groupby('Store')['Historical Space'].sum()
+
+    # resets Index such that Store ID becomes normal column we can join next on
+    store_space = pd.DataFrame(store_space).reset_index()
+
+    # renames the total count column to 'Store Space' such that it doesnt conflict at merging
+    store_space.columns = ['Store', 'Store Space']
+
+    # add the store total to the space data
+    data = data.merge(store_space, on='Store', how='inner')
+
+    return data
+
+
+###############################################################################
+#
+#                       Reads Future space data from a csv file
+#
+def read_future_space_data(jobType, filename=None):
+
+    # reads in file, uses first row as headers
+    data = pd.read_csv(filename, header=0, dtype={'Store': object})
+
+    # drops the first value row which includes only secondary labels
+    data = data.drop([0])
+
+    # converts all space data to numeric
+    data = data.apply(lambda x: pd.to_numeric(x, errors='ignore'))
+
+    return data
+
+
+###############################################################################
+#
+#                       Reads Brand exit data from a csv file
+#
+def read_brand_exit_data(filename=None):
+
     try:
-        space.rename(columns={'VSG ': 'VSG','Category': 'Product'}, inplace=True)
-        Categories = transactions[[*np.arange(len(transactions.columns))[1::9]]].loc[0].reset_index(
-            drop=True).values.astype(str)
-        space=space.apply(lambda x: pd.to_numeric(x, errors='ignore'))
-        Stores = space['Store']
-        def transactionMerge(spaceData,transactions,Stores,Categories,jobType):
-            Metrics = transactions.loc[1, 1:9].reset_index(drop=True)
-            def longTransaction(df, storeList, categories):
-                """
-                Assigns names for each financial metric in the Transaction Data Set and converts it to a long table
-                :param df: Individual Wide Table of Transaction Metric
-                :param storeList: List of Stores
-                :param categories: List of Categories
-                :return: Returns a long table for an individual metric
-                """
-                df.loc[0, :] = categories
-                df = pd.concat([storeList, df], axis=1)
-                df.columns = df.loc[0,]
-                lPiece = pd.melt(df[2::], id_vars=['Store'], var_name='Category',
-                                 value_name=pd.unique(df.loc[1].dropna().values)[0])
-                lPiece=lPiece.apply(lambda x: pd.to_numeric(x, errors='ignore'))
-                return lPiece
+        # reads in file, uses first row as headers
+        data = pd.read_csv(filename, header=0)
 
-            masterData = spaceData.copy()
-            # Loop to merge individual long tables into a single long table
-            if jobType == 'drilldown':
-                test=pd.DataFrame(list(product(Stores,Categories)), columns=['Store', 'Category'])
-                for (m, Metric) in enumerate(Metrics):
-                    test = pd.merge(left=test, right=longTransaction(transactions.loc[:, int(m + 1)::9],
-                                                                     pd.DataFrame(transactions[0]), Categories),
-                                    on=['Store', 'Category'])
-                masterData=pd.merge(left=masterData,right=test,on=['Store'],how='outer')
-            else:
-                for (m, Metric) in enumerate(Metrics):
-                    masterData = pd.merge(left=masterData,
-                                          right=longTransaction(transactions.loc[:, int(m + 1)::9], pd.DataFrame(transactions[0]),
-                                                                Categories), on=['Store', 'Category'], how='outer')
-            return masterData
-        if jobType == 'tiered' or jobType == 'unconstrained':
-            # Define the function to convert Brand Exit Information to Binary Values
-            def brandExitMung(df, Stores, Categories):
-                """
-                Converts Brand Exit Table in to a Wide Table of Binary Values
-                :param df: Initial Brand Exit Data Frame
-                :param Stores: List of Stores
-                :param Categories: List of Categories
-                :return:
-                """
-                brand_exit = pd.DataFrame(index=Stores, columns=Categories)
-                for (i, Store) in enumerate(Stores):
-                    for (j, Category) in enumerate(Categories):
-                        if int(Store) in df[Category].unique():
-                            brand_exit[Category].iloc[i] = 1
-                        else:
-                            brand_exit[Category].iloc[i] = 0
-                return brand_exit
-            spaceData = pd.melt(space, id_vars=['Store', 'Climate', 'VSG'], var_name='Category', value_name='Historical Space')
-            spaceData['Current Space'] = spaceData['Historical Space']
-            masterData = transactionMerge(spaceData,transactions,Stores,Categories,jobType)
+        # un-pivotes the data to have now Category-Store pairs and drop those with Store=NaN
+        data = pd.melt(data, var_name='Category', value_name='Store').dropna(axis=0)
 
-            # Create a Vector of Total Space by Store
-            storeTotal = pd.DataFrame(masterData.groupby('Store')['Current Space'].sum()).reset_index()
-            storeTotal.columns = ['Store', 'Store Space']
-            storeTotal = storeTotal.sort_values(by='Store').reset_index(drop=True)
+        # converts Store ID to integer
+        data['Store'] = data['Store'].astype(int)
 
-            # Code to handle the usage of Future Space Files
-            if futureSpace is None:
-                logging.info("we don't have future space")
-                storeTotal['Future Space']=storeTotal['Store Space']
-                storeTotal['Entry Space']=0
-                storeTotal['New Space'] = storeTotal['Store Space'] - storeTotal['Entry Space']
-                masterData=pd.merge(masterData,storeTotal,on=['Store'])
-            else:
-                logging.info('we have future space')
-                futureSpace = futureSpace.sort_values(by='Store').reset_index(drop=True)
-                futureSpace['Store'] = list(map(int, futureSpace['Store'].values.tolist()))
-                futureSpace=pd.merge(storeTotal,futureSpace,on=['Store'],how='inner')
-                logging.info('in future space loop')
-                futureSpace['Entry Space'].fillna(0,inplace=True)
-                for (i,Store) in enumerate(Stores):
-                    futureSpace['Future Space'].loc[i] = storeTotal['Store Space'].loc[i] if \
-                    pd.to_numeric(futureSpace['Future Space']).loc[i] == 0 or \
-                    pd.isnull(pd.to_numeric(futureSpace['Future Space'])).loc[i] else futureSpace['Future Space'].loc[i]
-                futureSpace['New Space'] = futureSpace['Future Space'] - futureSpace['Entry Space']
-                masterData=pd.merge(masterData,futureSpace,on=['Store','VSG','Climate'])
+        # orders columns to Store, Category
+        data = data[['Store', 'Category']]
 
-            masterData = masterData.sort_values(by=['Store', 'Category']).reset_index(drop=True)
-
-            # Handling the upload of a Brand Exit
-            if brandExit is None:
-                masterData['Exit Flag'] = 0
-                mergeTrad = masterData.copy()
-            else:
-                mergeTrad = masterData.copy()
-                brandExit=pd.melt(brandExitMung(brandExit,Stores,Categories).reset_index(),id_vars=['Store'],var_name='Category',value_name='Exit Flag')
-                brandExit=brandExit.sort_values(by=['Store','Category']).reset_index(drop=True)
-                for i in range(0,len(mergeTrad)):
-                    if brandExit['Exit Flag'].loc[i] == 1:
-                        mergeTrad.loc[i,5::]=0
-                masterData=pd.merge(masterData,brandExit,on=['Store','Category'],how='inner')
-                mergeTrad=pd.merge(mergeTrad,brandExit,on=['Store','Category'],how='inner')
-            logging.info('There are ' + str(len(masterData[masterData['Exit Flag'] == 1])) + ' brand exits')
-
-            # Make sure that all values that should be numeric are numeric
-            masterData=masterData.apply(lambda x: pd.to_numeric(x, errors='ignore'))
-            mergeTrad = mergeTrad.apply(lambda x: pd.to_numeric(x, errors='ignore'))
-        else:
-            masterData = transactionMerge(space, transactions,Stores,Categories,jobType)
-            masterData['Exit Flag']=0
-            masterData.rename(columns={'Result Space': 'New Space'},inplace=True)
-            mergeTrad = masterData.copy()
-            logging.info('We go through the tough stuff')
     except Exception as e:
-        logging.exception('A thing')
-        traceback.print_exception() # syntactically incorrect since this function call is expecting 3 args.
+        print('error in read_brand_exit_data()')
+        data = None
 
-    logging.info('Finished Data Merging')
-    return (masterData,mergeTrad)
+    return data
+
+
+###############################################################################
+#
+# Merges Space data with requirements for future space and brand exits
+#
+def merge_space_data(space, future_space, brand_exit):
+
+    # if no future space set future space to total store space as calc in process space data step
+    # if no future space set entry space to zero
+    # set new space to future - entry space
+
+    # incorporates Future Space data
+    if future_space is None:
+
+        # If no Future space is specified, use total current space
+        space['Future Space'] = space['Store Space']
+
+        # set entry space to zero
+        space['Entry Space'] = 0
+    else:
+        # Future space data is available
+
+        # merge future data into space data on store
+        space = space.merge(future_space, on=['Store', 'Climate', 'VSG'], how='left')
+
+    # 'New Space' is the amount of space available to be allocated in the optimization
+    # it is the difference between total available store space and the space reserved for new entries
+    space['New Space'] = space['Store Space'] - space['Entry Space']
+
+    # incorporates Brand Exit data
+    if brand_exit is None:
+        space['Exit Flag'] = 0
+    else:
+        brand_exit['Exit Flag'] = 1
+
+        # merges brand exit data with space
+        space = pd.merge(space, brand_exit, on=['Store', 'Category'], how='left')
+
+        space['Exit Flag'] = space['Exit Flag'].fillna(0).astype(int)
+
+    return space
+
+
+###############################################################################
+#
+# Merges Space and Sales data by Store and Category
+#
+def merge_space_and_sales_data(sales, space):
+
+    # extracts name of metrics from first row, columns 1-9
+    #metrics = sales.loc[1, 1:9].reset_index(drop=True)
+
+    data = pd.merge(space, sales, on=['Store', 'Category'], how='inner')
+
+    return data
+
+
+###############################################################################################################
+def extract_space_bound(space_bound, increment):
+
+    # space_bound is holding the lower and upper space bounds for each category
+    space_bound = pd.DataFrame.from_dict(space_bound).T.reset_index()
+
+    # names the columns
+    space_bound.columns = ['Category',
+                          'Lower Space Bound', 'Upper Space Bound',
+                          'Lower Space Limit %', 'Upper Space Limit %']
+    # NOTE: Bounds in % dont seem to be needed here any further, maybe for other Optimizations?!
+
+    # extracts only the absolute bounds and category from dataframe
+    space_bound = space_bound[['Category', 'Lower Space Bound', 'Upper Space Bound']]
+
+    # set the index of space_bound to the category name
+    #space_bound = space_bound.set_index('Category')
+
+    # rounds the bounds according to the increment value given
+    space_bound[['Lower Space Bound', 'Upper Space Bound']] = \
+            increment * round(space_bound[['Lower Space Bound', 'Upper Space Bound']] / increment)
+    #space_bound['Upper Space Bound'] = space_bound['Upper Space Bound'].apply(lambda x: increment * round(x / increment))
+
+    return space_bound
+
+
+###############################################################################################################
+def extract_tier_bound(tier_bound):
+
+    tier_bound = pd.DataFrame.from_dict(tier_bound).T.reset_index()
+
+    tier_bound.columns = ['Category', 'Lower Tier Bound', 'Upper Tier Bound']
+
+    #tier_bound = tier_bound.set_index('Category')
+
+    return tier_bound
+
+
+###############################################################################################################
+def prepare_bounds(space_bound, increment, tier_bound=None):
+
+    # spaceBound is holding the lower and upper space bound for each category
+    space_bound = extract_space_bound(space_bound, increment)
+
+    print(' ')
+    print('1a. Extracting Space bounds')
+    print(' ')
+    print(space_bound)
+
+    if tier_bound is not None:
+        tier_bound = extract_tier_bound(tier_bound)
+        print(' ')
+        print('1b. Extracting Tier bounds')
+        print(' ')
+        print(tier_bound)
+
+        bounds = space_bound.merge(tier_bound, on=['Category'], how='outer')
+    else:
+        bounds = space_bound
+
+    bounds.set_index(keys='Category', inplace=True)
+
+    return bounds

@@ -8,197 +8,449 @@ import numpy as np
 import pandas as pd
 import logging
 import traceback
+#from tabulate import tabulate
 
 # Need to change functions to allow for TFC as result of Future Space/ Brand Entry
 # Need to create a max & min for category level informaiton to be passed as bounds in a long table format // Matching format to Bounding Info that is added to job context
 
-def preoptimize(jobType,optimizationType,dataMunged, salesPenThreshold, mAdjustment, optimizedMetrics, increment):
+# import os
+
+# def calc_penetration(data):
+#     """
+#     Calculates the data in % of the total of the data across all categories
+#     :param data: matrix of data
+#     :return: penetration matrix of a given data
+#     """
+#     return data.div(data.sum(axis=1), axis=0)
+#
+#
+# def calc_spread(sales, gafs, metricAdjustment):
+#     """
+#     Calculates the Spread given sales and inventory
+#     Spread = Sales % + metricAdjustment * (Sales % - GAFS%)
+#
+#     ISNT THIS THE OPTIMIZED SALES PENETRATION??
+#
+#     :param sales:   historical sales information
+#     :param GAFS:    historical goods available for sales
+#     :param metricAdjustment: metric adjustment
+#     :return:
+#     """
+#     # storing input sales and inventory data in separate 2D arrays
+#     # finding sales penetration, GAFS and spread for each brand in given stores
+#     # calculate adjusted penetration
+#
+#     return calc_penetration(sales) + (calc_penetration(sales).subtract(calc_penetration(gafs))).multiply(metricAdjustment)
+#
+#
+# ###############################################################################
+# def calc_sales_per_space(sales, bfc, metricAdjustment):
+#     """
+#     Calculates metric per fixture penetration
+#     :param sales:
+#     :param bfc:
+#     :param metricAdjustment: metric adjustment
+#     :return: array of metric per metric penetration with the metric adjustment
+#     """
+#     # storing input sales data in an array
+#     # finding penetration for each brand in given stores
+#     # calculate adjusted penetration
+#     # spacePen = bfc.div(newSpace, axis='index')
+#
+#     # sales % + metricAdjustment * (sales % - bfc %)
+#     return calc_penetration(sales) + ((calc_penetration(sales) - calc_penetration(bfc)) * metricAdjustment)
+#
+#
+# ###############################################################################
+# def calc_inventory_turnover(sales_units, gafs_units):
+#     """
+#     Calculates an Inventory Turn array
+#     :param sales_units:
+#     :param gafs_units:
+#     :return: returns inventory turn as ratio of Sold Units over sum of BOH and Receipts Units
+#     """
+#     # sales_units % / GAFS units %
+#     inv_turn = calc_penetration(sales_units).div(calc_penetration(gafs_units), axis='index')
+#
+#     # THIS NEEDS TO BE CHECKED IF A NAN or INF SHOULD BE REPORTED
+#     inv_turn[np.isnan(inv_turn)] = 0
+#     inv_turn[np.isinf(inv_turn)] = 0
+#
+#     return calc_penetration(inv_turn)
+#
+
+###############################################################################
+def compute_penetration(data, metric):
+    return data.groupby('Store')[metric].apply(lambda x: x / float(x.sum()))
+
+
+###############################################################################
+# data cleaning: sets any negative value for specified column in data to zero
+def set_negative_to_zero(data, column):
+    data.loc[data[column] < 0, (column)] = 0
+
+class bcolors:
+    HEADER = '\033[95m'
+    OKBLUE = '\033[94m'
+    OKGREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
+
+###############################################################################
+def print_warning(title, data):
+    print(' ')
+    print(bcolors.BOLD + bcolors.UNDERLINE + bcolors.FAIL + title + bcolors.ENDC)
+    print(' ')
+    print(data)
+
+
+###############################################################################
+def validate_sales_data(sales_data):
+    """
+    Performns validation of sales data respective expected range of data:
+
+    :param data: output from data merging
+    :return: validated data with data imputed in case of invalid data
+    """
+
+    # Looks for negative sales data
+    idx = (sales_data['Sales $']  < 0) | (sales_data['Sales Units'] < 0) | \
+          (sales_data['BOH $']    < 0) | (sales_data['BOH Units']   < 0) | \
+          (sales_data['Profit $'] < 0) | (sales_data['Profit %']    < 0)
+
+    if np.sum(idx) > 0:
+        print_warning('Negative sales data:', sales_data[idx])
+
+        # sets Profit % to zero when any of the above metrics is negative,
+        # since Profit % = Profit $ / Sales $ we can end up with high positive but wrong values (!)
+        # despite both $ values being negative!
+        sales_data.loc[idx, ('Profit %')] = 0
+
+        # sales data columns for which data cleaning will be performed
+        sales_columns = ['Sales $', 'Sales Units', 'BOH $', 'BOH Units', 'Profit $', 'Profit %']
+
+        # for all sales data columns listed, set any negative value to zero
+        for sales_column in sales_columns:
+            set_negative_to_zero(sales_data, sales_column)
+
+        print(' ')
+        print('Data post cleaning:')
+        print(' ')
+        print(sales_data[idx])
+
+    # Summary per category
+    x = sales_data.groupby('Category')[['Sales $', 'Profit $']].sum()
+
+    x['Profit %'] = x['Profit $'] / x['Sales $']
+
+    print(' ')
+    print('Calculates Profit in % of Sales for each category across all stores')
+    print(' ')
+    print(x)
+    print(' ')
+
+    return sales_data, idx
+
+
+###############################################################################
+#
+#               Validation for space data
+#
+# Not fully implemented!!
+
+def validate_space_data(space_data, category_bounds):
+
+    # looks for non-negative Current Space
+    idx = space_data['Current Space'] <= 0
+
+    if np.sum(idx) > 0:
+        print_warning('Non-positive space data:', space_data[idx])
+
+    for category in space_data['Category'].unique():
+        # gets the record for this particular category
+        bound = category_bounds[category_bounds['Category'] == category]
+
+        # gets the unique space values for the category from Current Space across all stores
+        space_values = space_data[space_data['Category'] == category]['Current Space'].unique()
+
+        print(category + ':' + \
+              str(bound['Lower Space Bound'].values) + ' <= ' + \
+              str(np.sort(space_values)) + ' <= ' + \
+              str(bound['Upper Space Bound'].values))
+
+    space_values = np.sort(space_data['Current Space'].unique())
+
+    print(space_data.groupby(['Category', 'Current Space'])['Store'].count())
+
+    space_data.pivot(index='Current Space', columns='Category', values='Optimal Space')
+
+    return space_data, idx
+
+
+###############################################################################
+def prepare_data(jobType, optimizationType, data, metricAdjustment, salesPenThreshold, bizmetrics):
     """
     Conducts the preoptimization based upon legacy R2 code to determine optimal space for traditional optimizations
     :param optimizationType: enhanced or traditional optimization
-    :param dataMunged: output from data merging
+    :param data: output from data merging
     :param salesPenThreshold: sales penetration threshold to determine whether or not store-category information is eligible
-    :param mAdjustment: metric adjustment
-    :param optimizedMetrics:
+    :param metricAdjustment: metric adjustment
+    :param bizmetrics:
     :param increment: increment size
     :return: initial long table with optimal space & sales penetration
     """
 
-    def calcPen(metric):
-        """
-        Calculates the penetration of a given metric
-        :param metric: matrix of metric information
-        :return: penetration matrix of a given metric
-        """
-        return metric.div(metric.sum(axis=1), axis=0)
+    #########################################################
+    # 2.6.1.: Sales $ penetration and Sales Units Penetration
+    data['Sales %']       = data.groupby('Store')['Sales $'].apply(lambda x: x / float(x.sum()))
+    data['Sales Units %'] = data.groupby('Store')['Sales Units'].apply(lambda x: x / float(x.sum()))
 
-    def spreadCalc(sales, boh, receipt, mAdjustment):
-        """
-        Calculates the Spread given sales and inventory
-        :param sales: historical sales information
-        :param boh: historical beginning on hand information
-        :param receipt: historical receipt information
-        :param mAdjustment: metric adjustment
-        :return:
-        """
-        # storing input sales and inventory data in separate 2D arrays
-        # finding sales penetration, GAFS and spread for each brand in given stores
-        # calculate adjusted penetration
-        inv = boh.add(receipt)
-        return calcPen(sales) + (calcPen(sales).subtract(calcPen(inv))).multiply(mAdjustment)
+    #########################################################
+    # GAFS: Goods Available for Sale in $ and Units and its penetration each
+    data['GAFS $']        = data['BOH $'] + data['Receipts  $']
+    data['GAFS Units']    = data['BOH Units'] + data['Receipts Units']
 
-    def metric_per_fixture(metric1, metric2, mAdjustment):
-        """
-        Calculates metric per fixture penetration
-        :param metric1:
-        :param metric2:
-        :param mAdjustment: metric adjustment
-        :return: array of metric per metric penetration with the metric adjustment
-        """
-        # storing input sales data in an array
-        # finding penetration for each brand in given stores
-        # calculate adjusted penetration
-        # spacePen = metric2.div(newSpace, axis='index')
-        return calcPen(metric1) + ((calcPen(metric1) - calcPen(metric2)) * mAdjustment)
+    data['GAFS %']        = data.groupby('Store')['GAFS $'].apply(lambda x: x / float(x.sum()))
+    data['GAFS Units %']  = data.groupby('Store')['GAFS Units'].apply(lambda x: x / float(x.sum()))
 
-    def metric_per_metric(metric1, metric2, mAdjustment):
-        """
-        Calculates metric per metric penetration
-        :param metric1:
-        :param metric2:
-        :param mAdjustment: metric adjustment
-        :return: returns array of metric per metric penetration with the metric adjustment
-        """
-        # storing input sales data in an array
-        # finding penetration for each brand in given stores
-        # calculate adjusted penetration
-        return calcPen(metric1) + ((calcPen(metric1) - calcPen(metric2)) * mAdjustment)
+    #########################################################
+    # bfc Current Space for Tiered and Unconstrained
+    data['BFC']           = data['Current Space']
+    data['BFC %']         = data.groupby('Store')['BFC'].apply(lambda x: x / float(x.sum()))
 
-    def invTurn_Calc(sold_units, boh_units, receipts_units):
-        """
-        Calculates an Inventory Turn array
-        :param sold_units:
-        :param boh_units:
-        :param receipts_units:
-        :return: returns array of inventory turn
-        """
-        calcPen(sold_units)
-        calcPen(boh_units + receipts_units)
-        inv_turn = calcPen(sold_units).div(calcPen(boh_units + receipts_units), axis='index')
-        inv_turn[np.isnan(inv_turn)] = 0
-        inv_turn[np.isinf(inv_turn)] = 0
-        return calcPen(inv_turn)
+    # Drill Down sets BFC = Sales % * New Space
+    if jobType == 'drilldown':
+        data['BFC'] = data['Sales %'] * data['New Space']
 
-    def roundArray(array, increment):
-        """
-        Rounds an array to values based on the increment size
-        :param array: array to be rounded
-        :param increment: increment size to be rounded to
-        :return: returns rounded array
-        """
-        rounded = np.copy(array)
-        for i in range(len(array)):
-            for j in range(len(list(array[0, :]))):
-                if np.mod(np.around(array[i][j], 0), increment) > increment / 2:
-                    rounded[i][j] = np.around(array[i][j], 0) + (
-                    increment - (np.mod(np.around(array[i][j], 0), increment)))
-                else:
-                    rounded[i][j] = np.around(array[i][j], 0) - np.mod(np.around(array[i][j], 0), increment)
-        return rounded
+    #########################################################
+    # 2.6.2.: Spread = Sales % + metricAdjustment * (Sales % - GAFS %)
+    data['Spread'] = data['Sales %'] + metricAdjustment * (data['Sales %'] - data['GAFS %'])
 
-    def roundColumn(array, increment):
-        """
+    ################################################
+    #
+    #           Checks for negative Spread
+    #
+    # boolean index to rows with negative Spread
+    idx_spread = data['Spread'] < 0
 
-        :param array: array to be rounded
-        :param increment: increment size to be rounded to
-        :return: returns rounded column
-        """
-        for i in range(len(array)):
-            if np.mod(np.around(array[i], 3), increment) > increment / 2:
-                array[i] = np.around(array[i], 3) + (
-                    increment - (np.mod(np.around(array[i], 3), increment)))
-            else:
-                array[i] = np.around(array[i], 3) - np.mod(np.around(array[i], 3), increment)
+    # if there is any negative Spread print out entire row
+    if np.sum(idx_spread) > 0:
+        print(' ')
+        print(bcolors.BOLD + bcolors.UNDERLINE + bcolors.FAIL + 'Negative Spread:' + bcolors.ENDC)
+        print(' ')
+        print(data[idx_spread])
+        # sets a negative spread to 0
+        data.loc[idx_spread, ('Spread')] = 0
 
-    def roundValue(cVal, increment):
-        """
+    #########################################################
+    # 2.6.3.: Sales per Space = sales % + metricAdjustment * (sales % - bfc %)
+    data['Sales per Space'] = data['Sales %'] + metricAdjustment * (data['Sales %'] - data['BFC %'])
 
-        :param cVal:
-        :param increment: increment size to be rounded to
-        :return:
-        """
-        if np.mod(round(cVal, 3), increment) > increment / 2:
-            cVal = round(cVal, 3) + (increment - (np.mod(round(cVal, 3), increment)))
-        else:
-            cVal = round(cVal, 3) - np.mod(round(cVal, 3), increment)
-        return cVal
+    # boolean index to rows with negative Spread
+    idx_sales_per_space = data['Sales per Space'] < 0
 
-    def roundDF(array, increment):
-        """
-        Rounds a dataframe to have values only as multiples of the increment size
-        :param array:
-        :param increment: increment size to be rounded to
-        :return:
-        """
-        rounded = array.copy(True)
-        for i in array.index:
-            for j in array.columns:
-                if np.mod(np.around(array[j].loc[i], 3), increment) > increment / 2:
-                    rounded[j].loc[i] = np.around(array[j].loc[i], 3) + (
-                        increment - (np.mod(np.around(array[j].loc[i], 3), increment)))
-                else:
-                    rounded[j].loc[i] = np.around(array[j].loc[i], 3) - np.mod(np.around(array[j].loc[i], 3), increment)
-        return rounded
+    # if there is any negative Spread print out entire row
+    if np.sum(idx_sales_per_space) > 0:
+        print(' ')
+        print(bcolors.BOLD + bcolors.UNDERLINE + bcolors.FAIL + 'There are ' + str(np.sum(idx_sales_per_space)) + \
+              ' negative Sales per Space. They will be set to 0!' + bcolors.ENDC)
+        # sets a negative sales per space to 0
+        data.loc[idx_sales_per_space, ('Sales per Space')] = 0
 
-    try:
-        sales = dataMunged.pivot(index='Store',columns='Category',values='Sales $')
-        sold_units = dataMunged.pivot(index='Store',columns='Category',values='Sales Units')
-        profit = dataMunged.pivot(index='Store',columns='Category',values='Profit $')
+    #########################################################
+    # 2.6.4.: Inventory turnover rate
+    data['Inventory Turnover'] = data['Sales Units %'] / data['GAFS Units %']
+    # sets turnover to 0 when NaN such that other categories get proper sum for same store
+    data['Inventory Turnover'].fillna(0, inplace=True)
+    # computer turnover in percent of store
+    data['Inventory Turnover %'] = data.groupby('Store')['Inventory Turnover'].apply(lambda x: x / float(x.sum()))
 
-        if optimizationType=='traditional':
-            boh = dataMunged.pivot(index='Store', columns='Category', values='BOH $')
-            receipt = dataMunged.pivot(index='Store', columns='Category', values='Receipts  $')
-            boh_units = dataMunged.pivot(index='Store', columns='Category', values='BOH Units')
-            receipts_units = dataMunged.pivot(index='Store', columns='Category', values='Receipts Units')
-            gm_perc = dataMunged.pivot(index='Store', columns='Category', values='Profit %')
-            ccCount = dataMunged.pivot(index='Store', columns='Category', values='CC Count w/ BOH')
-            if jobType == 'tiered' or jobType == 'unconstrained':
-                bfc = dataMunged.pivot(index='Store', columns='Category', values='Current Space')
-            else:
-                bfc = calcPen(sales).multiply(dataMunged.pivot(index='Store',columns='Category',values='New Space'))
-            if jobType != 'drilldown':
-                adj_p = (optimizedMetrics['spread'] * spreadCalc(sales, boh, receipt, mAdjustment)) + (optimizedMetrics[
-                    'salesPenetration'] * calcPen(sales)) + (optimizedMetrics['salesPerSpaceUnit'] * metric_per_fixture(sales,
-                                                                                                                       bfc,
-                                                                                                                       mAdjustment)) + \
-                        (optimizedMetrics['grossMargin'] * calcPen(gm_perc)) + (optimizedMetrics['inventoryTurns'] * invTurn_Calc(
-                    sold_units, boh_units, receipts_units))
-            else:
-                adj_p = (optimizedMetrics['spread'] * spreadCalc(sales, boh, receipt, mAdjustment)) + (optimizedMetrics[
-                    'salesPenetration'] * calcPen(sales)) + \
-                        (optimizedMetrics['grossMargin'] * calcPen(gm_perc)) + (optimizedMetrics['inventoryTurns'] * invTurn_Calc(
-                    sold_units, boh_units, receipts_units))
+    # THIS NEEDS TO BE CHECKED IF A NAN or INF SHOULD BE REPORTED
+    #inventory_turnover[np.isnan(inventory_turnover)] = 0
+    #inventory_turnover[np.isinf(inventory_turnover)] = 0
 
-        else:
-            adj_p = (optimizedMetrics['sales'] * sales) + (optimizedMetrics['profits'] * profit) + (optimizedMetrics['units'] * sold_units)
+    #########################################################
+    # 2.6.5.: Gross margin = share of Profit % by store - why is that penetration of Profit %?
+    data['Gross Margin %'] = data.groupby('Store')['Profit %'].apply(lambda x: x / float(x.sum()))
 
-        for i in adj_p.index:
-            for j in adj_p.columns:
-                if adj_p[j].loc[i] < salesPenThreshold:
-                    adj_p[j].loc[i] = 0
-        logging.info('creating adj_p')
-        adj_p = calcPen(adj_p)
-        adj_p.fillna(0)
-        information=pd.merge(dataMunged,pd.melt(adj_p.reset_index(), id_vars=['Store'], var_name='Category', value_name='Penetration'),on=['Store','Category'])
-        information['Optimal Space'] = information['New Space'] * information['Penetration']
-        if jobType == 'drilldown':
-            information['Current Space'] = information['Optimal Space']
-        logging.info('attempting to keep sales pen')
-        information = pd.merge(information,pd.melt(calcPen(sales).reset_index(),id_vars=['Store'], var_name='Category',value_name='Sales Penetration'),on=['Store','Category'])
-        information = information.apply(lambda x: pd.to_numeric(x, errors='ignore'))
-        return information
-    except Exception as e:
-        logging.exception('A thing')
-        traceback.print_exception()
-        return
-    # return information
+
+    ##############################################################
+    #
+    #             Computation of Penetration
+    #
+    # "Adjusted" penetration is weighted average of the 5 metrics
+    # including Sales and Space penetration or variants thereof.
+    # Should we make all components non-negative before averaging?
+    # It simply depends what we assume:
+    # is the error in one metric an outlier or a indicator of the entire record being wrong!!
+
+    # Also the biz metrics weights are summing up to 100 and not to 1. We should change that since all other
+    # percentages are represented that way! Especially since later its compared against the Threshold in %!!
+    if optimizationType == 'traditional':
+        penetration = bizmetrics['spread']              * data['Spread'] \
+                      + bizmetrics['salesPenetration']  * data['Sales %'] \
+                      + bizmetrics['salesPerSpaceUnit'] * data['Sales per Space'] \
+                      + bizmetrics['grossMargin']       * data['Gross Margin %'] \
+                      + bizmetrics['inventoryTurns']    * data['Inventory Turnover %']
+    elif optimizationType == 'enhanced':
+        # computes penetration as weighted average of the 3 metrics
+        # I believ this should be done using the % metrics instead of the absolute ones since
+        # the 3 have different scales
+        penetration = bizmetrics['sales']   * data['Sales'] + \
+                      bizmetrics['profits'] * data['Profit $'] + \
+                      bizmetrics['units']   * data['Sales Units']
+    else:
+        print('Unknown optimization type:')
+        print(optimizationType)
+        penetration = 0
+
+    # FOR NOW: CHANGED TO DIVIDION BY 100 (12/30/16 RL)
+    if bizmetrics['spread'] + \
+            bizmetrics['salesPenetration'] + \
+            bizmetrics['salesPerSpaceUnit'] + \
+            bizmetrics['grossMargin'] + \
+            bizmetrics['inventoryTurns'] == 100:
+        penetration = penetration / 100.0
+
+    ###############################################################
+    #
+    # Business Overrides:
+    #
+    # resets any penetration to 0 if
+    # A) its smaller than the sales penetration threshold OR
+    # B) it has a brand exit planned
+    idx_exit = (data['Sales %'] < salesPenThreshold) | (data['Exit Flag'] == 1)
+
+    if np.sum(idx_exit) > 0:
+        print('Setting Penetration to ZERO due to Brand exit flag or too low threshold: ')
+        print(data[idx_exit])
+        penetration[idx_exit] = 0
+
+    #########################################################
+    # tests for NaN in data[column_name] and prints entire record for those
+    # but doesnt change the value yet. We need confirmation from business!
+    def test_for_nan(data, column_name):
+        if np.sum(np.isnan(data[column_name])) > 0:
+            print(' ')
+            print(bcolors.BOLD + bcolors.UNDERLINE + 'NaN in ' + column_name + bcolors.ENDC)
+            print(' ')
+            #print(np.argwhere(np.isnan(data[column_name])))
+            print(data[np.isnan(data[column_name])])
+
+        # Wont fill NaN for now since we need more feedback from the customer regarding what should be done with them
+        #return data[column_name].fillna(0)
+
+    # copies metric into the dataframe
+    data['Penetration'] = penetration
+
+    # tests for NaN and prints corresponding records
+    test_for_nan(data, 'Penetration')
+
+    # sets NaN to zero
+    data['Penetration'].fillna(0, inplace=True)
+
+    # calcuates the Penetration normalized by total penetration for store
+    data['Penetration %'] = data.groupby('Store')['Penetration'].apply(lambda x: x / float(x.sum()))
+
+    # tests for NaN and prints corresponding records
+    test_for_nan(data, 'Penetration %')
+
+    # sets NaN to zero
+    data['Penetration %'].fillna(0, inplace=True)
+
+
+    ##################################################################################
+    #
+    #           Traditional Model for Sales to Space relationship
+    #
+
+    # adds a new column 'Optimal Space' as product of 'New Space' and 'Penetration'
+    # New Space is total available space in store for allocating amongst all categories
+    # in proportion of Penetration %
+    data['Optimal Space'] = data['New Space'] * data['Penetration %']
+
+    if jobType == 'drilldown':
+        # adds new column 'Current Space' as copy of 'Optimal Space'
+        data['Current Space'] = data['Optimal Space']
+
+    return data
+
+def old_prepare_data(jobType, optimizationType, data, metricAdjustment, salesPenThreshold, bizmetrics):
+
+    # creates wide format again such that categories are columns now again
+    if 1:
+        # Sales
+        sales = data.pivot(index='Store', columns='Category', values='Sales $')
+        sales_units = data.pivot(index='Store', columns='Category', values='Sales Units')
+
+        # Profit
+        profit = data.pivot(index='Store', columns='Category', values='Profit $')
+        gross_margin = data.pivot(index='Store', columns='Category', values='Profit %')
+
+        # Beginning on hand
+        boh = data.pivot(index='Store', columns='Category', values='BOH $')
+        boh_units = data.pivot(index='Store', columns='Category', values='BOH Units')
+
+        # Receipts
+        receipts = data.pivot(index='Store', columns='Category', values='Receipts  $')
+        receipts_units = data.pivot(index='Store', columns='Category', values='Receipts Units')
+
+        # BFC
+        bfc = data.pivot(index='Store', columns='Category', values='Current Space')
+
+        # GAFS (Goods available for sale) as sum of BOH and Receipts
+        gafs = boh + receipts
+        gafs_units = boh_units + receipts_units
+
+        # 2.6.1.: Sales Penetration (Sales in % of total for category)
+        sales_penetration = calc_penetration(sales)
+
+        # 2.6.2.: Spread
+        spread = calc_spread(sales, gafs, metricAdjustment)
+
+        # 2.6.3.: Sales per Space
+        sales_per_space = calc_sales_per_space(sales, bfc, metricAdjustment)
+
+        # 2.6.4.: Inventory Turnover
+        inventory_turnover = calc_penetration(sales_units).div(calc_penetration(gafs_units), axis='index')
+        # THIS NEEDS TO BE CHECKED IF A NAN or INF SHOULD BE REPORTED
+        inventory_turnover[np.isnan(inventory_turnover)] = 0
+        inventory_turnover[np.isinf(inventory_turnover)] = 0
+        inventory_turnover = calc_penetration(inventory_turnover)
+
+        # 2.6.5.: Gross Margin Penetration
+        gross_margin_penetration = calc_inventory_turnover(sales_units, gafs_units)
+
+        if optimizationType == 'traditional':
+            penetration2 = bizmetrics['spread']             * spread \
+                          + bizmetrics['salesPenetration']  * sales_penetration \
+                          + bizmetrics['salesPerSpaceUnit'] * sales_per_space \
+                          + bizmetrics['grossMargin']       * gross_margin_penetration \
+                          + bizmetrics['inventoryTurns']    * inventory_turnover
+        elif optimizationType == 'enhanced':
+            # computes penetration as weighted average of the 3 metrics
+            penetration2 = bizmetrics['sales']  * sales + \
+                          bizmetrics['profits'] * profit + \
+                          bizmetrics['units']   * sales_units
+
+        # resets any penetration to 0 if its smaller than the sales penetration threshold
+        for i in penetration2.index:
+            for j in penetration2.columns:
+                if penetration2[j].loc[i] < salesPenThreshold:
+                    penetration2[j].loc[i] = 0
+
+        # converts adjusted penetration into percent of total and fills NaN with 0
+        penetration2 = calc_penetration(penetration2)
+        # NaN should be investigated!!
+        penetration2.fillna(0)
+
+        # un-pivots penetration by category such that it can be merged with the data matrix
+        # penetration2 = pd.melt(penetration2.reset_index(),
+        #                        id_vars=['Store'],
+        #                        var_name='Category',
+        #                        value_name='Penetration')
+
+        ######## code above will be obsolete since it deals with wide formatted data ###########
