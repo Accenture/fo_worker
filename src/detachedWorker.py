@@ -14,6 +14,7 @@ from pymongo import MongoClient
 #from FixtureOptimization.CurveFitting import curveFittingBS
 from FixtureOptimization.dataMerging import read_sales_data, read_space_data, read_future_space_data, read_brand_exit_data, \
     merge_space_data, merge_space_and_sales_data, prepare_bounds
+
 from FixtureOptimization.preoptimizer import validate_space_data, validate_sales_data, prepare_data, bcolors
 from FixtureOptimization.optimizerTrad import optimizeTrad
 from FixtureOptimization.optimizerEnh import optimizeEnh
@@ -33,6 +34,9 @@ from helper import fetch_space_data as fetch_space_data
 from helper import fetchLong as fetchLong
 from helper import fetch_brand_exit_data as fetch_brand_exit_data
 from helper import toCsv as toCsv
+# imports from refactored code
+from codeoptimization.traditionalOptimizer import TraditionalOptimizer 
+from codeoptimization.dataMerger import DataMerger
 
 import sys
 sys.path.append('/vagrant/fo_api/src/')
@@ -76,6 +80,10 @@ def print_verbose(title, data):
 
 ######################################################################################################
 def run(msg):
+    
+    #Creating a data handler object to read, and merge data sources
+    
+    data_merger = DataMerger()
 
 	# ONLY FOR TESTING!!
     filtCategory = 'MISSESJRS'
@@ -95,7 +103,7 @@ def run(msg):
 	# 1. Sales data
     try:
         #sales = fetch_sales_data(msg["artifacts"]["salesArtifactId"])
-        sales = read_sales_data(filename=msg["artifacts"]["salesArtifactId"])
+        sales = data_merger.read_sales_data(filename=msg["artifacts"]["salesArtifactId"])
         csvfiles.append('First level sales data')
         print_verbose('Sales data:', sales)
     except:
@@ -106,7 +114,7 @@ def run(msg):
     #############################
     #  2. Space data
     try:
-        space = read_space_data(filename=msg["artifacts"]["spaceArtifactId"])
+        space = data_merger.read_space_data(filename=msg["artifacts"]["spaceArtifactId"])
         csvfiles.append('First level space data')
         print_verbose('Space data:', space)
     except:
@@ -117,7 +125,7 @@ def run(msg):
     #############################
     # 3. Future space data
     try:
-        future_space = read_future_space_data(jobType=msg['jobType'], filename=msg["artifacts"]["futureSpaceId"])
+        future_space = data_merger.read_future_space_data(jobType=msg['jobType'], filename=msg["artifacts"]["futureSpaceId"])
         csvfiles.append("Future space data")
         print_verbose('Future space data:', future_space)
     except:
@@ -127,7 +135,7 @@ def run(msg):
     #############################
     # 4. Brand exit data
     try:
-        brand_exit = read_brand_exit_data(filename=msg["artifacts"]["brandExitArtifactId"])
+        brand_exit = data_merger.read_brand_exit_data(filename=msg["artifacts"]["brandExitArtifactId"])
         csvfiles.append("Brand exit data")
         print_verbose('Brand exit data:', brand_exit)
     except:
@@ -139,9 +147,14 @@ def run(msg):
     ############################## Prepare Bounds ################################
     print("=> Prepare bounds data")
 
-    category_bounds = prepare_bounds(space_bound = msg['spaceBounds'],
-                                     increment   = msg['increment'],
-                                     tier_bound  = msg['tierCounts'])
+#     category_bounds = prepare_bounds(space_bound = msg['spaceBounds'],
+#                                      increment   = msg['increment'],
+#                                      tier_bound  = msg['tierCounts'])
+    
+    
+    category_bounds = data_merger.prepare_bounds(msg['spaceBounds'],
+                                                 msg['increment'],
+                                                 msg['tierCounts'])
 
     print ("<= Prepare bounds data")
     ##############################################################################
@@ -186,10 +199,10 @@ def run(msg):
     print ("\n=> merge data")
 
     # merges the space data with requirements for future space and brand exits by store and category
-    space = merge_space_data(space, future_space, brand_exit)
+    space = data_merger.merge_space_data(space, future_space, brand_exit)
 
     # merges the space data with the sales data by store and category
-    sales_space_data = merge_space_and_sales_data(sales, space)
+    sales_space_data = data_merger.merge_space_and_sales_data(sales, space)
 
     print ("\n<= merge data")
     ######################################################################################################
@@ -237,14 +250,24 @@ def run(msg):
 
         # Unconstrained or Tierd Optimization
         if msg['jobType'] == 'unconstrained' or msg['jobType'] == 'tiered':
-            optimRes = optimizeTrad(job_name	= msg['meta']['name'],
-                                    job_type    = msg['jobType'],
-                                    stores		= msg['salesStores'],
-                                    categories	= msg['salesCategories'],
-                                    category_bounds = category_bounds,
-                                    increment	= msg['increment'],
-                                    data		= prepped_data,
-                                    sales_penetration_threshold = msg['salesPenetrationThreshold'])
+#             optimRes = optimizeTrad(job_name	= msg['meta']['name'],
+#                                     job_type    = msg['jobType'],
+#                                     stores		= msg['salesStores'],
+#                                     categories	= msg['salesCategories'],
+#                                     category_bounds = category_bounds,
+#                                     increment	= msg['increment'],
+#                                     data		= prepped_data,
+#                                     sales_penetration_threshold = msg['salesPenetrationThreshold'])
+        
+              optimizer= TraditionalOptimizer( msg['meta']['name'],
+                                             msg['jobType'],
+                                             msg['salesStores'],
+                                             msg['salesCategories'],
+                                             category_bounds,
+                                             msg['increment'],
+                                             prepped_data,
+                                             msg['salesPenetrationThreshold'])
+              optimRes = optimizer.optimize()
         # Drill Down Optimization
         elif msg['jobType'] == 'drilldown':
             msg['salesCategories'] = prepped_data['Category'].unique()

@@ -15,7 +15,7 @@ class BaseOptimizer(object):
     Optimization Algorithms
     """
 
-    def __init__(self,job_name,stores,categories,category_boundsincrement,sales_penetration_threshold):
+    def __init__(self,job_name,job_type,stores,categories,increment,sales_penetration_threshold):
         self.job_name = job_name    
         self.job_type = job_type        
         self.stores = stores
