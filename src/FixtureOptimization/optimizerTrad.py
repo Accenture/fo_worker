@@ -149,8 +149,7 @@ def optimizeTrad(jobName,Stores,Categories,spaceBound,increment,dataMunged,sales
     aggBalBackPenalty = increment * 10  # exploratory, value would have to be determined through exploratory analysis
     locBalBackFreeBound = 0.01  # exploratory, value would have to be determined through exploratory analysis
     penaltyValue = maxLevel / increment
-    locBalBackPenalty = math.pow(penaltyValue, math.pow(penaltyValue,
-                                                        penaltyValue))  # exploratory, value would have to be determined through exploratory analysis
+    locBalBackPenalty = math.pow(penaltyValue, penaltyValue)  # exploratory, value would have to be determined through exploratory analysis
     # EXPLORATORY ONLY: ELASTIC BALANCE BACK
     # locBalBackFreeBoundAdj = locSpaceToFill.apply(lambda row:adjustForTwoIncr(row,locBalBackFreeBound,increment))
     locBalBackFreeBoundAdj = locBalBackFreeBound
