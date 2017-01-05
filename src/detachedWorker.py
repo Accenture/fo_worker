@@ -12,10 +12,10 @@ import pika
 from bson.objectid import ObjectId
 from pymongo import MongoClient
 #from FixtureOptimization.CurveFitting import curveFittingBS
-from FixtureOptimization.dataMerging import read_sales_data, read_space_data, read_future_space_data, read_brand_exit_data, \
-    merge_space_data, merge_space_and_sales_data, prepare_bounds
+#from FixtureOptimization.dataMerging import read_sales_data, read_space_data, read_future_space_data, read_brand_exit_data, \
+    #merge_space_data, merge_space_and_sales_data, prepare_bounds
 
-from FixtureOptimization.preoptimizer import validate_space_data, validate_sales_data, prepare_data, bcolors
+#from FixtureOptimization.preoptimizer import validate_space_data, validate_sales_data, prepare_data, bcolors
 from FixtureOptimization.optimizerTrad import optimizeTrad
 from FixtureOptimization.optimizerEnh import optimizeEnh
 from FixtureOptimization.outputFunctions import createLong, createWide, createDrillDownSummary, createTieredSummary, outputValidation
@@ -37,6 +37,8 @@ from helper import toCsv as toCsv
 # imports from refactored code
 from codeoptimization.traditionalOptimizer import TraditionalOptimizer 
 from codeoptimization.dataMerger import DataMerger
+from codeoptimization.preprocessor import PreProcessor 
+from codeoptimization.bcolors import Bcolors
 
 import sys
 sys.path.append('/vagrant/fo_api/src/')
@@ -72,7 +74,7 @@ RMQ_QUEUE_SINK = 'notify_queue'
 def print_verbose(title, data):
     print('######################################################################################################')
     print(' ')
-    print(bcolors.BOLD + bcolors.UNDERLINE + title + bcolors.ENDC)
+    print(Bcolors.BOLD + Bcolors.UNDERLINE + title + Bcolors.ENDC)
     print(' ')
     print(data)
     print(' ')
@@ -81,9 +83,13 @@ def print_verbose(title, data):
 ######################################################################################################
 def run(msg):
     
-    #Creating a data handler object to read, and merge data sources
+    # A data handler object to read and merge data sources (sales and space)
     
     data_merger = DataMerger()
+    
+    # A preprocessor object
+    pre_processor = PreProcessor()
+     
 
 	# ONLY FOR TESTING!!
     filtCategory = 'MISSESJRS'
@@ -182,7 +188,7 @@ def run(msg):
     ###############################################################################
 
     # Validates sales data
-    sales, idx_sales_invalid = validate_sales_data(sales)
+    sales, idx_sales_invalid = pre_processor.validate_sales_data(sales)
 
     # Validates space data
     #space, idx_space_invalid = validate_space_data(space, category_bounds)
@@ -225,12 +231,18 @@ def run(msg):
     ###################################### Prepare ###################################################
     print ("=> prepare data")
 
-    prepped_data = prepare_data(jobType			= msg['jobType'],
-                            optimizationType	= msg['optimizationType'],
-							data				= sales_space_data,
-                            metricAdjustment	= float(msg["metricAdjustment"]),
-                            salesPenThreshold	= float(msg["salesPenetrationThreshold"]),
-                            bizmetrics		    = msg["optimizedMetrics"])
+#     prepped_data = prepare_data(jobType			= msg['jobType'],
+#                             optimizationType	= msg['optimizationType'],
+# 							data				= sales_space_data,
+#                             metricAdjustment	= float(msg["metricAdjustment"]),
+#                             salesPenThreshold	= float(msg["salesPenetrationThreshold"]),
+#                             bizmetrics		    = msg["optimizedMetrics"])
+    prepped_data = pre_processor.prepare_data(msg['jobType'],
+                                msg['optimizationType'],
+                                sales_space_data,
+                                float(msg["metricAdjustment"]),
+                                float(msg["salesPenetrationThreshold"]),
+                                msg["optimizedMetrics"])
     print ("<= prepare data")
     ######################################################################################################
 
@@ -259,15 +271,18 @@ def run(msg):
 #                                     data		= prepped_data,
 #                                     sales_penetration_threshold = msg['salesPenetrationThreshold'])
         
-              optimizer= TraditionalOptimizer( msg['meta']['name'],
-                                             msg['jobType'],
-                                             msg['salesStores'],
-                                             msg['salesCategories'],
-                                             category_bounds,
-                                             msg['increment'],
-                                             prepped_data,
-                                             msg['salesPenetrationThreshold'])
+              # Create a traditional optimizer object
+              
+              optimizer= TraditionalOptimizer(msg['meta']['name'],
+                                              msg['jobType'],
+                                              msg['salesStores'],
+                                              msg['salesCategories'],
+                                              category_bounds,
+                                              msg['increment'],
+                                              prepped_data,
+                                              msg['salesPenetrationThreshold'])
               optimRes = optimizer.optimize()
+        
         # Drill Down Optimization
         elif msg['jobType'] == 'drilldown':
             msg['salesCategories'] = prepped_data['Category'].unique()

@@ -5,9 +5,9 @@ import numpy as np
 import pandas as pd
 import logging
 import traceback
-from bcolors import Bcolors
+from codeoptimization.bcolors import Bcolors
 
-class Preoptimizer():
+class PreProcessor():
     """
     Created on Thu Jan 05 16:08:06 2017
 
@@ -18,20 +18,20 @@ class Preoptimizer():
     def __init__(self):
         pass
 
-    def compute_penetration(data, metric):
+    def compute_penetration(self,data, metric):
         return data.groupby('Store')[metric].apply(lambda x: x / float(x.sum()))
 
     # data cleaning: sets any negative value for specified column in data to zero
-    def set_negative_to_zero(data, column):
+    def set_negative_to_zero(self,data, column):
         data.loc[data[column] < 0, (column)] = 0
 
-    def print_warning(title, data):
+    def print_warning(self,title, data):
         logging.info(' ')
         logging.info(Bcolors.BOLD + Bcolors.UNDERLINE + Bcolors.FAIL + title + Bcolors.ENDC)
         logging.info(' ')
         logging.info(data)
 
-    def validate_sales_data(sales_data):
+    def validate_sales_data(self,sales_data):
         """
         Performns validation of sales data respective expected range of data:
 
@@ -45,7 +45,7 @@ class Preoptimizer():
           (sales_data['Profit $'] < 0) | (sales_data['Profit %']    < 0)
 
         if np.sum(idx) > 0:
-            print_warning('Negative sales data:', sales_data[idx])
+            self.print_warning('Negative sales data:', sales_data[idx])
 
             # sets Profit % to zero when any of the above metrics is negative,
             # since Profit % = Profit $ / Sales $ we can end up with high positive but wrong values (!)
@@ -57,7 +57,7 @@ class Preoptimizer():
 
             # for all sales data columns listed, set any negative value to zero
             for sales_column in sales_columns:
-            set_negative_to_zero(sales_data, sales_column)
+                self.set_negative_to_zero(sales_data, sales_column)
 
             logging.info(' ')
             logging.info('Data post cleaning:')
@@ -82,7 +82,7 @@ class Preoptimizer():
     #
     # Not fully implemented!!
 
-    def validate_space_data(space_data, category_bounds):
+    def validate_space_data(self,space_data, category_bounds):
 
         # looks for non-negative Current Space
         idx = space_data['Current Space'] <= 0
@@ -110,7 +110,7 @@ class Preoptimizer():
 
         return space_data, idx
 
-    def prepare_data(jobType, optimizationType, data, metricAdjustment, salesPenThreshold, bizmetrics):
+    def prepare_data(self,jobType, optimizationType, data, metricAdjustment, salesPenThreshold, bizmetrics):
         """
         Conducts the preoptimization based upon legacy R2 code to determine optimal space for traditional optimizations
         :param optimizationType: enhanced or traditional optimization
@@ -296,7 +296,7 @@ class Preoptimizer():
 
         return data
 
-    def old_prepare_data(jobType, optimizationType, data, metricAdjustment, salesPenThreshold, bizmetrics):
+    def old_prepare_data(self,jobType, optimizationType, data, metricAdjustment, salesPenThreshold, bizmetrics):
 
         # creates wide format again such that categories are columns now again
         if 1:
