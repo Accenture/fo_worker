@@ -24,35 +24,35 @@ class BaseOptimizer(object):
         self.sales_penetration_threshold = sales_penetration_threshold
         
 
-    def getDiagnostics(self):
+    def get_diagnostics(self):
         #Todo
         pass
-    def getSolver(self):
+    def get_solver(self):
         #Todo
         pass
-    def setSolved(self):
+    def set_solved(self):
         #Todo
         pass
-    def getMPS(self):
+    def get_mps(self):
         #Todo
         pass
-    def getLP(self):
+    def get_lp(self):
         #Todo
         pass
-    def solveLP(self):
+    def solvelp(self):
         #Todo
         pass
-    def getModelDetails(self):
+    def get_model_details(self):
         #Todo
         pass
-    def roundValue(self,cVal, increment):
+    def round_value(self,cVal, increment):
         if np.mod(round(cVal, 3), increment) > increment / 2:
             cVal = round(cVal, 3) + (increment - (np.mod(round(cVal, 3), increment)))
         else:
             cVal = round(cVal, 3) - np.mod(round(cVal, 3), increment)
         return cVal
 
-    def searchParam(self,search, jobName):
+    def search_param(self,search, jobName):
         if search in jobName:
             begin = jobName.find(search)
             length = 0
@@ -63,8 +63,8 @@ class BaseOptimizer(object):
                 except:
                     break
             try:
-                searchParam = int(jobName[(len(search) + begin):(len(search) + begin + length)]) / 100
-                logging.info('{} has been changed to {}'.format(search,searchParam))
+                search_params = int(jobName[(len(search) + begin):(len(search) + begin + length)]) / 100
+                logging.info('{} has been changed to {}'.format(search,search_params))
                 return searchParam
             except:
                 return True

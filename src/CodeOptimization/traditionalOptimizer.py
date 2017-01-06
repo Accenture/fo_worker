@@ -23,7 +23,7 @@ class TraditionalOptimizer(BaseOptimizer):
         self.category_bounds = category_bounds
         self.data = data
 
-    def adjustForTwoIncr(self,space, alpha, increment):
+    def adjust_for_twoincr(self,space, alpha, increment):
         """
         Returns a vector with the maximum percent of the original total store space between two increment sizes and 10 percent of the store space
         :param space: Total Space Available in Store
@@ -33,7 +33,7 @@ class TraditionalOptimizer(BaseOptimizer):
         """
         return max(alpha, (2 * increment) / space)
 
-    def adjustForOneIncr(self,row, bound, increment):
+    def adjust_for_oneincr(self,row, bound, increment):
         """
         Returns a vector with the maximum percent of the original total store space between two increment sizes and 10 percent of the store space
         :param row: Individual row of Total Space Available in Store
@@ -111,7 +111,7 @@ class TraditionalOptimizer(BaseOptimizer):
             5. Validates data by comparing total Optimal Space to total Current Space
             6.
         """
-        print('==> optimizeTrad()')
+        logging.info('==> optimizeTrad()')
     
         ###############################################################################################################
         #
@@ -120,9 +120,9 @@ class TraditionalOptimizer(BaseOptimizer):
     
         space_levels = self.create_space_levels(self.category_bounds, self.increment)
     
-        print(' ')
-        print('1. Creates Tiers aka Space levels')
-        print(space_levels)
+        #print(' ')
+        logging.info('1. Creates Tiers aka Space levels')
+        logging.info(space_levels)
     
         # Local Balance Back
     
@@ -138,15 +138,15 @@ class TraditionalOptimizer(BaseOptimizer):
         # maybe useful when New Space is depending on category as well
     
         # Note: local_space_to_fill usually = New Space (to be allocated for category in store)
-        local_balance_back_adjustment = local_space_to_fill.apply(lambda row: self.adjustForTwoIncr(row, alpha, self.increment))
+        local_balance_back_adjustment = local_space_to_fill.apply(lambda row: self.adjust_for_twoincr(row, alpha, self.increment))
     
         # for example:
         # if space = 6 and increment = 0.5, alpha = 5%, 2*increment/space = 1/6 = 0.1667 = 17%
     
-        print(' ')
-        print('2. Creating the Local Balance Back values (using 2*increment modifier)')
-        print(local_balance_back_adjustment)
-        print(' ')
+        
+        logging.info('2. Creating the Local Balance Back values (using 2*increment modifier)')
+        logging.info(local_balance_back_adjustment)
+        
     
     
         # number of stores, categories and (space) levels
@@ -157,26 +157,21 @@ class TraditionalOptimizer(BaseOptimizer):
         # saves the original Optimal Space for dev purposes
         self.data['Optimal Space unrounded'] = self.data['Optimal Space']
     
-        # Ken's original code:
-        #print(data[data['Store'] == 18]['Optimal Space'].apply(lambda x: roundValue(x, increment)))
-    
+           
         # rounds 'Optimal Space' to a multiple of increment (SHOULD IT BE DONE IN PREPARE()??)
         self.data['Optimal Space'] = self.data.groupby('Store')['Optimal Space'].apply(lambda x: self.myround(x, self.increment))
     
         # Calculate Total space across all stores
         total_space = self.data['Optimal Space'].sum()
     
-        print('Total Optional Space to be filled:')
-        print(total_space)
+        logging.info('Total Optional Space to be filled:')
+        logging.info(total_space)
     
         # Validation that optimal space = current space
-        print('Should match total Current Space:')
-        print(self.data['Current Space'].sum())
-    
-        #
-        # DEBUG
-        print(self.data[self.data['Store']==52])
-        # END DEBUG
+        logging.info('Should match total Current Space:')
+        logging.info(self.data['Current Space'].sum())      
+        logging.info(self.data[self.data['Store']==52])
+        
     
         # computes the minimum of Optimal Space for each category
         space_minimum = self.data.groupby('Category')['Optimal Space'].min()
@@ -184,7 +179,7 @@ class TraditionalOptimizer(BaseOptimizer):
         # determines zero's in the minimum for Optimal Space (at least one store is exiting this brand)
         categories_exit_idx = (space_minimum == 0)
     
-        print(self.category_bounds)
+        logging.info(self.category_bounds)
     
         # setting Lower Space Bound for these category to zero
         # THERE IS SOME BETTER WAY OF CODING THIS ACCORDING TO PYCHARM!
@@ -194,7 +189,7 @@ class TraditionalOptimizer(BaseOptimizer):
                 # increments the Upper Space Bound by 1 to account for extra 0th tier
                 self.category_bounds['Upper Tier Bound'][categories_exit_idx] = self.category_bounds['Upper Tier Bound'][categories_exit_idx] + 1
     
-        print(self.category_bounds)
+        logging.info(self.category_bounds)
     
         ###############################################################################################################
         #
@@ -210,7 +205,7 @@ class TraditionalOptimizer(BaseOptimizer):
         #                   creates binary decision variables to be optimized
         #
     
-        print('Creating LP Variable selected_tier')
+        logging.info('Creating LP Variable selected_tier')
     
         # Selected Tier(k) for store(i) and category(j) is Binary
         selected_tier = LpVariable.dicts('Selected Tier', (self.stores, self.categories, space_levels), 0, upBound=1, cat='Binary')
@@ -218,7 +213,7 @@ class TraditionalOptimizer(BaseOptimizer):
         # Created Tier(k) for category(j) is Binary
         if self.job_type == 'tiered':
     
-            print('Creating LP Variable created_tier')
+            logging.info('Creating LP Variable created_tier')
     
             created_tier = LpVariable.dicts('Created Tier', (self.categories, space_levels), 0, upBound=1, cat='Binary')
     
@@ -240,7 +235,7 @@ class TraditionalOptimizer(BaseOptimizer):
         optimal_space = self.data.pivot(index='Store', columns='Category', values='Optimal Space')
         sales_penetration = self.data.pivot(index='Store', columns='Category', values='Sales %')
     
-        print('Calculates error to be minimized')
+        logging.info('Calculates error to be minimized')
         error = np.zeros((num_stores, num_categories, num_levels))
         for (i, store) in enumerate(self.stores):
             for (j, category) in enumerate(self.categories):
@@ -253,7 +248,7 @@ class TraditionalOptimizer(BaseOptimizer):
         #                                       Adds the Objective Function
         #
     
-        print("Adding objective function")
+        logging.info("Adding objective function")
         problem += lpSum([(selected_tier[store][category][level] * error[i][j][k]) \
                         for (i, store) in enumerate(self.stores) \
                             for (j, category) in enumerate(self.categories) \
@@ -386,7 +381,7 @@ class TraditionalOptimizer(BaseOptimizer):
         # Constraint 3
     
         # Brand Exit Enhancement & Sales Penetration Constraint
-        print('Adding Brand Exit constraints')
+        logging.info('Adding Brand Exit constraints')
     
         # loops through all stores and categories
         for (i, store) in enumerate(self.stores):
@@ -420,7 +415,7 @@ class TraditionalOptimizer(BaseOptimizer):
     
         ##################### end of loop over all stores
         # LpSolverDefault.msg = 1
-        print("The problem has been formulated")
+        logging.info("The problem has been formulated")
     
         ###############################################################################################################
         #S olving the Problem
@@ -433,13 +428,9 @@ class TraditionalOptimizer(BaseOptimizer):
         # local development uses CBC until
         status = problem.solve(pulp.PULP_CBC_CMD(msg=2))
     
-        ###############################################################################################################
-        # #Debugging
-        print("#####################################################################")
-        print(LpStatus[problem.status])
-        print("#####################################################################")
+        logging.info(LpStatus[problem.status])    
     
-        ###############################################################################################################
+   
         if LpStatus[problem.status] == 'Optimal':
     
             # determines the allocated space from the decision variable selected_tier per store and category

@@ -7,26 +7,18 @@ from itertools import product
 
 
 class DataMerger():
-    """
-    Created on Thu Jan 5 14:48:51 2017
-
-    @author: omkar.marathe
-
-    This is the class for 
-    data merging operations
-    """
-
     def __init__(self):
         pass
 
+    """
+    Assigns names for each financial metric in the Transaction Data Set and converts it to a long table
+    :param wide_data: Individual Wide Table of Transaction Metric
+    :param stores: List of stores
+    :param categories: List of categories
+    :return: Returns a long table for an individual metric
+    """
     def convert_wide2long_sales(self,wide_data, stores, categories):
-        """
-        Assigns names for each financial metric in the Transaction Data Set and converts it to a long table
-        :param wide_data: Individual Wide Table of Transaction Metric
-        :param stores: List of stores
-        :param categories: List of categories
-        :return: Returns a long table for an individual metric
-        """
+
         wide_data.loc[0, :] = categories
         wide_data = pd.concat([stores, wide_data], axis=1)
         wide_data.columns = wide_data.loc[0,]
@@ -44,18 +36,18 @@ class DataMerger():
         return data
 
 
-    # Reads Sales data from a csv file
-    def read_sales_data(self,filename, jobType='tiered'):
-        """
-        It takes the data from the Sales file and places it into a dataframe
-        and cleans it up for the merger with other data
+    """
+    Reads Sales data from a csv file and places it into a dataframe
+    and cleans it up for the merger with other data
 
-        :param filename:
-        :return:
-        """
+    :param filename:
+    :return:
+    """    
+    def read_sales_data(self,filename, jobType='tiered'):
+       
         # reads in file, uses first row as headers
         data = pd.read_csv(filename, header=0, dtype={'Store': object})
-        #print ("data is ",data)
+        
         # extracts the categories from first row in sales data
         categories = data.columns[1::9].values
 
@@ -73,7 +65,6 @@ class DataMerger():
         data = data.apply(lambda x: pd.to_numeric(x, errors='ignore'))
 
     
-        # if jobType is tiered or unconstrained
         if  jobType in ('tiered', 'unconstrained'):       
             # extracts the metrics for each category and adds the Category column with category as its value
             frames  = [self.add_category(data.ix[:, np.r_[0, c*9+1:c*9+10]], category) for (c, category) in enumerate(categories)]
@@ -96,21 +87,18 @@ class DataMerger():
         return sales
 
 
-    #Reads Space data from a csv file
-    def read_space_data(self,filename):
-        
-        """
-        It takes the data from the Space file and places it into a dataframe
-        and cleans it up for the merger with other data
+    """
+    Reads Space data from a csv file and places it into a dataframe
+    and cleans it up for the merger with other data
 
-        - renames 'VSG ' to 'VSG'
-        - adds 'Current Space' as a copy of Historical Space
-        - adds 'Store Space' as the total sum of space per store across all categories
+    - renames 'VSG ' to 'VSG'
+    - adds 'Current Space' as a copy of Historical Space
+    - adds 'Store Space' as the total sum of space per store across all categories
 
-        :param filename:
-        :return:
-        """
-
+    :param filename:
+    :return:
+        """    
+    def read_space_data(self,filename):   
  
         #deals with Space data
         #reads in file, uses first row as headers
@@ -149,9 +137,6 @@ class DataMerger():
         data = data.merge(store_space, on='Store', how='inner')
 
         return data
-
-
-
     # Reads Future space data from a csv file
     def read_future_space_data(self,jobType, filename=None):
 
@@ -188,8 +173,6 @@ class DataMerger():
             data = None
 
         return data
-
-
 
     # Merges Space data with requirements for future space and brand exits
     def merge_space_data(self,space, future_space, brand_exit):
