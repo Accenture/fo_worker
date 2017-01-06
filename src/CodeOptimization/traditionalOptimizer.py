@@ -120,7 +120,7 @@ class TraditionalOptimizer(BaseOptimizer):
     
         space_levels = self.create_space_levels(self.category_bounds, self.increment)
     
-        #print(' ')
+        
         logging.info('1. Creates Tiers aka Space levels')
         logging.info(space_levels)
     
