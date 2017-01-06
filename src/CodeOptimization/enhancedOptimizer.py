@@ -13,6 +13,7 @@ import gridfs
 import config
 import datetime as dt
 from codeoptimization.baseOptimizer import BaseOptimizer
+import logging
 
 class EnhancedOptimizer(BaseOptimizer):
     """
@@ -37,8 +38,7 @@ class EnhancedOptimizer(BaseOptimizer):
 
     # Run tiered optimization algorithm
     def optimize(self):
-        """
-    
+        """    
         :param methodology: Enhanced or a Traditional Optimization
         :param jobType: Tiered, Unconstrained, or Drill Down Optimization
         :param jobName: Name of the Job entered by the user
@@ -54,17 +54,18 @@ class EnhancedOptimizer(BaseOptimizer):
         :param fractGap: The optimiality gap to be used by the solver for the optimization
         :return: Optimization Status, DataFrame of all information, objective function value
         """
-    print('in the new optimization')
+    logging.debug('In the Enhanced optimization')
+
     # Helper function for optimize function, to create eligible space levels
     cfbsOutput.reset_index(inplace=True)
     cfbsOutput.rename(columns={'level_0': 'Store', 'level_1': 'Category'}, inplace=True)
     mergedPreOptCF = pd.merge(cfbsOutput, preOpt[['Store', 'Category', 'VSG', 'Store Space', 'Penetration','Exit Flag','Sales Penetration','BOH $', 'Receipts  $','BOH Units', 'Receipts Units', 'Profit %','CC Count w/ BOH',]],on=['Store', 'Category'])
-    print('just finished merge')
+    logging.info('Finished merge')
     mergedPreOptCF = mergedPreOptCF.apply(lambda x: pd.to_numeric(x, errors='ignore'))
-    print('set the index')
+    logging.info('Set the index')
     mergedPreOptCF.set_index(['Store','Category'],inplace=True)
 
-    print('merged the files in the new optimization')
+    logging.info('merged the files in the new optimization')
 
     if jobType == 'tiered' or 'unconstrained':
         def createLevels(mergedPreOptCF, increment):
@@ -80,9 +81,7 @@ class EnhancedOptimizer(BaseOptimizer):
             Levels = list(np.arange(minLevel, maxLevel + increment, increment))
             if 0.0 not in Levels:
                 Levels.append(np.abs(0.0))
-
-            # print(Levels)  # for unit testing
-
+            
             return Levels
 
         # Helper function for createSPUByLevel function, to forecast weighted combination of sales, profit, and units
@@ -127,7 +126,7 @@ class EnhancedOptimizer(BaseOptimizer):
             pL = "profits"
             uL = "units"
 
-            print('forecasting outputs')
+            logging.debug('Forecasting outputs')
             # Calculate SPU by level
             for (i, Store) in enumerate(Stores):
                 for (j, Category) in enumerate(Categories):
@@ -138,7 +137,7 @@ class EnhancedOptimizer(BaseOptimizer):
                                                                                                                   Level,
                                                                                                                   pU) + (
                         enhMetrics[uL] / 100) * forecast(str_cat, Level, uU))
-            print('finished forecasting')
+            logging.info('finished forecasting')
             return est_neg_spu_by_lev
 
         # Helper function for optimize function, to create objective function of error by level for Traditional optimizations
@@ -183,7 +182,7 @@ class EnhancedOptimizer(BaseOptimizer):
             """
             return max(bound,(2*increment)/row)
 
-        print('completed all of the function definitions')
+        logging.info('completed all of the function definitions')
         # Identify the total amount of space to fill in the optimization for each location and for all locations
         
         locSpaceToFill = mergedPreOptCF.groupby(level=0)['Space_to_Fill'].agg(np.mean)
@@ -194,31 +193,31 @@ class EnhancedOptimizer(BaseOptimizer):
         aggBalBackBound = 0.05 # 5%
         locBalBackBound = 0.05 # 10%
 
-        print('now have balance back bounds')
+        logging.info('now have balance back bounds')
         incrAdj = super(EnhancedOptimizer,self).searchParam('ADJ', jobName)
         if incrAdj == None:
             locBalBackBoundAdj = locSpaceToFill.apply(lambda row: adjustForOneIncr(row, bI, increment))
         else:
             locBalBackBoundAdj = locSpaceToFill.apply(lambda row: adjustForTwoIncr(row, bI, increment))
 
-        print('we have local balance back')
+        logging.info('local balance back is found')
      
         # Create eligible space levels
         mergedPreOptCF["Upper_Limit"] = mergedPreOptCF["Upper_Limit"].apply(lambda x: super(EnhancedOptimizer,self).roundValue(x,increment))
         mergedPreOptCF["Lower_Limit"] = mergedPreOptCF["Lower_Limit"].apply(lambda x: super(EnhancedOptimizer,self).roundValue(x,increment))
         Levels = createLevels(mergedPreOptCF, increment)
-        print('we have levels')
+        logging.info('levels are obtained')
         # Set up created tier decision variable - has a value of 1 if that space level for that category will be a tier, else 0
         
         ct = LpVariable.dicts('CT', (Categories, Levels), 0, upBound=1, cat='Binary')
-        print('we have created tiers')
+        logging.info('tiers are created')
         # Set up selected tier decision variable - has a value of 1 if a store will be assigned to the tier at that space level for that category, else 0
         st = LpVariable.dicts('ST', (Stores, Categories, Levels), 0, upBound=1, cat='Binary')
-        print('we have selected tiers')
+        logging.info('tiers are selected')
         
         # Initialize the optimization problem
         NewOptim = LpProblem(jobName, LpMinimize)
-        print('initialized problem')
+        logging.info('problem is initialized')
 
         # Create objective function data
         if methodology == "traditional":
@@ -229,12 +228,12 @@ class EnhancedOptimizer(BaseOptimizer):
             objectivetype = "Total Negative SPU"
 
         
-        print('created objective function data')
+        logging.info('objective function data is created')
         # Add the objective function to the optimization problem
         NewOptim += lpSum(
             [(st[Store][Category][Level] * objective[i][j][k]) for (i, Store) in enumerate(Stores) for (j, Category)
              in enumerate(Categories) for (k, Level) in enumerate(Levels)])#, objectivetype
-        print('created objective function')
+        logging.info('objective function is created')
         # Begin CONSTRAINT SETUP
 
         for (i,Store) in enumerate(Stores):
@@ -255,10 +254,10 @@ class EnhancedOptimizer(BaseOptimizer):
                 if mergedPreOptCF['Sales Penetration'].loc[Store,Category] < salesPen:
                     NewOptim += st[Store][Category][0] == 1
 
-        print('finished first block of constraints')        
+        logging.info('finished first block of constraints')        
         try:
             if jobType == 'tiered':
-                print('we have tier counts')
+                logging.info('jobType is tiered')
                 for (j,Category) in enumerate(Categories):                    
                     # The number of created tiers must be within the tier count limits for each product.
                     NewOptim += lpSum([ct[Category][Level] for (k,Level) in enumerate(Levels)]) >= tierCounts[Category][0], "Tier Count Lower Limit - CAT " + str(Category)
@@ -268,9 +267,9 @@ class EnhancedOptimizer(BaseOptimizer):
                     # A selected tier can be turned on if and only if the created tier at that level for that product is turned on.
                     NewOptim += lpSum([st[Store][Category][Level] for (i,Store) in enumerate(Stores)])/len(Stores) <= ct[Category][Level], "Selected-Created Tier Relationship - CAT " + str(Category) + ", LEV: " + str(Level)
                     
-            print('finished second block of constraints')
+            logging.info('finished second block of constraints')
         except Exception as e:
-            print(e)
+            logging.exception('Exception in processing second block of constraints')
 
         
         # The total space allocated to products across all locations must be within the aggregate balance back tolerance limit.
@@ -283,31 +282,29 @@ class EnhancedOptimizer(BaseOptimizer):
         mergedPreOptCF.reset_index(inplace=True)
 
         # Solve the problem using open source solver
-        print('optional hidden parameters')
+        logging.info('optional hidden parameters')
 
         if 'PreSolve' in jobName:
             preSolving = True
         else:
             preSolving = False
-        
-        print("to the solver we go")
 
         #Solve the problem using Gurobi
         NewOptim.solve(pulp.GUROBI(mip=True, msg=True, MIPgap=.01, LogFile="/tmp/gurobi.log"))
 
-        print('out of the solver')
+        logging.debug('out of the solver')
 
         # Time stamp for optimization solve time
         solve_end_seconds = dt.datetime.today().hour*60*60 + dt.datetime.today().minute*60 + dt.datetime.today().second
         solve_seconds = solve_end_seconds - start_seconds
-        print("Time taken to solve optimization was:" + str(solve_seconds)) #for unit testing
+        logging.info("Time taken to solve optimization is:" + str(solve_seconds))
 
         # Debugging
-        print("#####################################################################")
-        print(LpStatus[NewOptim.status])
-        print("#####################################################################")
+        logging.debug("#####################################################################")
+        logging.debug(LpStatus[NewOptim.status])
+        logging.debug("#####################################################################")
         if LpStatus[NewOptim.status] == 'Optimal':
-            print('Found an optimal solution')
+            logging.info('an optimal solution is found')
             Results=pd.DataFrame(index=Stores,columns=Categories)
             for (i,Store) in enumerate(Stores):
                 for (j,Category) in enumerate(Categories):
