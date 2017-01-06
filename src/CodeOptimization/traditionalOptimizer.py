@@ -80,7 +80,7 @@ class TraditionalOptimizer(BaseOptimizer):
         return [int(x) / float(10 ** digit_after_decimal) for x in unround_numbers]
 
 
-###############################################################################################################
+
     def create_space_levels(self,space_bound, increment):
         # determines min and max spacebound across all categories
         min_space_level = min(space_bound['Lower Space Bound'])
@@ -113,7 +113,7 @@ class TraditionalOptimizer(BaseOptimizer):
         """
         logging.info('==> optimizeTrad()')
     
-        ###############################################################################################################
+        
         #
         #                               Creating Tiers aka Space levels
         #
@@ -191,7 +191,7 @@ class TraditionalOptimizer(BaseOptimizer):
     
         logging.info(self.category_bounds)
     
-        ###############################################################################################################
+        
         #
         # Now we are using:
         #
@@ -200,7 +200,7 @@ class TraditionalOptimizer(BaseOptimizer):
         # categories
         # space_levels
     
-        ###############################################################################################################
+        
         #
         #                   creates binary decision variables to be optimized
         #
@@ -221,12 +221,11 @@ class TraditionalOptimizer(BaseOptimizer):
             created_tier_zero_flag = np.zeros((num_categories,1), dtype=bool)
     
     
-        ###############################################################################################################
+        
     
-        problem = LpProblem(self.job_name, LpMinimize)  # Define Optimization Problem/
-    
-    
-        ###############################################################################################################
+        # Define Optimization Problem/
+        problem = LpProblem(self.job_name, LpMinimize)    
+        
         #
         # Calculates the error as abs difference from optimal space and space level
         #
@@ -243,7 +242,7 @@ class TraditionalOptimizer(BaseOptimizer):
                     error[i][j][k] = np.absolute(optimal_space[category].iloc[i] - level)
     
     
-        ###############################################################################################################
+        
         #
         #                                       Adds the Objective Function
         #
@@ -256,19 +255,19 @@ class TraditionalOptimizer(BaseOptimizer):
                                 "Deviation from optimal space for store "+str(i)+" category "+str(j)+" tier "+str(k)
     
     
-        ###############################################################################################################
+        
         #
         #                                       Formulates the Constraints
         #
     
-        ###############################################################################################################
+        
     
-        ###################################################################
+        
         # Constraint 1
         #
         # At individual store level
     
-        ################################
+        
         # local balance constraint:
         # NEW: No balance back, just total
         for (i, store) in enumerate(self.stores):
@@ -279,7 +278,7 @@ class TraditionalOptimizer(BaseOptimizer):
                         == local_space_to_fill[store], \
                        "Location Balance " + str(store)
     
-        ################################
+        
         # Constraint 2.5.2.
         # Exactly one Space level for each Store & Category
         for (i, store) in enumerate(self.stores):
@@ -288,7 +287,7 @@ class TraditionalOptimizer(BaseOptimizer):
                                   for (k, level) in enumerate(space_levels)]) == 1, \
                                   "Exactly one level for store " + str(store) + " and category " + str(category)
     
-        ################################
+        
         # Constraint 2.5.4.
         # Space Bound for each Store & Category
         for (i, store) in enumerate(self.stores):
@@ -305,18 +304,15 @@ class TraditionalOptimizer(BaseOptimizer):
                                     "Space at Store "+ str(store) +" & Category "+category+" <= upper bound"
     
         # End of Store level constraints
-        ################################
-    
-        ###################################################################
+
         # Constraint 2
         #
         # Only For Tiered optimization
         #
         # At each category level
     
-        if self.job_type == 'tiered':
-    
-            ################################
+        if self.job_type == 'tiered':    
+            
             # Constraint 2a) [Specification constraint 2.5.1.]
             # number of tiers >= lower tier count bound
             for (j, category) in enumerate(self.categories):
@@ -325,7 +321,7 @@ class TraditionalOptimizer(BaseOptimizer):
                                   >= self.category_bounds['Lower Tier Bound'].loc[category], \
                                   "Lower Tier Bound for Category" + category
     
-            ################################
+            
             # Constraint 2b) [Specification constraint 2.5.1.]
             # number of tiers <= upper tier count bound
             for (j, category) in enumerate(self.categories):
@@ -334,7 +330,7 @@ class TraditionalOptimizer(BaseOptimizer):
                                   <= self.category_bounds['Upper Tier Bound'].loc[category], \
                                   "Upper Tier Bound for Category" + category
     
-            ################################
+            
             # Constraint 2c) [Specification constraint 2.5.3.]
     
             # Relationship between Selected Tiers & Created Tiers:
@@ -346,10 +342,10 @@ class TraditionalOptimizer(BaseOptimizer):
                                        <= created_tier[category][level], \
                                        "Selected tier "+str(k)+"('"+str(level)+"') must be valid for category"+category
     
-        ###################################################################
+        
         # Constraint 3
     
-        ################################
+        
         # Constraint 3a) - [Specification constraint 2.5.6.]
     
         # constraint = 'Constraint 2.5.6.a) Global allocated space >= total available space * (1-beta)'
@@ -363,7 +359,7 @@ class TraditionalOptimizer(BaseOptimizer):
         #
         # print(constraint)
         #
-        # ################################
+        
         # # Constraint 3b) - [Specification constraint 2.5.6.]
         #
         # constraint = 'Constraint 2.5.6.b) Global allocated space <= total available space * (1+beta)'
@@ -377,7 +373,7 @@ class TraditionalOptimizer(BaseOptimizer):
         #
         # print(constraint)
     
-        ###################################################################
+        
         # Constraint 3
     
         # Brand Exit Enhancement & Sales Penetration Constraint
@@ -413,11 +409,11 @@ class TraditionalOptimizer(BaseOptimizer):
                     # ALSO DO WE NEED TO ADJUST THE TIER BOUNDS AND SHOULD WE ALLOW TO ADD AN EXTRA 0 TIER
                     # AND COUNT ONLY NON-ZERO TIERS FOR THE TIER COUNT BOUNDS?
     
-        ##################### end of loop over all stores
+        #end of loop over all stores
         # LpSolverDefault.msg = 1
         logging.info("The problem has been formulated")
     
-        ###############################################################################################################
+        
         #S olving the Problem
         #problem.writeLP("Fixture_Optimization.lp")
         #problem.writeMPS(str(job_name)+".mps")
