@@ -24,8 +24,8 @@ class EnhancedOptimizer(BaseOptimizer):
     Enhanced Optimization
     """
 
-    def __init__(self,methodology,jobType,jobName,Stores,Categories,increment,weights,cfbsOutput,preOpt,salesPen,tierCounts=None,threadCount=None,fractGap=None):
-        super(EnhancedOptimizer,self).__init__(jobName,Stores,Categories,salesPen,tierCounts=None)
+    def __init__(self,methodology,job_name,job_tyep,stores,categories,increment,weights,cfbsOutput,preOpt,salesPen,tierCounts=None,threadCount=None,fractGap=None):
+        super(EnhancedOptimizer,self).__init__(job_name,job_type,stores,categories,salesPen,tierCounts=None)
         self.methodology = methodology
         self.jobType = jobType
         self.increment = increment
@@ -37,23 +37,23 @@ class EnhancedOptimizer(BaseOptimizer):
 
     # Run tiered optimization algorithm
     def optimize(self):
-    """
-
-    :param methodology: Enhanced or a Traditional Optimization
-    :param jobType: Tiered, Unconstrained, or Drill Down Optimization
-    :param jobName: Name of the Job entered by the user
-    :param Stores: Vector of all stores within the transactions data set
-    :param Categories: Vector of all categories within the transactions data set
-    :param increment: The increment size to which everything should be rounded, defined by the user in the UI
-    :param weights: The weights by which the different transaction metrics are combined to the objective function
-    :param cfbsOutput: Output with Elasticity Curve related information
-    :param preOpt: Output with intial data set inputs
-    :param salesPen: Sales Penetration threshold required to pass for a store-category combination to tbe considered for optimization
-    :param tierCounts: The upper and lower limits for the number of tiers for each product/ category, defined by the user
-    :param threadCount: The number of threads to be used by the solver for the optimization
-    :param fractGap: The optimiality gap to be used by the solver for the optimization
-    :return: Optimization Status, DataFrame of all information, objective function value
-    """
+        """
+    
+        :param methodology: Enhanced or a Traditional Optimization
+        :param jobType: Tiered, Unconstrained, or Drill Down Optimization
+        :param jobName: Name of the Job entered by the user
+        :param Stores: Vector of all stores within the transactions data set
+        :param Categories: Vector of all categories within the transactions data set
+        :param increment: The increment size to which everything should be rounded, defined by the user in the UI
+        :param weights: The weights by which the different transaction metrics are combined to the objective function
+        :param cfbsOutput: Output with Elasticity Curve related information
+        :param preOpt: Output with intial data set inputs
+        :param salesPen: Sales Penetration threshold required to pass for a store-category combination to tbe considered for optimization
+        :param tierCounts: The upper and lower limits for the number of tiers for each product/ category, defined by the user
+        :param threadCount: The number of threads to be used by the solver for the optimization
+        :param fractGap: The optimiality gap to be used by the solver for the optimization
+        :return: Optimization Status, DataFrame of all information, objective function value
+        """
     print('in the new optimization')
     # Helper function for optimize function, to create eligible space levels
     cfbsOutput.reset_index(inplace=True)
