@@ -3,7 +3,6 @@
 from pulp import *
 import numpy as np
 import pandas as pd
-import datetime as dt
 import logging
 from codeoptimization.baseOptimizer import BaseOptimizer
 from codeoptimization.solver import CbcSolver
@@ -23,25 +22,27 @@ class TraditionalOptimizer(BaseOptimizer):
         self.category_bounds = category_bounds
         self.data = data
 
+    """
+    Returns a vector with the maximum percent of the original total store space between two increment sizes and 10 percent of the store space
+    :param space: Total Space Available in Store
+    :param alpha: Percent Bounding for Balance Back
+    :param increment: Increment Size Determined by the User in the UI
+    :return: Returns an adjusted vector of percentages by which individual store space should be held
+    """
     def adjust_for_twoincr(self,space, alpha, increment):
-        """
-        Returns a vector with the maximum percent of the original total store space between two increment sizes and 10 percent of the store space
-        :param space: Total Space Available in Store
-        :param alpha: Percent Bounding for Balance Back
-        :param increment: Increment Size Determined by the User in the UI
-        :return: Returns an adjusted vector of percentages by which individual store space should be held
-        """
         return max(alpha, (2 * increment) / space)
 
+
+    """
+    Returns a vector with the maximum percent of the original total store space between two increment sizes and 10 percent of the store space
+    :param row: Individual row of Total Space Available in Store
+    :param bound: Percent Bounding for Balance Back
+    :param increment: Increment Size Determined by the User in the UI
+    :return: Returns an adjusted vector of percentages by which individual store space should be held
+    """
     def adjust_for_oneincr(self,row, bound, increment):
-        """
-        Returns a vector with the maximum percent of the original total store space between two increment sizes and 10 percent of the store space
-        :param row: Individual row of Total Space Available in Store
-        :param bound: Percent Bounding for Balance Back
-        :param increment: Increment Size Determined by the User in the UI
-        :return: Returns an adjusted vector of percentages by which individual store space should be held
-        """
         return max(bound, (1 * increment) / row)
+
     def myround(self,values, increment):
 
         # converting to integer
@@ -62,13 +63,14 @@ class TraditionalOptimizer(BaseOptimizer):
         values = pd.Series(np.floor(np.asarray(unround_numbers)) * increment, index=values.index)
 
         return values
+
+    """
+        This function take a list of number and return a list of percentage, which represents the portion of each number in sum of all numbers
+        Moreover, those percentages are adding up to 100%!!!
+        Notice: the algorithm we are using here is 'Largest Remainder'
+        The down-side is that the results won't be accurate, but they are never accurate anyway:)
+    """
     def round_to_100_percent(self,number_set, digit_after_decimal=2):
-        """
-            This function take a list of number and return a list of percentage, which represents the portion of each number in sum of all numbers
-            Moreover, those percentages are adding up to 100%!!!
-            Notice: the algorithm we are using here is 'Largest Remainder'
-            The down-side is that the results won't be accurate, but they are never accurate anyway:)
-        """
         unround_numbers = [x / float(sum(number_set)) * 100 * 10 ** digit_after_decimal for x in number_set]
         decimal_part_with_index = sorted([(index, unround_numbers[index] % 1) for index in range(len(unround_numbers))], key=lambda y: y[1], reverse=True)
         remainder = 100 * 10 ** digit_after_decimal - sum([int(x) for x in unround_numbers])
@@ -92,37 +94,231 @@ class TraditionalOptimizer(BaseOptimizer):
             space_levels.insert(0, 0.0)
 
         return space_levels
+
+    """
+    """
+    def addObjective(self):
+        self.solver.addObjective([(self.selected_tier[store][category][level] * self.error[i][j][k]) \
+                             for (i, store) in enumerate(self.stores) \
+                                for (j, category) in enumerate(self.categories) \
+                                    for (k, level) in enumerate(self.space_levels)], \
+                                        "Deviation from optimal space for store ")
+
+
+    def createVariables(self):
+
+        # Selected Tier(k) for store(i) and category(j) is Binary
+        # selected_tier = LpVariable.dicts('Selected Tier', (self.stores, self.categories, space_levels), 0, upBound=1, cat='Binary')
+        self.selected_tier = self.solver.addVariables('Selected Tier', self.stores, self.categories, self.space_levels, 0)
+
+        # Created Tier(k) for category(j) is Binary
+        if self.job_type == 'tiered':
+            logging.info('Creating LP Variable created_tier')
+
+            # created_tier = LpVariable.dicts('Created Tier', (self.categories, space_levels), 0, upBound=1, cat='Binary')
+            self.created_tier = self.solver.addCreateVariables('Created Tier', self.categories, self.space_levels, 0)
+
+            # aux variable to track if a tier for a category has been to set to 0 already
+            self.created_tier_zero_flag = np.zeros((len(self.categories), 1), dtype=bool)
+
+        return (self.selected_tier,self.created_tier)
+
+    def createError(self):
+        num_stores = len(self.stores)
+        num_categories = len(self.categories)
+        num_levels = len(self.space_levels)
+        # Calculates the error as abs difference from optimal space and space level
+        # creates matrix of store x category to make the FOR loop easier for computing the error
+        self.optimal_space = self.data.pivot(index='Store', columns='Category', values='Optimal Space')
+        self.sales_penetration = self.data.pivot(index='Store', columns='Category', values='Sales %')
+
+        logging.info('Calculates error to be minimized')
+        self.error = np.zeros((num_stores, num_categories, num_levels))
+        for (i, store) in enumerate(self.stores):
+            for (j, category) in enumerate(self.categories):
+                for (k, level) in enumerate(self.space_levels):
+                    self.error[i][j][k] = np.absolute(self.optimal_space[category].iloc[i] - level)
+        return self.error
+
+    """
+    Constraint 1
+    At individual store level
+    local balance constraint:
+    NEW: No balance back, just total
+    """
+    def addConstraintsForLocalBalanceBack(self,local_space_to_fill):
+        for (i, store) in enumerate(self.stores):
+            self.solver.addConstraint(
+                [(self.selected_tier[store][category][level]) * level \
+                 for (j, category) in enumerate(self.categories) \
+                 for (k, level) in enumerate(self.space_levels)], \
+                'eq', local_space_to_fill[store], "Location Balance " + str(store))
+
+
+    """
+    Constraint 2.5.2.
+    Exactly one Space level for each Store & Category
+    """
+    def addConstraintsForSpacLevelStoreCategory(self):
+        for (i, store) in enumerate(self.stores):
+            for (j, category) in enumerate(self.categories):
+                self.solver.addConstraint([self.selected_tier[store][category][level] \
+                                      for (k, level) in enumerate(self.space_levels)], 'eq', 1, \
+                                     "Exactly one level for store " + str(store) + " and category " + str(category))
+
+    """
+    Constraint 2.5.4.
+    Space Bound for each Store & Category
+    """
+    def addConstraintsForSpaceBoundStoreCategory(self):
+        for (i, store) in enumerate(self.stores):
+            for (j, category) in enumerate(self.categories):
+                self.solver.addConstraint([self.selected_tier[store][category][level] * level
+                                  for (k, level) in enumerate(self.space_levels)], \
+                                  'gte',self.category_bounds['Lower Space Bound'].loc[category], \
+                                    "Space at Store "+ str(store) +" & Category "+category+" >= lower bound")
+
+                self.solver.addConstraint([self.selected_tier[store][category][level] * level \
+                                  for (k, level) in enumerate(self.space_levels)], \
+                                  'lte',self.category_bounds['Upper Space Bound'].loc[category], \
+                                    "Space at Store "+ str(store) +" & Category "+category+" <= upper bound")
+
+    """
+    Constraint 2.5.4.
+    Space Bound for each Store & Category
+        # Constraint 2
+        #
+        # Only For Tiered optimization
+        #
+        # At each category level
+    """
+    def addConstraintsForTiered(self):
+
+            ################################
+            # Constraint 2a) [Specification constraint 2.5.1.]
+            # number of tiers >= lower tier count bound
+            for (j, category) in enumerate(self.categories):
+                self.solver.addConstraint([self.created_tier[category][level] \
+                                  for (k, level) in enumerate(self.space_levels)], \
+                           'gte',self.category_bounds['Lower Tier Bound'].loc[category], \
+                           "Lower Tier Bound for Category" + category)
+
+            ################################
+            # Constraint 2b) [Specification constraint 2.5.1.]
+            # number of tiers <= upper tier count bound
+            for (j, category) in enumerate(self.categories):
+                self.solver.addConstraint([self.created_tier[category][level] \
+                                  for (k, level) in enumerate(self.space_levels)], \
+                           'lte',self.category_bounds['Upper Tier Bound'].loc[category], \
+                           "Upper Tier Bound for Category" + category)
+
+            ################################
+            # Constraint 2c) [Specification constraint 2.5.3.]
+
+            # Relationship between Selected Tiers & Created Tiers:
+            # Selected Tier can only be chosen if the corresponding Tier is a valid one for the category
+            for (j, category) in enumerate(self.categories):
+                for (k, level) in enumerate(self.space_levels):
+                     self.solver.addConstraintDivision([self.selected_tier[store][category][level] \
+                                      for (i, store) in enumerate(self.stores)],len(self.stores), \
+                               'lte',self.created_tier[category][level], \
+                               "Selected tier " + str(k) + "('" + str(level) + "') must be valid for category" + category)
+
+    """
+
+    """
+    def addConstraintsForBrandExit(self):
+
+        # loops through all stores and categories
+        for (i, store) in enumerate(self.stores):
+            for (j, category) in enumerate(self.categories):
+                # [Specification constraint 2.5.10.]
+                # checks if category has optimal space set to zero
+                if self.sales_penetration[category].loc[store] < self.sales_penetration_threshold:
+
+                    # creates the string to explain the constraint
+                    constraint_str = " for category " + category + ": Sales Penetration too low or Brand exit planned."
+
+                    # sets space to zero for category in store
+                    self.solver.addConstraint(self.selected_tier[store][category][0.0], 'eq', 1, \
+                               "No space in store " + str(store) + constraint_str)
+
+                    # adds corresponding tier constraint for Tiered Optimization
+                    if self.job_type == 'tiered':
+
+                        if self.created_tier_zero_flag[j] == False:
+                            self.solver.addConstraint(self.created_tier[category][0.0],'eq',1, \
+                            "Tier 0 required " + constraint_str)
+
+                            # Sets flag to indicate constraint has been set already
+                            # We want to avoid repeating the same contraint multiple times
+                            self.created_tier_zero_flag[j] = True
+
+                    # ALSO DO WE NEED TO ADJUST THE TIER BOUNDS AND SHOULD WE ALLOW TO ADD AN EXTRA 0 TIER
+                    # AND COUNT ONLY NON-ZERO TIERS FOR THE TIER COUNT BOUNDS?
+
+    """
+    removed to support 100% balance back
+    """
+    def addGlobalBack(self):
+        pass
+        ###################################################################
+        # Constraint 3
+
+        ################################
+        # Constraint 3a) - [Specification constraint 2.5.6.]
+
+        # constraint = 'Constraint 2.5.6.a) Global allocated space >= total available space * (1-beta)'
+        #
+        # # Global Balance Back: Total allocated space >= Total available space*(1-beta)
+        # problem += lpSum([selected_tier[store][category][level] * level \
+        #                   for (i, store)    in enumerate(stores) \
+        #                   for (j, category) in enumerate(categories) \
+        #                   for (k, level)    in enumerate(space_levels)]) \
+        #                 >= total_space * (1 - beta), constraint
+        #
+        # print(constraint)
+        #
+        # ################################
+        # # Constraint 3b) - [Specification constraint 2.5.6.]
+        #
+        # constraint = 'Constraint 2.5.6.b) Global allocated space <= total available space * (1+beta)'
+        #
+        # # Global Balance Back: Total allocated space <= Total available space*(1+beta)
+        # problem += lpSum([selected_tier[store][category][level] * level \
+        #                   for (i, store)    in enumerate(stores) \
+        #                   for (j, category) in enumerate(categories) \
+        #                   for (k, level)    in enumerate(space_levels)]) \
+        #                 <= total_space * (1 + beta), constraint
+        #
+        # print(constraint)
+
+        ###################################################################
+        # Constraint 3
+
+    """
+    Run the Tiered Traditional LP-based optimization
+
+    Side-effects: ?
+        - creates file: Fixture_Optimization.lp (constraints)
+        - creates file: solvedout.csv <= to be inserted into db
+        - creates file: solvedout.text
+
+    Synopsis:
+        1. Creates space levels from space boundaries
+        2. Creates Local Balance Back values
+        3. Rounds Optimal Space to multiples of <increment> such that it totals up to total store space
+        5. Validates data by comparing total Optimal Space to total Current Space
+        6.
+    """
+
     def optimize(self):
 
-        """
-        Run the Tiered Traditional LP-based optimization
-
-        Side-effects: ?
-            - creates file: Fixture_Optimization.lp (constraints)
-            - creates file: solvedout.csv <= to be inserted into db
-            - creates file: solvedout.text
-
-        Synopsis:
-            1. Creates space levels from space boundaries
-            2. Creates Local Balance Back values
-            3. Rounds Optimal Space to multiples of <increment> such that it totals up to total store space
-            5. Validates data by comparing total Optimal Space to total Current Space
-            6.
-        """
         logging.info('==> optimizeTrad()')
-
-        ###############################################################################################################
-        #
-        #                               Creating Tiers aka Space levels
-        #
-
-        space_levels = self.create_space_levels(self.category_bounds, self.increment)
-
+        self.space_levels = self.create_space_levels(self.category_bounds, self.increment)
 
         logging.info('1. Creates Tiers aka Space levels')
-        logging.info(space_levels)
-
-        # Local Balance Back
+        logging.info(self.space_levels)
 
         # Local Balance back tolerance value for total store space
         alpha = .05
@@ -150,7 +346,7 @@ class TraditionalOptimizer(BaseOptimizer):
         # number of stores, categories and (space) levels
         num_stores     = len(self.stores)
         num_categories = len(self.categories)
-        num_levels     = len(space_levels)
+        num_levels     = len(self.space_levels)
 
         # saves the original Optimal Space for dev purposes
         self.data['Optimal Space unrounded'] = self.data['Optimal Space']
@@ -186,289 +382,40 @@ class TraditionalOptimizer(BaseOptimizer):
             if self.job_type == 'tiered':
                 # increments the Upper Space Bound by 1 to account for extra 0th tier
                 self.category_bounds['Upper Tier Bound'][categories_exit_idx] = self.category_bounds['Upper Tier Bound'][categories_exit_idx] + 1
-       logging.info(self.category_bounds)
 
-        ###############################################################################################################
-        #
-        # Now we are using:
-        #
-        # category_bounds
-        # stores
-        # categories
-        # space_levels
-
-        ###############################################################################################################
-        #
-        #                   creates binary decision variables to be optimized
-        #
-
+        logging.info(self.category_bounds)
         logging.info('Creating LP Variable selected_tier')
-        solver = CbcSolver()
-        # Selected Tier(k) for store(i) and category(j) is Binary
-        #selected_tier = LpVariable.dicts('Selected Tier', (self.stores, self.categories, space_levels), 0, upBound=1, cat='Binary')
-        selected_tier = solver.addVariables('Selected Tier', self.stores, self.categories, space_levels, 0)
 
-        # Created Tier(k) for category(j) is Binary
-        if self.job_type == 'tiered':
-
-            logging.info('Creating LP Variable created_tier')
-
-            #created_tier = LpVariable.dicts('Created Tier', (self.categories, space_levels), 0, upBound=1, cat='Binary')
-            created_tier = solver.addCreateVariables('Created Tier',self.categories, space_levels, 0)
-
-            # aux variable to track if a tier for a category has been to set to 0 already
-            created_tier_zero_flag = np.zeros((num_categories,1), dtype=bool)
-
-
-        ###############################################################################################################
-
-        #problem = LpProblem(self.job_name, LpMinimize)  # Define Optimization Problem/
-        problem = solver.createProblem(self.job_name, 'MIN')
-
-
-        ###############################################################################################################
-        #
-        # Calculates the error as abs difference from optimal space and space level
-        #
-
-        # creates matrix of store x category to make the FOR loop easier for computing the error
-        optimal_space = self.data.pivot(index='Store', columns='Category', values='Optimal Space')
-        sales_penetration = self.data.pivot(index='Store', columns='Category', values='Sales %')
-
-        logging.info('Calculates error to be minimized')
-        error = np.zeros((num_stores, num_categories, num_levels))
-        for (i, store) in enumerate(self.stores):
-            for (j, category) in enumerate(self.categories):
-                for (k, level) in enumerate(space_levels):
-                    error[i][j][k] = np.absolute(optimal_space[category].iloc[i] - level)
-
-        ###############################################################################################################
-        #
-        #                                       Adds the Objective Function
-        #
-
+        self.solver = CbcSolver()
+        (selected_tier, created_tier) = self.createVariables()
+        problem = self.solver.createProblem(self.job_name, 'MIN')
+        self.createError()
         logging.info("Adding objective function")
-        # problem += lpSum([(selected_tier[store][category][level] * error[i][j][k]) \
-        #                for (i, store) in enumerate(self.stores) \
-        #                    for (j, category) in enumerate(self.categories) \
-        #                        for (k, level) in enumerate(space_levels)]), \
-        #                        "Deviation from optimal space for store "+str(i)+" category "+str(j)+" tier "+str(k)
-
-        solver.addObjective([(selected_tier[store][category][level] * error[i][j][k]) \
-                             for (i, store) in enumerate(self.stores) \
-                             for (j, category) in enumerate(self.categories) \
-                             for (k, level) in enumerate(space_levels)], \
-                            "Deviation from optimal space for store " + str(i) + " category " + str(j) + " tier " + str(k))
-
-        ###############################################################################################################
-        #
-        #                                       Formulates the Constraints
-        #
-
-        ###############################################################################################################
-
-        ###################################################################
-        # Constraint 1
-        #
-        # At individual store level
-
-        ################################
-        # local balance constraint:
-        # NEW: No balance back, just total
-        for (i, store) in enumerate(self.stores):
-            # problem += lpSum(
-            #    [(selected_tier[store][category][level]) * level \
-            #     for (j, category) in enumerate(self.categories) \
-            #        for (k, level) in enumerate(space_levels)]) \
-            #            == local_space_to_fill[store], \
-            #           "Location Balance " + str(store)
-            solver.addConstraint(
-                [(selected_tier[store][category][level]) * level for (j, category) in enumerate(self.categories) for (k, level)
-                 in enumerate(space_levels)], \
-                'eq', local_space_to_fill[store], "Location Balance " + str(store))
-
-        ################################
-        # Constraint 2.5.2.
-        # Exactly one Space level for each Store & Category
-        for (i, store) in enumerate(self.stores):
-            for (j, category) in enumerate(self.categories):
-                # problem += lpSum([selected_tier[store][category][level] \
-                #                  for (k, level) in enumerate(space_levels)]) == 1, \
-                #                  "Exactly one level for store " + str(store) + " and category " + str(category)
-                solver.addConstraint([selected_tier[store][category][level] \
-                                      for (k, level) in enumerate(space_levels)], 'eq', 1, \
-                                     "Exactly one level for store " + str(store) + " and category " + str(category))
-
-        ################################
-        # Constraint 2.5.4.
-        # Space Bound for each Store & Category
-        for (i, store) in enumerate(self.stores):
-            for (j, category) in enumerate(self.categories):
-                # Lower Space Bound
-                #problem += lpSum([selected_tier[store][category][level] * level
-                #                  for (k, level) in enumerate(space_levels)]) \
-                #                  >= self.category_bounds['Lower Space Bound'].loc[category], \
-                #                    "Space at Store "+ str(store) +" & Category "+category+" >= lower bound"
-                solver.addConstraint([selected_tier[store][category][level] * level
-                                  for (k, level) in enumerate(space_levels)], \
-                                  'gte',self.category_bounds['Lower Space Bound'].loc[category], \
-                                    "Space at Store "+ str(store) +" & Category "+category+" >= lower bound")
-
-                # Upper Space Bound
-                #problem += lpSum([selected_tier[store][category][level] * level \
-                #                  for (k, level) in enumerate(space_levels)]) \
-                #                  <= self.category_bounds['Upper Space Bound'].loc[category], \
-                #                    "Space at Store "+ str(store) +" & Category "+category+" <= upper bound"
-
-                solver.addConstraint([selected_tier[store][category][level] * level \
-                                  for (k, level) in enumerate(space_levels)], \
-                                  'lte',self.category_bounds['Upper Space Bound'].loc[category], \
-                                    "Space at Store "+ str(store) +" & Category "+category+" <= upper bound")
-
-        # End of Store level constraints
-        ################################
-       ###################################################################
-        # Constraint 2
-        #
-        # Only For Tiered optimization
-        #
-        # At each category level
+        self.addObjective()
+        self.addConstraintsForLocalBalanceBack(local_space_to_fill)
+        self.addConstraintsForSpacLevelStoreCategory()
+        self.addConstraintsForSpaceBoundStoreCategory()
 
         if self.job_type == 'tiered':
-
-            ################################
-            # Constraint 2a) [Specification constraint 2.5.1.]
-            # number of tiers >= lower tier count bound
-            for (j, category) in enumerate(self.categories):
-                #problem += lpSum([created_tier[category][level] \
-                #                  for (k, level) in enumerate(space_levels)]) \
-                #                  >= self.category_bounds['Lower Tier Bound'].loc[category], \
-                #                  "Lower Tier Bound for Category" + category
-                solver.addConstraint([created_tier[category][level] \
-                                  for (k, level) in enumerate(space_levels)], \
-                           'gte',self.category_bounds['Lower Tier Bound'].loc[category], \
-                           "Lower Tier Bound for Category" + category)
-
-            ################################
-            # Constraint 2b) [Specification constraint 2.5.1.]
-            # number of tiers <= upper tier count bound
-            for (j, category) in enumerate(self.categories):
-                #problem += lpSum([created_tier[category][level] \
-                #                  for (k, level) in enumerate(space_levels)]) \
-                #                  <= self.category_bounds['Upper Tier Bound'].loc[category], \
-                #                  "Upper Tier Bound for Category" + category
-                solver.addConstraint([created_tier[category][level] \
-                                  for (k, level) in enumerate(space_levels)], \
-                           'lte',self.category_bounds['Upper Tier Bound'].loc[category], \
-                           "Upper Tier Bound for Category" + category)
-
-            ################################
-            # Constraint 2c) [Specification constraint 2.5.3.]
-
-            # Relationship between Selected Tiers & Created Tiers:
-            # Selected Tier can only be chosen if the corresponding Tier is a valid one for the category
-            for (j, category) in enumerate(self.categories):
-                for (k, level) in enumerate(space_levels):
-                     #problem += lpSum([selected_tier[store][category][level] \
-                     #                  for (i, store) in enumerate(self.stores)])/len(self.stores) \
-                     #                  <= created_tier[category][level], \
-                     #                  "Selected tier "+str(k)+"('"+str(level)+"') must be valid for category"+category
-                     solver.addConstraintDivision([selected_tier[store][category][level] \
-                                      for (i, store) in enumerate(self.stores)],len(self.stores), \
-                               'lte',created_tier[category][level], \
-                               "Selected tier " + str(k) + "('" + str(level) + "') must be valid for category" + category)
-        ###################################################################
-        # Constraint 3
-
-        ################################
-        # Constraint 3a) - [Specification constraint 2.5.6.]
-
-        # constraint = 'Constraint 2.5.6.a) Global allocated space >= total available space * (1-beta)'
-        #
-        # # Global Balance Back: Total allocated space >= Total available space*(1-beta)
-        # problem += lpSum([selected_tier[store][category][level] * level \
-        #                   for (i, store)    in enumerate(stores) \
-        #                   for (j, category) in enumerate(categories) \
-        #                   for (k, level)    in enumerate(space_levels)]) \
-        #                 >= total_space * (1 - beta), constraint
-        #
-        # print(constraint)
-        #
-        # ################################
-        # # Constraint 3b) - [Specification constraint 2.5.6.]
-        #
-        # constraint = 'Constraint 2.5.6.b) Global allocated space <= total available space * (1+beta)'
-        #
-        # # Global Balance Back: Total allocated space <= Total available space*(1+beta)
-        # problem += lpSum([selected_tier[store][category][level] * level \
-        #                   for (i, store)    in enumerate(stores) \
-        #                   for (j, category) in enumerate(categories) \
-        #                   for (k, level)    in enumerate(space_levels)]) \
-        #                 <= total_space * (1 + beta), constraint
-        #
-        # print(constraint)
-
-        ###################################################################
-        # Constraint 3
+            self.addConstraintsForTiered()
 
         # Brand Exit Enhancement & Sales Penetration Constraint
         logging.info('Adding Brand Exit constraints')
+        self.addConstraintsForBrandExit()
 
-        # loops through all stores and categories
-        for (i, store) in enumerate(self.stores):
-            for (j, category) in enumerate(self.categories):
-
-                # [Specification constraint 2.5.10.]
-
-                # checks if category has optimal space set to zero
-                if sales_penetration[category].loc[store] < self.sales_penetration_threshold:
-
-                    # creates the string to explain the constraint
-                    constraint_str = " for category " + category + ": Sales Penetration too low or Brand exit planned."
-
-                    # sets space to zero for category in store
-                    #problem += selected_tier[store][category][0.0] == 1, \
-                    #           "No space in store " + str(store) + constraint_str
-                    solver.addConstraint(selected_tier[store][category][0.0], 'eq', 1, \
-                               "No space in store " + str(store) + constraint_str)
-
-
-
-                    # adds corresponding tier constraint for Tiered Optimization
-                    if self.job_type == 'tiered':
-
-                        if created_tier_zero_flag[j] == False:
-                            #problem += created_tier[category][0.0] == 1, \
-                            #"Tier 0 required " + constraint_str
-                            solver.addConstraint(created_tier[category][0.0],'eq',1, \
-                            "Tier 0 required " + constraint_str)
-
-                            # Sets flag to indicate constraint has been set already
-                            # We want to avoid repeating the same contraint multiple times
-                            created_tier_zero_flag[j] = True
-
-                    # ALSO DO WE NEED TO ADJUST THE TIER BOUNDS AND SHOULD WE ALLOW TO ADD AN EXTRA 0 TIER
-                    # AND COUNT ONLY NON-ZERO TIERS FOR THE TIER COUNT BOUNDS?
-
-        ##################### end of loop over all stores
-        # LpSolverDefault.msg = 1
         logging.info("The problem has been formulated")
+        status = self.solver.solveProblem()
 
         ###############################################################################################################
         #S olving the Problem
         #problem.writeLP("Fixture_Optimization.lp")
         #problem.writeMPS(str(job_name)+".mps")
-
         # Solve the problem using Gurobi
         #status = problem.solve(pulp.GUROBI(mip=True, msg=True, MIPgap=.01, LogFile="/tmp/gurobi.log"))
-
         # local development uses CBC until
         #status = problem.solve(pulp.PULP_CBC_CMD(msg=2))
-        status = solver.solveProblem()
 
         logging.info(LpStatus[problem.status])
-
-
 
         if LpStatus[problem.status] == 'Optimal':
 
@@ -476,7 +423,7 @@ class TraditionalOptimizer(BaseOptimizer):
             allocated_space = pd.DataFrame(index=self.stores, columns=self.categories)
             for (i, store) in enumerate(self.stores):
                 for (j, category) in enumerate(self.categories):
-                    for (k, level) in enumerate(space_levels):
+                    for (k, level) in enumerate(self.space_levels):
                         if value(selected_tier[store][category][level]) == 1:
                             allocated_space[category][store] = level
 
