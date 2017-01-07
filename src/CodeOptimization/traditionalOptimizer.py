@@ -7,6 +7,7 @@ import pandas as pd
 import datetime as dt
 import logging
 from codeoptimization.baseOptimizer import BaseOptimizer
+from codeoptimization.solver import CbcSolver
 
 class TraditionalOptimizer(BaseOptimizer):
     """
@@ -206,16 +207,18 @@ class TraditionalOptimizer(BaseOptimizer):
         #
     
         logging.info('Creating LP Variable selected_tier')
-    
+        solver = CbcSolver()
         # Selected Tier(k) for store(i) and category(j) is Binary
-        selected_tier = LpVariable.dicts('Selected Tier', (self.stores, self.categories, space_levels), 0, upBound=1, cat='Binary')
+        #selected_tier = LpVariable.dicts('Selected Tier', (self.stores, self.categories, space_levels), 0, upBound=1, cat='Binary')
+        selected_tier = solver.addVariables('Selected Tier', self.stores, self.categories, space_levels, 0)
     
         # Created Tier(k) for category(j) is Binary
         if self.job_type == 'tiered':
     
             logging.info('Creating LP Variable created_tier')
     
-            created_tier = LpVariable.dicts('Created Tier', (self.categories, space_levels), 0, upBound=1, cat='Binary')
+            #created_tier = LpVariable.dicts('Created Tier', (self.categories, space_levels), 0, upBound=1, cat='Binary')
+            created_tier = solver.addCreateVariables('Created Tier',self.categories, space_levels, 0)
     
             # aux variable to track if a tier for a category has been to set to 0 already
             created_tier_zero_flag = np.zeros((num_categories,1), dtype=bool)
@@ -223,7 +226,8 @@ class TraditionalOptimizer(BaseOptimizer):
     
         ###############################################################################################################
     
-        problem = LpProblem(self.job_name, LpMinimize)  # Define Optimization Problem/
+        #problem = LpProblem(self.job_name, LpMinimize)  # Define Optimization Problem/
+        problem = solver.createProblem(self.job_name, 'MIN')
     
     
         ###############################################################################################################
@@ -249,12 +253,17 @@ class TraditionalOptimizer(BaseOptimizer):
         #
     
         logging.info("Adding objective function")
-        problem += lpSum([(selected_tier[store][category][level] * error[i][j][k]) \
+        #problem += lpSum([(selected_tier[store][category][level] * error[i][j][k]) \
+        #                for (i, store) in enumerate(self.stores) \
+        #                    for (j, category) in enumerate(self.categories) \
+        #                        for (k, level) in enumerate(space_levels)]), \
+        #                        "Deviation from optimal space for store "+str(i)+" category "+str(j)+" tier "+str(k)
+    
+        solver.addObjective([(selected_tier[store][category][level] * error[i][j][k]) \
                         for (i, store) in enumerate(self.stores) \
                             for (j, category) in enumerate(self.categories) \
-                                for (k, level) in enumerate(space_levels)]), \
-                                "Deviation from optimal space for store "+str(i)+" category "+str(j)+" tier "+str(k)
-    
+                                for (k, level) in enumerate(space_levels)], \
+                                "Deviation from optimal space for store "+str(i)+" category "+str(j)+" tier "+str(k))
     
         ###############################################################################################################
         #
@@ -272,37 +281,57 @@ class TraditionalOptimizer(BaseOptimizer):
         # local balance constraint:
         # NEW: No balance back, just total
         for (i, store) in enumerate(self.stores):
-            problem += lpSum(
+            #problem += lpSum(
+            #    [(selected_tier[store][category][level]) * level \
+            #     for (j, category) in enumerate(self.categories) \
+            #        for (k, level) in enumerate(space_levels)]) \
+            #            == local_space_to_fill[store], \
+            #           "Location Balance " + str(store)
+            solver.addConstraint(
                 [(selected_tier[store][category][level]) * level \
                  for (j, category) in enumerate(self.categories) \
-                    for (k, level) in enumerate(space_levels)]) \
-                        == local_space_to_fill[store], \
-                       "Location Balance " + str(store)
+                    for (k, level) in enumerate(space_levels)], \
+                        'eq',local_space_to_fill[store], \
+                       "Location Balance " + str(store))
     
         ################################
         # Constraint 2.5.2.
         # Exactly one Space level for each Store & Category
         for (i, store) in enumerate(self.stores):
             for (j, category) in enumerate(self.categories):
-                problem += lpSum([selected_tier[store][category][level] \
-                                  for (k, level) in enumerate(space_levels)]) == 1, \
-                                  "Exactly one level for store " + str(store) + " and category " + str(category)
+                #problem += lpSum([selected_tier[store][category][level] \
+                #                  for (k, level) in enumerate(space_levels)]) == 1, \
+                #                  "Exactly one level for store " + str(store) + " and category " + str(category)
+                solver.addConstraint([selected_tier[store][category][level] \
+                                  for (k, level) in enumerate(space_levels)],'eq',1, \
+                                  "Exactly one level for store " + str(store) + " and category " + str(category))
     
+
         ################################
         # Constraint 2.5.4.
         # Space Bound for each Store & Category
         for (i, store) in enumerate(self.stores):
             for (j, category) in enumerate(self.categories):
                 # Lower Space Bound
-                problem += lpSum([selected_tier[store][category][level] * level
-                                  for (k, level) in enumerate(space_levels)]) \
-                                  >= self.category_bounds['Lower Space Bound'].loc[category], \
-                                    "Space at Store "+ str(store) +" & Category "+category+" >= lower bound"
+                #problem += lpSum([selected_tier[store][category][level] * level
+                #                  for (k, level) in enumerate(space_levels)]) \
+                #                  >= self.category_bounds['Lower Space Bound'].loc[category], \
+                #                    "Space at Store "+ str(store) +" & Category "+category+" >= lower bound"
+                solver.addConstraint([selected_tier[store][category][level] * level
+                                  for (k, level) in enumerate(space_levels)], \
+                                  'gte',self.category_bounds['Lower Space Bound'].loc[category], \
+                                    "Space at Store "+ str(store) +" & Category "+category+" >= lower bound")
+ 
                 # Upper Space Bound
-                problem += lpSum([selected_tier[store][category][level] * level \
-                                  for (k, level) in enumerate(space_levels)]) \
-                                  <= self.category_bounds['Upper Space Bound'].loc[category], \
-                                    "Space at Store "+ str(store) +" & Category "+category+" <= upper bound"
+                #problem += lpSum([selected_tier[store][category][level] * level \
+                #                  for (k, level) in enumerate(space_levels)]) \
+                #                  <= self.category_bounds['Upper Space Bound'].loc[category], \
+                #                    "Space at Store "+ str(store) +" & Category "+category+" <= upper bound"
+
+                solver.addConstraint([selected_tier[store][category][level] * level \
+                                  for (k, level) in enumerate(space_levels)], \
+                                  'lte',self.category_bounds['Upper Space Bound'].loc[category], \
+                                    "Space at Store "+ str(store) +" & Category "+category+" <= upper bound")
     
         # End of Store level constraints
         ################################
@@ -320,20 +349,28 @@ class TraditionalOptimizer(BaseOptimizer):
             # Constraint 2a) [Specification constraint 2.5.1.]
             # number of tiers >= lower tier count bound
             for (j, category) in enumerate(self.categories):
-                problem += lpSum([created_tier[category][level] \
-                                  for (k, level) in enumerate(space_levels)]) \
-                                  >= self.category_bounds['Lower Tier Bound'].loc[category], \
-                                  "Lower Tier Bound for Category" + category
-    
+                #problem += lpSum([created_tier[category][level] \
+                #                  for (k, level) in enumerate(space_levels)]) \
+                #                  >= self.category_bounds['Lower Tier Bound'].loc[category], \
+                #                  "Lower Tier Bound for Category" + category
+                solver.addConstraint([created_tier[category][level] \
+                                  for (k, level) in enumerate(space_levels)], \
+                           'gte',self.category_bounds['Lower Tier Bound'].loc[category], \
+                           "Lower Tier Bound for Category" + category)
+
             ################################
             # Constraint 2b) [Specification constraint 2.5.1.]
             # number of tiers <= upper tier count bound
             for (j, category) in enumerate(self.categories):
-                problem += lpSum([created_tier[category][level] \
-                                  for (k, level) in enumerate(space_levels)]) \
-                                  <= self.category_bounds['Upper Tier Bound'].loc[category], \
-                                  "Upper Tier Bound for Category" + category
-    
+                #problem += lpSum([created_tier[category][level] \
+                #                  for (k, level) in enumerate(space_levels)]) \
+                #                  <= self.category_bounds['Upper Tier Bound'].loc[category], \
+                #                  "Upper Tier Bound for Category" + category
+                solver.addConstraint([created_tier[category][level] \
+                                  for (k, level) in enumerate(space_levels)], \
+                           'lte',self.category_bounds['Upper Tier Bound'].loc[category], \
+                           "Upper Tier Bound for Category" + category)
+
             ################################
             # Constraint 2c) [Specification constraint 2.5.3.]
     
@@ -341,11 +378,15 @@ class TraditionalOptimizer(BaseOptimizer):
             # Selected Tier can only be chosen if the corresponding Tier is a valid one for the category
             for (j, category) in enumerate(self.categories):
                 for (k, level) in enumerate(space_levels):
-                     problem += lpSum([selected_tier[store][category][level] \
-                                       for (i, store) in enumerate(self.stores)])/len(self.stores) \
-                                       <= created_tier[category][level], \
-                                       "Selected tier "+str(k)+"('"+str(level)+"') must be valid for category"+category
-    
+                     #problem += lpSum([selected_tier[store][category][level] \
+                     #                  for (i, store) in enumerate(self.stores)])/len(self.stores) \
+                     #                  <= created_tier[category][level], \
+                     #                  "Selected tier "+str(k)+"('"+str(level)+"') must be valid for category"+category
+                     solver.addConstraintDivision([selected_tier[store][category][level] \
+                                      for (i, store) in enumerate(self.stores)],len(self.stores), \
+                               'lte',created_tier[category][level], \
+                               "Selected tier " + str(k) + "('" + str(level) + "') must be valid for category" + category)
+
         ###################################################################
         # Constraint 3
     
@@ -396,16 +437,22 @@ class TraditionalOptimizer(BaseOptimizer):
                     constraint_str = " for category " + category + ": Sales Penetration too low or Brand exit planned."
     
                     # sets space to zero for category in store
-                    problem += selected_tier[store][category][0.0] == 1, \
-                               "No space in store " + str(store) + constraint_str
+                    #problem += selected_tier[store][category][0.0] == 1, \
+                    #           "No space in store " + str(store) + constraint_str
+                    solver.addConstraint(selected_tier[store][category][0.0], 'eq', 1, \
+                               "No space in store " + str(store) + constraint_str)
+
+
     
                     # adds corresponding tier constraint for Tiered Optimization
                     if self.job_type == 'tiered':
     
                         if created_tier_zero_flag[j] == False:
-                            problem += created_tier[category][0.0] == 1, \
-                            "Tier 0 required " + constraint_str
-    
+                            #problem += created_tier[category][0.0] == 1, \
+                            #"Tier 0 required " + constraint_str
+                            solver.addConstraint(created_tier[category][0.0],'eq',1, \
+                            "Tier 0 required " + constraint_str)
+
                             # Sets flag to indicate constraint has been set already
                             # We want to avoid repeating the same contraint multiple times
                             created_tier_zero_flag[j] = True
@@ -426,7 +473,8 @@ class TraditionalOptimizer(BaseOptimizer):
         #status = problem.solve(pulp.GUROBI(mip=True, msg=True, MIPgap=.01, LogFile="/tmp/gurobi.log"))
     
         # local development uses CBC until
-        status = problem.solve(pulp.PULP_CBC_CMD(msg=2))
+        #status = problem.solve(pulp.PULP_CBC_CMD(msg=2))
+        status = solver.solveProblem()
     
         logging.info(LpStatus[problem.status])    
     
