@@ -32,8 +32,6 @@ class CbcSolver(Solver):
             self.problem += lpSum(constraint) <= value,tag
         if  operation == 'gte':
             self.problem += lpSum(constraint) >= value,tag
-        if  operation == 'eq':
-            self.problem += lpSum(constraint) == value,tag
 
     def addConstraintDivision(self,constraint,division,operation,value,tag):
         if  operation == 'eq':
@@ -42,9 +40,7 @@ class CbcSolver(Solver):
             self.problem += lpSum(constraint)/division <= value,tag
         if  operation == 'gte':
             self.problem += lpSum(constraint)/division >= value,tag
-        if  operation == 'eq':
-            self.problem += lpSum(constraint)/division == value,tag
-
+        
     def addVariables(self,name,stores,categories,space_levels,lower_bound):
         self.selected_tier = LpVariable.dicts(name, (stores, categories, space_levels), lower_bound, upBound=1,cat='Binary')
 
