@@ -122,12 +122,12 @@ class PreProcessor():
         :return: initial long table with optimal space & sales penetration
         """
 
-        #########################################################
+        
         # 2.6.1.: Sales $ penetration and Sales Units Penetration
         data['Sales %']       = data.groupby('Store')['Sales $'].apply(lambda x: x / float(x.sum()))
         data['Sales Units %'] = data.groupby('Store')['Sales Units'].apply(lambda x: x / float(x.sum()))
 
-        #########################################################
+        
         # GAFS: Goods Available for Sale in $ and Units and its penetration each
         data['GAFS $']        = data['BOH $'] + data['Receipts  $']
         data['GAFS Units']    = data['BOH Units'] + data['Receipts Units']
@@ -135,7 +135,7 @@ class PreProcessor():
         data['GAFS %']        = data.groupby('Store')['GAFS $'].apply(lambda x: x / float(x.sum()))
         data['GAFS Units %']  = data.groupby('Store')['GAFS Units'].apply(lambda x: x / float(x.sum()))
 
-        #########################################################
+        
         # bfc Current Space for Tiered and Unconstrained
         data['BFC']           = data['Current Space']
         data['BFC %']         = data.groupby('Store')['BFC'].apply(lambda x: x / float(x.sum()))
@@ -144,11 +144,11 @@ class PreProcessor():
         if jobType == 'drilldown':
             data['BFC'] = data['Sales %'] * data['New Space']
 
-        #########################################################
+        
         # 2.6.2.: Spread = Sales % + metricAdjustment * (Sales % - GAFS %)
         data['Spread'] = data['Sales %'] + metricAdjustment * (data['Sales %'] - data['GAFS %'])
 
-        ################################################
+        
         #
         #           Checks for negative Spread
         #
@@ -164,7 +164,7 @@ class PreProcessor():
             # sets a negative spread to 0
             data.loc[idx_spread, ('Spread')] = 0
 
-        #########################################################
+        
         # 2.6.3.: Sales per Space = sales % + metricAdjustment * (sales % - bfc %)
         data['Sales per Space'] = data['Sales %'] + metricAdjustment * (data['Sales %'] - data['BFC %'])
 
@@ -179,7 +179,7 @@ class PreProcessor():
             # sets a negative sales per space to 0
             data.loc[idx_sales_per_space, ('Sales per Space')] = 0
 
-        #########################################################
+        
         # 2.6.4.: Inventory turnover rate
         data['Inventory Turnover'] = data['Sales Units %'] / data['GAFS Units %']
         # sets turnover to 0 when NaN such that other categories get proper sum for same store
@@ -191,12 +191,12 @@ class PreProcessor():
         #inventory_turnover[np.isnan(inventory_turnover)] = 0
         #inventory_turnover[np.isinf(inventory_turnover)] = 0
 
-        #########################################################
+        
         # 2.6.5.: Gross margin = share of Profit % by store - why is that penetration of Profit %?
         data['Gross Margin %'] = data.groupby('Store')['Profit %'].apply(lambda x: x / float(x.sum()))
 
 
-            ##############################################################
+            
     #
     #             Computation of Penetration
     #
@@ -234,7 +234,7 @@ class PreProcessor():
             bizmetrics['inventoryTurns'] == 100:
             penetration = penetration / 100.0
 
-        ###############################################################
+        
         #
         # Business Overrides:
         #
@@ -248,7 +248,7 @@ class PreProcessor():
             logging.info(data[idx_exit])
             penetration[idx_exit] = 0
 
-        #########################################################
+        
         # tests for NaN in data[column_name] and prints entire record for those
         # but doesnt change the value yet. We need confirmation from business!
         def test_for_nan(data, column_name):
@@ -280,7 +280,7 @@ class PreProcessor():
         data['Penetration %'].fillna(0, inplace=True)
 
 
-        ##################################################################################
+        
         #
         #           Traditional Model for Sales to Space relationship
         #

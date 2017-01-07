@@ -13,7 +13,8 @@ import config
 import datetime as dt
 
 # Run tiered optimization algorithm
-def optimizeEnh(methodology, jobType, jobName, Stores, Categories, increment, weights, cfbsOutput, prepped_data, salesPen, tierCounts=None, threadCount=None, fractGap=None):
+def optimizeEnh(methodology, jobType, jobName, Stores, Categories, increment, weights, 
+                cfbsOutput, prepped_data, salesPen, tierCounts=None, threadCount=None, fractGap=None):
     """
 
     :param methodology: Enhanced or a Traditional Optimization

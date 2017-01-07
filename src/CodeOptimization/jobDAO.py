@@ -5,6 +5,7 @@ from mongoConnection import MongoConnection
 import datetime as dt
 from bson.objectid import ObjectId
 import socket
+import logging
 
 class JobDAO():
     """
@@ -99,7 +100,7 @@ class JobDAO():
                 }
             }
         )
-        print('Updated job with logging info.')
+        logging.info('Updated job with logging info.')
 
     #use for divideByZero as well by passing status
     def reconcile_db(self, id,status):
@@ -115,7 +116,7 @@ class JobDAO():
                 }
             }
         )
-        print('RECONCILE DB')
+        logging.info('RECONCILE DB')
 
     def updateEnd(self, id):
         MongoConnection.db.jobs.update_one(
@@ -130,7 +131,7 @@ class JobDAO():
                 }
             }
         )
-        print('update failed time')
+        logging.info('updated failed time')
 
 if __name__ == "__main__" :
     MongoConnection.db.countries.insert({"name" : "India"})

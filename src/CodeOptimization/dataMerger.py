@@ -169,7 +169,7 @@ class DataMerger():
             data = data[['Store', 'Category']]
 
         except Exception as e:
-            logging.error('error in read_brand_exit_data()')
+            logging.exception('Error in reading brand exit data')
             data = None
 
         return data

@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-
 from pulp import *
 import numpy as np
 import pandas as pd
@@ -15,7 +14,7 @@ class TraditionalOptimizer(BaseOptimizer):
 
     @author: omkar.marathe
 
-    This is the class for 
+    This is the class for
     Traditional Optimization
     """
 
@@ -80,8 +79,6 @@ class TraditionalOptimizer(BaseOptimizer):
             index = (index + 1) % len(number_set)
         return [int(x) / float(10 ** digit_after_decimal) for x in unround_numbers]
 
-
-###############################################################################################################
     def create_space_levels(self,space_bound, increment):
         # determines min and max spacebound across all categories
         min_space_level = min(space_bound['Lower Space Bound'])
@@ -99,12 +96,12 @@ class TraditionalOptimizer(BaseOptimizer):
 
         """
         Run the Tiered Traditional LP-based optimization
-    
+
         Side-effects: ?
             - creates file: Fixture_Optimization.lp (constraints)
             - creates file: solvedout.csv <= to be inserted into db
             - creates file: solvedout.text
-    
+
         Synopsis:
             1. Creates space levels from space boundaries
             2. Creates Local Balance Back values
@@ -189,8 +186,7 @@ class TraditionalOptimizer(BaseOptimizer):
             if self.job_type == 'tiered':
                 # increments the Upper Space Bound by 1 to account for extra 0th tier
                 self.category_bounds['Upper Tier Bound'][categories_exit_idx] = self.category_bounds['Upper Tier Bound'][categories_exit_idx] + 1
-
-        logging.info(self.category_bounds)
+       logging.info(self.category_bounds)
 
         ###############################################################################################################
         #
@@ -246,24 +242,23 @@ class TraditionalOptimizer(BaseOptimizer):
                 for (k, level) in enumerate(space_levels):
                     error[i][j][k] = np.absolute(optimal_space[category].iloc[i] - level)
 
-
         ###############################################################################################################
         #
         #                                       Adds the Objective Function
         #
 
         logging.info("Adding objective function")
-        #problem += lpSum([(selected_tier[store][category][level] * error[i][j][k]) \
+        # problem += lpSum([(selected_tier[store][category][level] * error[i][j][k]) \
         #                for (i, store) in enumerate(self.stores) \
         #                    for (j, category) in enumerate(self.categories) \
         #                        for (k, level) in enumerate(space_levels)]), \
         #                        "Deviation from optimal space for store "+str(i)+" category "+str(j)+" tier "+str(k)
 
         solver.addObjective([(selected_tier[store][category][level] * error[i][j][k]) \
-                        for (i, store) in enumerate(self.stores) \
-                            for (j, category) in enumerate(self.categories) \
-                                for (k, level) in enumerate(space_levels)], \
-                                "Deviation from optimal space for store "+str(i)+" category "+str(j)+" tier "+str(k))
+                             for (i, store) in enumerate(self.stores) \
+                             for (j, category) in enumerate(self.categories) \
+                             for (k, level) in enumerate(space_levels)], \
+                            "Deviation from optimal space for store " + str(i) + " category " + str(j) + " tier " + str(k))
 
         ###############################################################################################################
         #
@@ -281,30 +276,28 @@ class TraditionalOptimizer(BaseOptimizer):
         # local balance constraint:
         # NEW: No balance back, just total
         for (i, store) in enumerate(self.stores):
-            #problem += lpSum(
+            # problem += lpSum(
             #    [(selected_tier[store][category][level]) * level \
             #     for (j, category) in enumerate(self.categories) \
             #        for (k, level) in enumerate(space_levels)]) \
             #            == local_space_to_fill[store], \
             #           "Location Balance " + str(store)
             solver.addConstraint(
-                 [(selected_tier[store][category][level]) * level \
-                  for (j, category) in enumerate(self.categories) \
-                    for (k, level) in enumerate(space_levels)], \
-                 'eq',local_space_to_fill[store],"Location Balance " + str(store))
+                [(selected_tier[store][category][level]) * level for (j, category) in enumerate(self.categories) for (k, level)
+                 in enumerate(space_levels)], \
+                'eq', local_space_to_fill[store], "Location Balance " + str(store))
 
         ################################
         # Constraint 2.5.2.
         # Exactly one Space level for each Store & Category
         for (i, store) in enumerate(self.stores):
             for (j, category) in enumerate(self.categories):
-                #problem += lpSum([selected_tier[store][category][level] \
+                # problem += lpSum([selected_tier[store][category][level] \
                 #                  for (k, level) in enumerate(space_levels)]) == 1, \
                 #                  "Exactly one level for store " + str(store) + " and category " + str(category)
                 solver.addConstraint([selected_tier[store][category][level] \
-                                  for (k, level) in enumerate(space_levels)],'eq',1, \
-                                  "Exactly one level for store " + str(store) + " and category " + str(category))
-
+                                      for (k, level) in enumerate(space_levels)], 'eq', 1, \
+                                     "Exactly one level for store " + str(store) + " and category " + str(category))
 
         ################################
         # Constraint 2.5.4.
@@ -334,8 +327,7 @@ class TraditionalOptimizer(BaseOptimizer):
 
         # End of Store level constraints
         ################################
-
-        ###################################################################
+       ###################################################################
         # Constraint 2
         #
         # Only For Tiered optimization
@@ -385,7 +377,6 @@ class TraditionalOptimizer(BaseOptimizer):
                                       for (i, store) in enumerate(self.stores)],len(self.stores), \
                                'lte',created_tier[category][level], \
                                "Selected tier " + str(k) + "('" + str(level) + "') must be valid for category" + category)
-
         ###################################################################
         # Constraint 3
 
@@ -478,6 +469,7 @@ class TraditionalOptimizer(BaseOptimizer):
         logging.info(LpStatus[problem.status])
 
 
+
         if LpStatus[problem.status] == 'Optimal':
 
             # determines the allocated space from the decision variable selected_tier per store and category
@@ -508,4 +500,3 @@ class TraditionalOptimizer(BaseOptimizer):
             self.data['Result Space'] = 0
 
             return (LpStatus[problem.status], self.data, 0, problem)
-
