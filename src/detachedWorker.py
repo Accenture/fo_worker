@@ -35,10 +35,10 @@ from helper import fetchLong as fetchLong
 from helper import fetch_brand_exit_data as fetch_brand_exit_data
 from helper import toCsv as toCsv
 # imports from refactored code
-from codeoptimization.traditionalOptimizer import TraditionalOptimizer 
-from codeoptimization.dataMerger import DataMerger
-from codeoptimization.preprocessor import PreProcessor 
-from codeoptimization.bcolors import Bcolors
+from optimization.traditionalOptimizer import TraditionalOptimizer
+from optimization.dataMerger import DataMerger
+from optimization.preprocessor import PreProcessor
+from optimization.bcolors import Bcolors
 
 import sys
 sys.path.append('/vagrant/fo_api/src/')

@@ -4,8 +4,8 @@ from pulp import *
 import numpy as np
 import pandas as pd
 import logging
-from codeoptimization.baseOptimizer import BaseOptimizer
-from codeoptimization.solver import CbcSolver
+from optimization.baseOptimizer import BaseOptimizer
+from optimization.solver import CbcSolver
 
 class TraditionalOptimizer(BaseOptimizer):
     """
