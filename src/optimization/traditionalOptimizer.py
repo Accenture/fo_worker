@@ -21,6 +21,8 @@ class TraditionalOptimizer(BaseOptimizer):
         super(TraditionalOptimizer,self).__init__(job_name,job_type,stores,categories,increment,sales_penetration_threshold)
         self.category_bounds = category_bounds
         self.data = data
+        self.solver = CbcSolver()
+
 
     """
     Returns a vector with the maximum percent of the original total store space between two increment sizes and 10 percent of the store space
@@ -81,7 +83,7 @@ class TraditionalOptimizer(BaseOptimizer):
             index = (index + 1) % len(number_set)
         return [int(x) / float(10 ** digit_after_decimal) for x in unround_numbers]
 
-    def create_space_levels(self,space_bound, increment):
+    def createSpaceLevels(self,space_bound, increment):
         # determines min and max spacebound across all categories
         min_space_level = min(space_bound['Lower Space Bound'])
         max_space_level = max(space_bound['Upper Space Bound'])
@@ -146,13 +148,13 @@ class TraditionalOptimizer(BaseOptimizer):
     local balance constraint:
     NEW: No balance back, just total
     """
-    def addConstraintsForLocalBalanceBack(self,local_space_to_fill):
+    def addConstraintsForLocalBalanceBack(self):
         for (i, store) in enumerate(self.stores):
             self.solver.addConstraint(
                 [(self.selected_tier[store][category][level]) * level \
                  for (j, category) in enumerate(self.categories) \
                  for (k, level) in enumerate(self.space_levels)], \
-                'eq', local_space_to_fill[store], "Location Balance " + str(store))
+                'eq', self.local_space_to_fill[store], "Location Balance " + str(store))
 
 
     """
@@ -262,6 +264,9 @@ class TraditionalOptimizer(BaseOptimizer):
     """
     def addGlobalBack(self):
         pass
+        # Global Balance back tolerance value for total chain space
+        #beta = .05
+
         ###################################################################
         # Constraint 3
 
@@ -297,63 +302,49 @@ class TraditionalOptimizer(BaseOptimizer):
         # Constraint 3
 
     """
-    Run the Tiered Traditional LP-based optimization
-
-    Side-effects: ?
-        - creates file: Fixture_Optimization.lp (constraints)
-        - creates file: solvedout.csv <= to be inserted into db
-        - creates file: solvedout.text
-
-    Synopsis:
-        1. Creates space levels from space boundaries
-        2. Creates Local Balance Back values
-        3. Rounds Optimal Space to multiples of <increment> such that it totals up to total store space
-        5. Validates data by comparing total Optimal Space to total Current Space
-        6.
     """
 
-    def optimize(self):
+    def getLpResults(self):
+        if LpStatus[self.problem.status] == 'Optimal':
 
-        logging.info('==> optimizeTrad()')
-        self.space_levels = self.create_space_levels(self.category_bounds, self.increment)
+            # determines the allocated space from the decision variable selected_tier per store and category
+            allocated_space = pd.DataFrame(index=self.stores, columns=self.categories)
+            for (i, store) in enumerate(self.stores):
+                for (j, category) in enumerate(self.categories):
+                    for (k, level) in enumerate(self.space_levels):
+                        if value(self.selected_tier[store][category][level]) == 1:
+                            allocated_space[category][store] = level
 
-        logging.info('1. Creates Tiers aka Space levels')
-        logging.info(self.space_levels)
+            # resets the index
+            a = allocated_space.reset_index()
 
-        # Local Balance back tolerance value for total store space
-        alpha = .05
+            # renames the first column to 'Store'
+            a.rename(columns={'index': 'Store'}, inplace=True)
+            # Ken's original code could be problematic
+            # a.columns.values[0] = 'Store'
 
-        # Global Balance back tolerance value for total chain space
-        beta = .05
+            b = pd.melt(a, id_vars=['Store'], var_name='Category', value_name='Result Space')
 
-        # calculates the total space to be filled by grouping 'New Space' by store and averaging it !!??
-        local_space_to_fill = self.data.groupby('Store')['New Space'].agg(np.mean)
-        # Usually New Space (set in dataMerging.py) is already the total store space, so I dont understand why this is needed
-        # maybe useful when New Space is depending on category as well
+            # NOT SURE THIS IS NECESSARY
+            # allocated_space = allocated_space.apply(lambda x: pd.to_numeric(x, errors='ignore'))
 
-        # Note: local_space_to_fill usually = New Space (to be allocated for category in store)
-        local_balance_back_adjustment = local_space_to_fill.apply(lambda row: self.adjust_for_twoincr(row, alpha, self.increment))
+            self.data = self.data.merge(b, on=['Store', 'Category'], how='inner')
 
-        # for example:
-        # if space = 6 and increment = 0.5, alpha = 5%, 2*increment/space = 1/6 = 0.1667 = 17%
+            return (LpStatus[self.problem.status], self.data, value(self.problem.objective), self.problem)  # (longOutput)#,wideOutput)
+        else:
+            self.data['Result Space'] = 0
 
+            return (LpStatus[self.problem.status], self.data, 0, self.problem)
 
-        logging.info('2. Creating the Local Balance Back values (using 2*increment modifier)')
-        logging.info(local_balance_back_adjustment)
-
-
-
-        # number of stores, categories and (space) levels
-        num_stores     = len(self.stores)
-        num_categories = len(self.categories)
-        num_levels     = len(self.space_levels)
-
+    """
+    """
+    def updateOptimalSpace(self):
         # saves the original Optimal Space for dev purposes
         self.data['Optimal Space unrounded'] = self.data['Optimal Space']
 
-
         # rounds 'Optimal Space' to a multiple of increment (SHOULD IT BE DONE IN PREPARE()??)
-        self.data['Optimal Space'] = self.data.groupby('Store')['Optimal Space'].apply(lambda x: self.myround(x, self.increment))
+        self.data['Optimal Space'] = self.data.groupby('Store')['Optimal Space'].apply(
+            lambda x: self.myround(x, self.increment))
 
         # Calculate Total space across all stores
         total_space = self.data['Optimal Space'].sum()
@@ -364,9 +355,11 @@ class TraditionalOptimizer(BaseOptimizer):
         # Validation that optimal space = current space
         logging.info('Should match total Current Space:')
         logging.info(self.data['Current Space'].sum())
-        logging.info(self.data[self.data['Store']==52])
+        logging.info(self.data[self.data['Store'] == 52])
 
-
+    """
+    """
+    def updateCategoryBounds(self):
         # computes the minimum of Optimal Space for each category
         space_minimum = self.data.groupby('Category')['Optimal Space'].min()
 
@@ -383,67 +376,60 @@ class TraditionalOptimizer(BaseOptimizer):
                 # increments the Upper Space Bound by 1 to account for extra 0th tier
                 self.category_bounds['Upper Tier Bound'][categories_exit_idx] = self.category_bounds['Upper Tier Bound'][categories_exit_idx] + 1
 
+    """
+    """
+    def updateBlanceBackAdjustments(self):
+
+        # Local Balance back tolerance value for total store space
+        alpha = .05
+
+
+        # calculates the total space to be filled by grouping 'New Space' by store and averaging it !!??
+        self.local_space_to_fill = self.data.groupby('Store')['New Space'].agg(np.mean)
+        # Usually New Space (set in dataMerging.py) is already the total store space, so I dont understand why this is needed
+        # maybe useful when New Space is depending on category as well
+
+        # Note: local_space_to_fill usually = New Space (to be allocated for category in store)
+        self.local_balance_back_adjustment = self.local_space_to_fill.apply(lambda row: self.adjust_for_twoincr(row, alpha, self.increment))
+
+
+        logging.info('2. Creating the Local Balance Back values (using 2*increment modifier)')
+        logging.info(self.local_balance_back_adjustment)
+
+    """
+    Run the Tiered Traditional LP-based optimization
+    """
+    def optimize(self):
+
+        logging.info('==> optimizeTrad()')
+        self.space_levels = self.createSpaceLevels(self.category_bounds, self.increment)
+
+        logging.info('1. Creates Tiers aka Space levels')
+        logging.info(self.space_levels)
+
+        self.updateBlanceBackAdjustments()
+        self.updateOptimalSpace()
+        self.updateCategoryBounds()
+
         logging.info(self.category_bounds)
         logging.info('Creating LP Variable selected_tier')
-
-        self.solver = CbcSolver()
-        (selected_tier, created_tier) = self.createVariables()
-        problem = self.solver.createProblem(self.job_name, 'MIN')
+        self.createVariables()
+        self.problem = self.solver.createProblem(self.job_name, 'MIN')
         self.createError()
         logging.info("Adding objective function")
         self.addObjective()
-        self.addConstraintsForLocalBalanceBack(local_space_to_fill)
+        self.addConstraintsForLocalBalanceBack()
         self.addConstraintsForSpacLevelStoreCategory()
         self.addConstraintsForSpaceBoundStoreCategory()
 
         if self.job_type == 'tiered':
             self.addConstraintsForTiered()
 
-        # Brand Exit Enhancement & Sales Penetration Constraint
-        logging.info('Adding Brand Exit constraints')
+        logging.info('Adding Brand Exit constraints & Sales Penetration Constraint')
         self.addConstraintsForBrandExit()
 
         logging.info("The problem has been formulated")
         status = self.solver.solveProblem()
+        logging.info(LpStatus[self.problem.status])
 
-        ###############################################################################################################
-        #S olving the Problem
-        #problem.writeLP("Fixture_Optimization.lp")
-        #problem.writeMPS(str(job_name)+".mps")
-        # Solve the problem using Gurobi
-        #status = problem.solve(pulp.GUROBI(mip=True, msg=True, MIPgap=.01, LogFile="/tmp/gurobi.log"))
-        # local development uses CBC until
-        #status = problem.solve(pulp.PULP_CBC_CMD(msg=2))
-
-        logging.info(LpStatus[problem.status])
-
-        if LpStatus[problem.status] == 'Optimal':
-
-            # determines the allocated space from the decision variable selected_tier per store and category
-            allocated_space = pd.DataFrame(index=self.stores, columns=self.categories)
-            for (i, store) in enumerate(self.stores):
-                for (j, category) in enumerate(self.categories):
-                    for (k, level) in enumerate(self.space_levels):
-                        if value(selected_tier[store][category][level]) == 1:
-                            allocated_space[category][store] = level
-
-            # resets the index
-            a = allocated_space.reset_index()
-
-            # renames the first column to 'Store'
-            a.rename(columns={'index': 'Store'}, inplace=True)
-            # Ken's original code could be problematic
-            #a.columns.values[0] = 'Store'
-
-            b = pd.melt(a, id_vars=['Store'], var_name='Category', value_name='Result Space')
-
-            # NOT SURE THIS IS NECESSARY
-            #allocated_space = allocated_space.apply(lambda x: pd.to_numeric(x, errors='ignore'))
-
-            self.data = self.data.merge(b, on=['Store', 'Category'], how='inner')
-
-            return (LpStatus[problem.status], self.data, value(problem.objective), problem) #(longOutput)#,wideOutput)
-        else:
-            self.data['Result Space'] = 0
-
-            return (LpStatus[problem.status], self.data, 0, problem)
+        return self.getLpResults()
