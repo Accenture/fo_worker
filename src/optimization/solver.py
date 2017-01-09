@@ -17,7 +17,7 @@ class CbcSolver(Solver):
         self.status = None
         self.name = name
 
-    def createProblem(self,job_name,objective):
+    def create_problem(self,job_name,objective):
         if objective =='MIN':
             self.problem = LpProblem(job_name,LpMinimize)
         else:
@@ -27,7 +27,7 @@ class CbcSolver(Solver):
     def add_objective(self,objective,tag):
         self.problem += lpSum(objective),tag
         
-    def addConstraint(self,constraint,operation,value,tag):
+    def add_constraint(self,constraint,operation,value,tag):
         if  operation == 'eq':
             self.problem += lpSum(constraint) == value,tag
         if  operation == 'lte':
@@ -35,7 +35,7 @@ class CbcSolver(Solver):
         if  operation == 'gte':
             self.problem += lpSum(constraint) >= value,tag
 
-    def addConstraintDivision(self,constraint,division,operation,value,tag):
+    def add_constraintdivision(self,constraint,division,operation,value,tag):
         if  operation == 'eq':
             self.problem += lpSum(constraint)/division == value,tag
         if  operation == 'lte':
@@ -43,7 +43,7 @@ class CbcSolver(Solver):
         if  operation == 'gte':
             self.problem += lpSum(constraint)/division >= value,tag
         
-    def addVariables(self,name,stores,categories,space_levels,lower_bound):
+    def add_variables(self,name,stores,categories,space_levels,lower_bound):
         self.selected_tier = LpVariable.dicts(name, (stores, categories, space_levels), lower_bound, upBound=1,cat='Binary')
 
         return self.selected_tier

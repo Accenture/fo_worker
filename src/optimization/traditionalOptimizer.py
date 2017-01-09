@@ -108,7 +108,7 @@ class TraditionalOptimizer(BaseOptimizer):
 
         # Selected Tier(k) for store(i) and category(j) is Binary
         # selected_tier = LpVariable.dicts('Selected Tier', (self.stores, self.categories, space_levels), 0, upBound=1, cat='Binary')
-        self.selected_tier = self.solver.addVariables('Selected Tier', self.stores, self.categories, self.space_levels, 0)
+        self.selected_tier = self.solver.add_variables('Selected Tier', self.stores, self.categories, self.space_levels, 0)
 
         # Created Tier(k) for category(j) is Binary
         if self.job_type == 'tiered':
@@ -147,7 +147,7 @@ class TraditionalOptimizer(BaseOptimizer):
     """
     def add_constraints_forlocalbalanceback(self):
         for (i, store) in enumerate(self.stores):
-            self.solver.addConstraint(
+            self.solver.add_constraint(
                 [(self.selected_tier[store][category][level]) * level \
                  for (j, category) in enumerate(self.categories) \
                  for (k, level) in enumerate(self.space_levels)], \
@@ -161,7 +161,7 @@ class TraditionalOptimizer(BaseOptimizer):
     def add_constraints_forspaclevelstorecategory(self):
         for (i, store) in enumerate(self.stores):
             for (j, category) in enumerate(self.categories):
-                self.solver.addConstraint([self.selected_tier[store][category][level] \
+                self.solver.add_constraint([self.selected_tier[store][category][level] \
                                       for (k, level) in enumerate(self.space_levels)], 'eq', 1, \
                                      "Exactly one level for store " + str(store) + " and category " + str(category))
 
@@ -172,12 +172,12 @@ class TraditionalOptimizer(BaseOptimizer):
     def add_constraints_forspaceboundstorecategory(self):
         for (i, store) in enumerate(self.stores):
             for (j, category) in enumerate(self.categories):
-                self.solver.addConstraint([self.selected_tier[store][category][level] * level
+                self.solver.add_constraint([self.selected_tier[store][category][level] * level
                                   for (k, level) in enumerate(self.space_levels)], \
                                   'gte',self.category_bounds['Lower Space Bound'].loc[category], \
                                     "Space at Store "+ str(store) +" & Category "+category+" >= lower bound")
 
-                self.solver.addConstraint([self.selected_tier[store][category][level] * level \
+                self.solver.add_constraint([self.selected_tier[store][category][level] * level \
                                   for (k, level) in enumerate(self.space_levels)], \
                                   'lte',self.category_bounds['Upper Space Bound'].loc[category], \
                                     "Space at Store "+ str(store) +" & Category "+category+" <= upper bound")
@@ -197,7 +197,7 @@ class TraditionalOptimizer(BaseOptimizer):
             # Constraint 2a) [Specification constraint 2.5.1.]
             # number of tiers >= lower tier count bound
             for (j, category) in enumerate(self.categories):
-                self.solver.addConstraint([self.created_tier[category][level] \
+                self.solver.add_constraint([self.created_tier[category][level] \
                                   for (k, level) in enumerate(self.space_levels)], \
                            'gte',self.category_bounds['Lower Tier Bound'].loc[category], \
                            "Lower Tier Bound for Category" + category)
@@ -206,7 +206,7 @@ class TraditionalOptimizer(BaseOptimizer):
             # Constraint 2b) [Specification constraint 2.5.1.]
             # number of tiers <= upper tier count bound
             for (j, category) in enumerate(self.categories):
-                self.solver.addConstraint([self.created_tier[category][level] \
+                self.solver.add_constraint([self.created_tier[category][level] \
                                   for (k, level) in enumerate(self.space_levels)], \
                            'lte',self.category_bounds['Upper Tier Bound'].loc[category], \
                            "Upper Tier Bound for Category" + category)
@@ -218,7 +218,7 @@ class TraditionalOptimizer(BaseOptimizer):
             # Selected Tier can only be chosen if the corresponding Tier is a valid one for the category
             for (j, category) in enumerate(self.categories):
                 for (k, level) in enumerate(self.space_levels):
-                     self.solver.addConstraintDivision([self.selected_tier[store][category][level] \
+                     self.solver.add_constraintdivision([self.selected_tier[store][category][level] \
                                       for (i, store) in enumerate(self.stores)],len(self.stores), \
                                'lte',self.created_tier[category][level], \
                                "Selected tier " + str(k) + "('" + str(level) + "') must be valid for category" + category)
@@ -239,14 +239,14 @@ class TraditionalOptimizer(BaseOptimizer):
                     constraint_str = " for category " + category + ": Sales Penetration too low or Brand exit planned."
 
                     # sets space to zero for category in store
-                    self.solver.addConstraint(self.selected_tier[store][category][0.0], 'eq', 1, \
+                    self.solver.add_constraint(self.selected_tier[store][category][0.0], 'eq', 1, \
                                "No space in store " + str(store) + constraint_str)
 
                     # adds corresponding tier constraint for Tiered Optimization
                     if self.job_type == 'tiered':
 
                         if self.created_tier_zero_flag[j] == False:
-                            self.solver.addConstraint(self.created_tier[category][0.0],'eq',1, \
+                            self.solver.add_constraint(self.created_tier[category][0.0],'eq',1, \
                             "Tier 0 required " + constraint_str)
 
                             # Sets flag to indicate constraint has been set already
@@ -412,7 +412,7 @@ class TraditionalOptimizer(BaseOptimizer):
         logging.info('Creating LP Variable selected_tier')
 
         self.create_variables()
-        self.problem = self.solver.createProblem(self.job_name, 'MIN')
+        self.problem = self.solver.create_problem(self.job_name, 'MIN')
         self.create_error()
         logging.info("Adding objective function")
         self.add_objective()
