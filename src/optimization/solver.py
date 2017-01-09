@@ -14,8 +14,9 @@ class CbcSolver(Solver):
     
     def __init__(self, name ):
         self.problem = None
-        self.name= name 
-    
+        self.status = None
+        self.name = name
+
     def createProblem(self,job_name,objective):
         if objective =='MIN':
             self.problem = LpProblem(job_name,LpMinimize)
@@ -53,4 +54,8 @@ class CbcSolver(Solver):
         return self.created_tier
 
     def solveProblem(self):
-        return self.problem.solve(pulp.PULP_CBC_CMD(msg=2))
+        self.problem.solve(pulp.PULP_CBC_CMD(msg=2))
+        self.status = LpStatus[self.problem.status]
+
+    def getStatus(self):
+        return self.status

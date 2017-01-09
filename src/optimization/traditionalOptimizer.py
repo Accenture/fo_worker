@@ -88,13 +88,13 @@ class TraditionalOptimizer(BaseOptimizer):
         max_space_level = max(space_bound['Upper Space Bound'])
 
         # creates Space levels as vector starting at min going to max in increment steps
-        space_levels = list(np.arange(min_space_level, max_space_level + increment, increment))
+        self.space_levels = list(np.arange(min_space_level, max_space_level + increment, increment))
 
         # if not existing already, adds a 0th level with value 0.0
-        if 0.0 not in space_levels:
-            space_levels.insert(0, 0.0)
+        if 0.0 not in self.space_levels:
+            self.space_levels.insert(0, 0.0)
 
-        return space_levels
+        return self.space_levels
 
     def add_objective(self):
         self.solver.add_objective([(self.selected_tier[store][category][level] * self.error[i][j][k]) \
@@ -399,9 +399,13 @@ class TraditionalOptimizer(BaseOptimizer):
     def optimize(self):
 
         logging.info('==> optimizeTrad()')
+<<<<<<< HEAD
         self.space_levels = self.create_spacelevels(self.category_bounds, self.increment)
+=======
+>>>>>>> 07627c816958f548bdd1f219ff7cc8aff5344e79
 
         logging.info('1. Creates Tiers aka Space levels')
+        self.createSpaceLevels(self.category_bounds, self.increment)
         logging.info(self.space_levels)
 
         self.update_blancebackadjustments()
@@ -409,7 +413,9 @@ class TraditionalOptimizer(BaseOptimizer):
         self.update_categorybounds()
 
         logging.info(self.category_bounds)
+
         logging.info('Creating LP Variable selected_tier')
+<<<<<<< HEAD
         self.create_variables()
         self.problem = self.solver.createProblem(self.job_name, 'MIN')
         self.create_error()
@@ -418,6 +424,19 @@ class TraditionalOptimizer(BaseOptimizer):
         self.add_constraints_forlocalbalanceback()
         self.add_constraints_forspaclevelstorecategory()
         self.add_constraints_forspaceboundstorecategory()
+=======
+        self.createVariables()
+
+        self.createError()
+
+        logging.info("Adding objective function")
+        self.problem = self.solver.createProblem(self.job_name, 'MIN')
+        self.addObjective()
+
+        self.addConstraintsForLocalBalanceBack()
+        self.addConstraintsForSpacLevelStoreCategory()
+        self.addConstraintsForSpaceBoundStoreCategory()
+>>>>>>> 07627c816958f548bdd1f219ff7cc8aff5344e79
 
         if self.job_type == 'tiered':
             self.add_constraintsfortiered()
@@ -426,7 +445,14 @@ class TraditionalOptimizer(BaseOptimizer):
         self.add_constraints_forbrandexit()
 
         logging.info("The problem has been formulated")
+<<<<<<< HEAD
         status = self.solver.solveProblem()
         logging.info(LpStatus[self.problem.status])
 
         return self.get_lpresults()
+=======
+        self.solver.solveProblem()
+        logging.info(self.solver.getStatus())
+        self.status = self.solver.getStatus()
+        return self.getLpResults()
+>>>>>>> 07627c816958f548bdd1f219ff7cc8aff5344e79
