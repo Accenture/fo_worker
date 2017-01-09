@@ -89,13 +89,13 @@ class TraditionalOptimizer(BaseOptimizer):
         max_space_level = max(space_bound['Upper Space Bound'])
 
         # creates Space levels as vector starting at min going to max in increment steps
-        space_levels = list(np.arange(min_space_level, max_space_level + increment, increment))
+        self.space_levels = list(np.arange(min_space_level, max_space_level + increment, increment))
 
         # if not existing already, adds a 0th level with value 0.0
-        if 0.0 not in space_levels:
-            space_levels.insert(0, 0.0)
+        if 0.0 not in self.space_levels:
+            self.space_levels.insert(0, 0.0)
 
-        return space_levels
+        return self.space_levels
 
     """
     """
@@ -402,9 +402,9 @@ class TraditionalOptimizer(BaseOptimizer):
     def optimize(self):
 
         logging.info('==> optimizeTrad()')
-        self.space_levels = self.createSpaceLevels(self.category_bounds, self.increment)
 
         logging.info('1. Creates Tiers aka Space levels')
+        self.createSpaceLevels(self.category_bounds, self.increment)
         logging.info(self.space_levels)
 
         self.updateBlanceBackAdjustments()
@@ -412,12 +412,16 @@ class TraditionalOptimizer(BaseOptimizer):
         self.updateCategoryBounds()
 
         logging.info(self.category_bounds)
+
         logging.info('Creating LP Variable selected_tier')
         self.createVariables()
-        self.problem = self.solver.createProblem(self.job_name, 'MIN')
+
         self.createError()
+
         logging.info("Adding objective function")
+        self.problem = self.solver.createProblem(self.job_name, 'MIN')
         self.addObjective()
+
         self.addConstraintsForLocalBalanceBack()
         self.addConstraintsForSpacLevelStoreCategory()
         self.addConstraintsForSpaceBoundStoreCategory()
@@ -429,7 +433,7 @@ class TraditionalOptimizer(BaseOptimizer):
         self.addConstraintsForBrandExit()
 
         logging.info("The problem has been formulated")
-        status = self.solver.solveProblem()
-        logging.info(LpStatus[self.problem.status])
-
+        self.solver.solveProblem()
+        logging.info(self.solver.getStatus())
+        self.status = self.solver.getStatus()
         return self.getLpResults()

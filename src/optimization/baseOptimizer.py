@@ -22,7 +22,10 @@ class BaseOptimizer(object):
         self.categories = categories      
         self.increment = increment        
         self.sales_penetration_threshold = sales_penetration_threshold
-        
+        self.lp_problem_status = None
+
+    def get_lp_problem_status(self):
+        return self.lp_problem_status
 
     def get_diagnostics(self):
         #Todo
