@@ -82,7 +82,7 @@ class TraditionalOptimizer(BaseOptimizer):
             index = (index + 1) % len(number_set)
         return [int(x) / float(10 ** digit_after_decimal) for x in unround_numbers]
 
-    def createSpaceLevels(self,space_bound, increment):
+    def create_spacelevels(self,space_bound, increment):
         # determines min and max spacebound across all categories
         min_space_level = min(space_bound['Lower Space Bound'])
         max_space_level = max(space_bound['Upper Space Bound'])
@@ -96,17 +96,15 @@ class TraditionalOptimizer(BaseOptimizer):
 
         return space_levels
 
-    """
-    """
-    def addObjective(self):
-        self.solver.addObjective([(self.selected_tier[store][category][level] * self.error[i][j][k]) \
+    def add_objective(self):
+        self.solver.add_objective([(self.selected_tier[store][category][level] * self.error[i][j][k]) \
                              for (i, store) in enumerate(self.stores) \
                                 for (j, category) in enumerate(self.categories) \
                                     for (k, level) in enumerate(self.space_levels)], \
                                         "Deviation from optimal space for store ")
 
 
-    def createVariables(self):
+    def create_variables(self):
 
         # Selected Tier(k) for store(i) and category(j) is Binary
         # selected_tier = LpVariable.dicts('Selected Tier', (self.stores, self.categories, space_levels), 0, upBound=1, cat='Binary')
@@ -117,14 +115,14 @@ class TraditionalOptimizer(BaseOptimizer):
             logging.info('Creating LP Variable created_tier')
 
             # created_tier = LpVariable.dicts('Created Tier', (self.categories, space_levels), 0, upBound=1, cat='Binary')
-            self.created_tier = self.solver.addCreateVariables('Created Tier', self.categories, self.space_levels, 0)
+            self.created_tier = self.solver.create_variables('Created Tier', self.categories, self.space_levels, 0)
 
             # aux variable to track if a tier for a category has been to set to 0 already
             self.created_tier_zero_flag = np.zeros((len(self.categories), 1), dtype=bool)
 
         return (self.selected_tier,self.created_tier)
 
-    def createError(self):
+    def create_error(self):
         num_stores = len(self.stores)
         num_categories = len(self.categories)
         num_levels = len(self.space_levels)
@@ -147,7 +145,7 @@ class TraditionalOptimizer(BaseOptimizer):
     local balance constraint:
     NEW: No balance back, just total
     """
-    def addConstraintsForLocalBalanceBack(self):
+    def add_constraints_forlocalbalanceback(self):
         for (i, store) in enumerate(self.stores):
             self.solver.addConstraint(
                 [(self.selected_tier[store][category][level]) * level \
@@ -160,7 +158,7 @@ class TraditionalOptimizer(BaseOptimizer):
     Constraint 2.5.2.
     Exactly one Space level for each Store & Category
     """
-    def addConstraintsForSpacLevelStoreCategory(self):
+    def add_constraints_forspaclevelstorecategory(self):
         for (i, store) in enumerate(self.stores):
             for (j, category) in enumerate(self.categories):
                 self.solver.addConstraint([self.selected_tier[store][category][level] \
@@ -171,7 +169,7 @@ class TraditionalOptimizer(BaseOptimizer):
     Constraint 2.5.4.
     Space Bound for each Store & Category
     """
-    def addConstraintsForSpaceBoundStoreCategory(self):
+    def add_constraints_forspaceboundstorecategory(self):
         for (i, store) in enumerate(self.stores):
             for (j, category) in enumerate(self.categories):
                 self.solver.addConstraint([self.selected_tier[store][category][level] * level
@@ -193,7 +191,7 @@ class TraditionalOptimizer(BaseOptimizer):
         #
         # At each category level
     """
-    def addConstraintsForTiered(self):
+    def add_constraintsfortiered(self):
 
             ################################
             # Constraint 2a) [Specification constraint 2.5.1.]
@@ -228,7 +226,7 @@ class TraditionalOptimizer(BaseOptimizer):
     """
 
     """
-    def addConstraintsForBrandExit(self):
+    def add_constraints_forbrandexit(self):
 
         # loops through all stores and categories
         for (i, store) in enumerate(self.stores):
@@ -261,7 +259,7 @@ class TraditionalOptimizer(BaseOptimizer):
     """
     removed to support 100% balance back
     """
-    def addGlobalBack(self):
+    def add_globalback(self):
         pass
         # Global Balance back tolerance value for total chain space
         #beta = .05
@@ -303,7 +301,7 @@ class TraditionalOptimizer(BaseOptimizer):
     """
     """
 
-    def getLpResults(self):
+    def get_lpresults(self):
         if LpStatus[self.problem.status] == 'Optimal':
 
             # determines the allocated space from the decision variable selected_tier per store and category
@@ -337,7 +335,7 @@ class TraditionalOptimizer(BaseOptimizer):
 
     """
     """
-    def updateOptimalSpace(self):
+    def update_optimalspace(self):
         # saves the original Optimal Space for dev purposes
         self.data['Optimal Space unrounded'] = self.data['Optimal Space']
 
@@ -358,7 +356,7 @@ class TraditionalOptimizer(BaseOptimizer):
 
     """
     """
-    def updateCategoryBounds(self):
+    def update_categorybounds(self):
         # computes the minimum of Optimal Space for each category
         space_minimum = self.data.groupby('Category')['Optimal Space'].min()
 
@@ -377,7 +375,7 @@ class TraditionalOptimizer(BaseOptimizer):
 
     """
     """
-    def updateBlanceBackAdjustments(self):
+    def update_blancebackadjustments(self):
 
         # Local Balance back tolerance value for total store space
         alpha = .05
@@ -401,34 +399,34 @@ class TraditionalOptimizer(BaseOptimizer):
     def optimize(self):
 
         logging.info('==> optimizeTrad()')
-        self.space_levels = self.createSpaceLevels(self.category_bounds, self.increment)
+        self.space_levels = self.create_spacelevels(self.category_bounds, self.increment)
 
         logging.info('1. Creates Tiers aka Space levels')
         logging.info(self.space_levels)
 
-        self.updateBlanceBackAdjustments()
-        self.updateOptimalSpace()
-        self.updateCategoryBounds()
+        self.update_blancebackadjustments()
+        self.update_optimalspace()
+        self.update_categorybounds()
 
         logging.info(self.category_bounds)
         logging.info('Creating LP Variable selected_tier')
-        self.createVariables()
+        self.create_variables()
         self.problem = self.solver.createProblem(self.job_name, 'MIN')
-        self.createError()
+        self.create_error()
         logging.info("Adding objective function")
-        self.addObjective()
-        self.addConstraintsForLocalBalanceBack()
-        self.addConstraintsForSpacLevelStoreCategory()
-        self.addConstraintsForSpaceBoundStoreCategory()
+        self.add_objective()
+        self.add_constraints_forlocalbalanceback()
+        self.add_constraints_forspaclevelstorecategory()
+        self.add_constraints_forspaceboundstorecategory()
 
         if self.job_type == 'tiered':
-            self.addConstraintsForTiered()
+            self.add_constraintsfortiered()
 
         logging.info('Adding Brand Exit constraints & Sales Penetration Constraint')
-        self.addConstraintsForBrandExit()
+        self.add_constraints_forbrandexit()
 
         logging.info("The problem has been formulated")
         status = self.solver.solveProblem()
         logging.info(LpStatus[self.problem.status])
 
-        return self.getLpResults()
+        return self.get_lpresults()

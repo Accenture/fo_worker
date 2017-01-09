@@ -23,7 +23,7 @@ class CbcSolver(Solver):
             self.problem = LpProblem(job_name,LpMaximize)
         return self.problem
         
-    def addObjective(self,objective,tag):
+    def add_objective(self,objective,tag):
         self.problem += lpSum(objective),tag
         
     def addConstraint(self,constraint,operation,value,tag):
@@ -47,7 +47,7 @@ class CbcSolver(Solver):
 
         return self.selected_tier
 
-    def addCreateVariables(self, name, categories, space_levels, lower_bound):
+    def create_variables(self, name, categories, space_levels, lower_bound):
         self.created_tier = LpVariable.dicts(name, (categories, space_levels), lower_bound, upBound=1, cat='Binary')
 
         return self.created_tier
