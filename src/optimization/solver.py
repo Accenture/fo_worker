@@ -12,8 +12,9 @@ class Solver():
 
 class CbcSolver(Solver):
     
-    def __init__(self):
+    def __init__(self, name ):
         self.problem = None
+        self.name= name 
     
     def createProblem(self,job_name,objective):
         if objective =='MIN':
