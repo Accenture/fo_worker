@@ -21,8 +21,7 @@ class TraditionalOptimizer(BaseOptimizer):
         super(TraditionalOptimizer,self).__init__(job_name,job_type,stores,categories,increment,sales_penetration_threshold)
         self.category_bounds = category_bounds
         self.data = data
-        self.solver = CbcSolver()
-
+        self.solver = CbcSolver("CBC Solver")
 
     """
     Returns a vector with the maximum percent of the original total store space between two increment sizes and 10 percent of the store space

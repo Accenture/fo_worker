@@ -32,7 +32,8 @@ class BaseOptimizer(object):
         pass
     def get_solver(self):
         #Todo
-        pass
+        #pass
+        return self.solver.name
     def set_solved(self):
         #Todo
         pass
@@ -41,7 +42,8 @@ class BaseOptimizer(object):
         pass
     def get_lp(self):
         #Todo
-        pass
+        #pass
+        return self.solver.problem
     def solvelp(self):
         #Todo
         pass
@@ -74,3 +76,5 @@ class BaseOptimizer(object):
         else:
             return None        
 
+    def optimize(self):
+        raise NotImplementedError("Subclass must implement this abstract method")
