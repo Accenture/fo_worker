@@ -24,7 +24,7 @@ class CbcSolver(Solver):
             self.problem = LpProblem(job_name,LpMaximize)
         return self.problem
         
-    def add_objective(self,objective,tag):
+    def add_objective(self,objective,tag=None):
         self.problem += lpSum(objective),tag
         
     def add_constraint(self,constraint,operation,value,tag):
