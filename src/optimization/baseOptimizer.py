@@ -26,6 +26,7 @@ class BaseOptimizer(object):
         self.increment = config['increment']
         self.sales_penetration_threshold = config['salesPenetrationThreshold']
         self.lp_problem_status = None
+        self.problem =  None
 
         self.sales = sales
         self.space = space
