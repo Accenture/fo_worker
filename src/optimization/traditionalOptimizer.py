@@ -6,6 +6,8 @@ import pandas as pd
 import logging
 from optimization.baseOptimizer import BaseOptimizer
 from optimization.solver import CbcSolver
+from optimization.dataMerger import DataMerger
+from optimization.preprocessor import PreProcessor
 
 class TraditionalOptimizer(BaseOptimizer):
     """
@@ -17,10 +19,11 @@ class TraditionalOptimizer(BaseOptimizer):
     Traditional Optimization
     """
 
-    def __init__(self,job_name,job_type,stores,categories,category_bounds,increment,data,sales_penetration_threshold):
-        super(TraditionalOptimizer,self).__init__(job_name,job_type,stores,categories,increment,sales_penetration_threshold)
-        self.category_bounds = category_bounds
-        self.data = data
+    #def __init__(self,job_name,job_type,stores,categories,category_bounds,increment,data,sales_penetration_threshold):
+    def __init__(self, sales, space, future_space, brand_exit, config):
+        super(TraditionalOptimizer,self).__init__(sales, space, future_space, brand_exit, config)
+
+        self.sales_penetration_threshold = config['salesPenetrationThreshold']
         self.solver = CbcSolver("CBC Solver")
 
     """
@@ -299,9 +302,10 @@ class TraditionalOptimizer(BaseOptimizer):
         # Constraint 3
 
     """
+    todo: remove dependency of pulp api
     """
-
     def get_lpresults(self):
+        self.lp_problem_status = LpStatus[self.problem.status]
         if LpStatus[self.problem.status] == 'Optimal':
 
             # determines the allocated space from the decision variable selected_tier per store and category
@@ -394,11 +398,55 @@ class TraditionalOptimizer(BaseOptimizer):
         logging.info(self.local_balance_back_adjustment)
 
     """
+    """
+    def prepare_data(self):
+
+        data_merger = DataMerger()
+
+        # A preprocessor object
+        pre_processor = PreProcessor()
+
+        self.category_bounds = data_merger.prepare_bounds(self.config['spaceBounds'],
+                                                          self.config['increment'],
+                                                          self.config['tierCounts'])
+
+        #print (self.sales)
+
+        # Validates sales data
+        sales, idx_sales_invalid = pre_processor.validate_sales_data(self.sales)
+
+        # Validates space data
+        # space, idx_space_invalid = validate_space_data(space, category_bounds)
+
+        # extracts the categories from the sales data
+        sales_categories = self.sales['Category'].unique()
+        # extracts the categories from the space data
+        space_categories = self.space['Category'].unique()
+
+        # merges the space data with requirements for future space and brand exits by store and category
+        space = data_merger.merge_space_data(self.space, self.future_space, self.brand_exit)
+
+        # merges the space data with the sales data by store and category
+        sales_space_data = data_merger.merge_space_and_sales_data(sales, space)
+
+
+        self.data = pre_processor.prepare_data( self.config['jobType'],
+                                                        self.config['optimizationType'],
+                                                        sales_space_data,
+                                                        float(self.config["metricAdjustment"]),
+                                                        float(self.config["salesPenetrationThreshold"]),
+                                                        self.config["optimizedMetrics"])
+
+
+    """
     Run the Tiered Traditional LP-based optimization
     """
     def optimize(self):
 
         logging.info('==> optimizeTrad()')
+
+        self.prepare_data()
+
         self.space_levels = self.create_spacelevels(self.category_bounds, self.increment)
         logging.info('1. Creates Tiers aka Space levels')        
         logging.info(self.space_levels)
