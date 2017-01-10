@@ -138,10 +138,12 @@ class DataMerger():
 
         return data
     # Reads Future space data from a csv file
-    def read_future_space_data(self,jobType, filename=None):
+    #def read_future_space_data(self,jobType, filename=None):
+    def read_future_space_data(self, filename=None):
 
         # reads in file, uses first row as headers
-        data = pd.read_csv(filename, header=0, dtype={'Store': object})
+        #data = pd.read_csv(filename, header=0, dtype={'Store': object})
+        data = pd.read_csv(filename, header=0)
 
         # drops the first value row which includes only secondary labels
         data = data.drop([0])
@@ -158,6 +160,9 @@ class DataMerger():
         try:
             # reads in file, uses first row as headers
             data = pd.read_csv(filename, header=0)
+
+            # drops the first value row which includes only secondary labels
+            data = data.drop([0])
 
             # un-pivotes the data to have now Category-Store pairs and drop those with Store=NaN
             data = pd.melt(data, var_name='Category', value_name='Store').dropna(axis=0)
