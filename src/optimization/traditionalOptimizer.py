@@ -45,7 +45,6 @@ class TraditionalOptimizer(BaseOptimizer):
         return max(bound, (1 * increment) / row)
 
     def myround(self,values, increment):
-
         # converting to integer
         number_set = values / increment
         # needs proper round before converting to int
@@ -105,7 +104,6 @@ class TraditionalOptimizer(BaseOptimizer):
 
 
     def create_variables(self):
-
         # Selected Tier(k) for store(i) and category(j) is Binary
         # selected_tier = LpVariable.dicts('Selected Tier', (self.stores, self.categories, space_levels), 0, upBound=1, cat='Binary')
         self.selected_tier = self.solver.add_variables('Selected Tier', self.stores, self.categories, self.space_levels, 0)
@@ -120,6 +118,7 @@ class TraditionalOptimizer(BaseOptimizer):
             # aux variable to track if a tier for a category has been to set to 0 already
             self.created_tier_zero_flag = np.zeros((len(self.categories), 1), dtype=bool)
 
+        #what is the need for this return statement?
         return (self.selected_tier,self.created_tier)
 
     def create_error(self):
@@ -152,7 +151,6 @@ class TraditionalOptimizer(BaseOptimizer):
                  for (j, category) in enumerate(self.categories) \
                  for (k, level) in enumerate(self.space_levels)], \
                 'eq', self.local_space_to_fill[store], "Location Balance " + str(store))
-
 
     """
     Constraint 2.5.2.
@@ -192,7 +190,6 @@ class TraditionalOptimizer(BaseOptimizer):
         # At each category level
     """
     def add_constraintsfortiered(self):
-
             ################################
             # Constraint 2a) [Specification constraint 2.5.1.]
             # number of tiers >= lower tier count bound
@@ -303,7 +300,6 @@ class TraditionalOptimizer(BaseOptimizer):
 
     def get_lpresults(self):
         if LpStatus[self.problem.status] == 'Optimal':
-
             # determines the allocated space from the decision variable selected_tier per store and category
             allocated_space = pd.DataFrame(index=self.stores, columns=self.categories)
             for (i, store) in enumerate(self.stores):
@@ -427,8 +423,10 @@ class TraditionalOptimizer(BaseOptimizer):
 
         logging.info("The problem has been formulated")
 
-        status = self.solver.solveProblem()
-        logging.info(LpStatus[self.problem.status])
+        #status = self.solver.solveProblem()
+        self.solver.solveProblem()
+        #logging.info(LpStatus[self.problem.status])
+        logging.info(self.solver.status)
 
         return self.get_lpresults()
 

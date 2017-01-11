@@ -27,7 +27,7 @@ class CbcSolver(Solver):
     def add_objective(self,objective,tag=None):
         self.problem += lpSum(objective),tag
         
-    def add_constraint(self,constraint,operation,value,tag):
+    def add_constraint(self,constraint,operation,value,tag=None):
         if  operation == 'eq':
             self.problem += lpSum(constraint) == value,tag
         if  operation == 'lte':

@@ -31,13 +31,13 @@ class PreProcessor():
         logging.info(' ')
         logging.info(data)
 
-    def validate_sales_data(self,sales_data):
-        """
-        Performns validation of sales data respective expected range of data:
+    """
+    Performns validation of sales data respective expected range of data:
 
-        :param data: output from data merging
-        :return: validated data with data imputed in case of invalid data
-        """
+    :param data: output from data merging
+    :return: validated data with data imputed in case of invalid data
+    """
+    def validate_sales_data(self,sales_data):    
 
         # Looks for negative sales data
         idx = (sales_data['Sales $']  < 0) | (sales_data['Sales Units'] < 0) | \
@@ -78,9 +78,7 @@ class PreProcessor():
         return sales_data, idx
 
 
-    # Validation for space data
-    #
-    # Not fully implemented!!
+    # Validation for space data. Not fully implemented!!
 
     def validate_space_data(self,space_data, category_bounds):
 
@@ -110,19 +108,17 @@ class PreProcessor():
 
         return space_data, idx
 
-    def prepare_data(self,jobType, optimizationType, data, metricAdjustment, salesPenThreshold, bizmetrics):
-        """
-        Conducts the preoptimization based upon legacy R2 code to determine optimal space for traditional optimizations
-        :param optimizationType: enhanced or traditional optimization
-        :param data: output from data merging
-        :param salesPenThreshold: sales penetration threshold to determine whether or not store-category information is eligible
-        :param metricAdjustment: metric adjustment
-        :param bizmetrics:
-        :param increment: increment size
-        :return: initial long table with optimal space & sales penetration
-        """
-
-        
+    """
+    Conducts the preoptimization based upon legacy R2 code to determine optimal space for traditional optimizations
+    :param optimizationType: enhanced or traditional optimization
+    :param data: output from data merging
+    :param salesPenThreshold: sales penetration threshold to determine whether or not store-category information is eligible
+    :param metricAdjustment: metric adjustment
+    :param bizmetrics:
+    :param increment: increment size
+    :return: initial long table with optimal space & sales penetration
+    """
+    def prepare_data(self,jobType, optimizationType, data, metricAdjustment, salesPenThreshold, bizmetrics):        
         # 2.6.1.: Sales $ penetration and Sales Units Penetration
         data['Sales %']       = data.groupby('Store')['Sales $'].apply(lambda x: x / float(x.sum()))
         data['Sales Units %'] = data.groupby('Store')['Sales Units'].apply(lambda x: x / float(x.sum()))
