@@ -5,25 +5,16 @@ import math
 import traceback
 import logging
 
-class Output():
-    """
-    Created on Wed Jan 11 12:30:51 2017
-
-    @author: omkar.marathe
-
-    The class contains functions 
-    for generating output
-    """
-
+class Outputs():
     def __init__(self):
         pass
 
-    def tier_col_create(self,dfI):
     """
     Creates the Tier Columns
     :param df: Long Table to be given tiering information
     :return: tiered long table output
     """
+    def tier_col_create(self,dfI):
         try:
             dfI.sort_values(by='Result Space', inplace=True)
             tierVals = dfI.groupby('Category')
@@ -37,7 +28,6 @@ class Output():
             traceback.print_exception()
         return dfI
 
-    def create_long(self,jobType, optimizationType, lInput):
     """
     Creates a long table output for user download
     :param jobType: Tiered, Unconstrained, or Drill Down
@@ -45,33 +35,34 @@ class Output():
     :param lInput: Optimization Output
     :return: Creates a long table output for user and a version for internal testing
     """
+    def create_long(self,job_type, optimization_type, linput):
         logging.info('Creating a long table output')
-        logging.info(lInput.columns)
+        logging.info(linput.columns)
 
-        lOutput = lInput.apply(lambda x: pd.to_numeric(x, errors='ignore'))
+        loutput = linput.apply(lambda x: pd.to_numeric(x, errors='ignore'))
         # Merge the optimize output with the curve-fitting output (which was already merged with the preoptimize output)
-        if optimizationType == 'enhanced':
+        if optimization_type == 'enhanced':
             variables = ["Sales", "Profit", "Units"]
             for v in variables:
-                lOutput["Estimated " + v] = np.where(lOutput["Result Space"] < lOutput["Scaled_BP_" + v],
-                                                 lOutput["Result Space"] * (lOutput["Scaled_Alpha_" + v] * (erf(
-                                                     (lOutput["Scaled_BP_" + v] - lOutput["Scaled_Shift_" + v]).div(
-                                                     math.sqrt(2) * lOutput["Scaled_Beta_" + v]))) / lOutput[
+                loutput["Estimated " + v] = np.where(loutput["Result Space"] < loutput["Scaled_BP_" + v],
+                                                 loutput["Result Space"] * (loutput["Scaled_Alpha_" + v] * (erf(
+                                                     (loutput["Scaled_BP_" + v] - loutput["Scaled_Shift_" + v]).div(
+                                                     math.sqrt(2) * loutput["Scaled_Beta_" + v]))) / loutput[
                                                                                 "Scaled_BP_" + v]),
-                                                 lOutput["Scaled_Alpha_" + v] * erf(
-                                                     (lOutput["Result Space"] - lOutput["Scaled_Shift_" + v]).div(
-                                                     math.sqrt(2) * lOutput["Scaled_Beta_" + v])))
+                                                 loutput["Scaled_Alpha_" + v] * erf(
+                                                     (loutput["Result Space"] - loutput["Scaled_Shift_" + v]).div(
+                                                     math.sqrt(2) * loutput["Scaled_Beta_" + v])))
 
             for v in variables:
-                lOutput["Current Estimated " + v] = np.where(lOutput["Space"] < lOutput["Scaled_BP_" + v],
-                                                 lOutput["Space"] * (lOutput["Scaled_Alpha_" + v] * (erf(
-                                                     (lOutput["Scaled_BP_" + v] - lOutput["Scaled_Shift_" + v]).div(
-                                                     math.sqrt(2) * lOutput["Scaled_Beta_" + v]))) / lOutput[
+                loutput["Current Estimated " + v] = np.where(loutput["Space"] < loutput["Scaled_BP_" + v],
+                                                 loutput["Space"] * (loutput["Scaled_Alpha_" + v] * (erf(
+                                                     (loutput["Scaled_BP_" + v] - loutput["Scaled_Shift_" + v]).div(
+                                                     math.sqrt(2) * loutput["Scaled_Beta_" + v]))) / loutput[
                                                                                 "Scaled_BP_" + v]),
-                                                 lOutput["Scaled_Alpha_" + v] * erf(
-                                                     (lOutput["Space"] - lOutput["Scaled_Shift_" + v]).div(
-                                                     math.sqrt(2) * lOutput["Scaled_Beta_" + v])))
-            lOutput.rename(
+                                                 loutput["Scaled_Alpha_" + v] * erf(
+                                                     (loutput["Space"] - loutput["Scaled_Shift_" + v]).div(
+                                                     math.sqrt(2) * loutput["Scaled_Beta_" + v])))
+            loutput.rename(
             columns={'Sales': 'Current Sales $', 'Profit': 'Current Profit $', 'Units': 'Current Sales Units',
                      'Space': 'Current Space', 'Current Estimated Sales': 'Current Estimated Sales $',
                      'Current Estimated Profit': 'Current Estimated Profit $',
@@ -82,26 +73,25 @@ class Output():
                      'Optimal Estimated Profit': 'Optimal Estimated Profit $',
                      'Optimal Estimated Units': 'Optimal Estimated Sales Units', 'Space_to_Fill': 'Total Store Space'},
             inplace=True)
-            lOutput = self.tier_col_create(lOutput)
-            fullData = lOutput.copy()
-            lOutput = lOutput[
+            loutput = self.tier_col_create(loutput)
+            fullData = loutput.copy()
+            loutput = loutput[
             ['Store', 'Category', 'Climate', 'VSG', 'Result Space', 'Current Space', 'Optimal Space',
              'Current Sales $', 'Current Profit $', 'Current Sales Units', 'Result Estimated Sales $',
              'Result Estimated Profit $', 'Result Estimated Sales Units', 'Optimal Estimated Sales $',
              'Optimal Estimated Profit $', 'Optimal Estimated Sales Units', 'Total Store Space', 'Sales Penetration',
              'Exit Flag', 'Tier']]
         else:
-            lOutput.drop('Current Space', axis=1, inplace=True)
-            lOutput.rename(columns={'New Space': 'Total Store Space','Historical Space': 'Current Space'},inplace=True)
-            lOutput = self.tier_col_create(lOutput)
-            fullData = lOutput.copy()
-            lOutput = lOutput[
+            loutput.drop('Current Space', axis=1, inplace=True)
+            loutput.rename(columns={'New Space': 'Total Store Space','Historical Space': 'Current Space'},inplace=True)
+            loutput = self.tier_col_create(loutput)
+            fullData = loutput.copy()
+            loutput = loutput[
             ['Store', 'Category', 'Climate', 'VSG', 'Result Space', 'Current Space',
              'Optimal Space', 'Sales %', 'Exit Flag', 'Total Store Space', 'Tier']]
-        lOutput.sort_values(by=['Store','Category'], axis=0, inplace=True)
-        return (lOutput, fullData)
+        loutput.sort_values(by=['Store','Category'], axis=0, inplace=True)
+        return (loutput, fullData)
 
-    def create_wide(self,long, jobType, optimizationType):
     """
     Creates the wide table output from the long table output
     for user download
@@ -110,13 +100,13 @@ class Output():
     :param optimizationType: enhanced or traditional
     :return: wide table output
     """
-
+    def create_wide(self,long, job_type, optimization_type):
         # Set up for pivot by renaming metrics and converting blanks to 0's for Enhanced in long table
         adjusted_long = long.rename(columns={ "Result Space": "result", "Optimal Space": "optimal",'Current Space': 'current',
                  "Sales %": "penetration"})
 
         # Pivot to convert long table to wide, including Time in index for drill downs
-        if jobType == "tiered" or 'unconstrained':
+        if job_type == "tiered" or 'unconstrained':
             wide = pd.pivot_table(adjusted_long, values=["result", "current", "optimal", "penetration"],
                               index=["Store", "Climate", "VSG"], columns="Category", aggfunc=np.sum, margins=True,
                               margins_name="Total")
@@ -138,7 +128,7 @@ class Output():
         tot_col = {"C": num_categories, "O": 2 * num_categories + 1, "R": 3 * num_categories + 2}
 
         # Convert 0's back to blanks
-        if optimizationType == "enhanced":
+        if optimization_type == "enhanced":
             for i in range(tot_col["R"] + 1, len(cols)):
                 wide[[i]] = ""
 
@@ -156,11 +146,11 @@ class Output():
         wide.sort(columns=['Store'],axis=0,inplace=True)
         return wide
     
-    def create_tiered_summary(self,finalLong) :
     """
     Create summary for user download that applies to Tiered optimizations (type == "Tiered")
     Calculates store counts by tier and by climate
     """ 
+    def create_tiered_summary(self,finalLong) :
         #pivot the long table to create a data frame providing the store count for each Category-ResultSpace by Climate along with the total for all climates
         tieredSummaryPivot = pd.pivot_table(finalLong, index=['Category', 'Result Space'], columns='Climate', values='Store', aggfunc=len, margins=True)
         #rename the total for all climates column
@@ -168,15 +158,15 @@ class Output():
         #delete the last row of the pivot, as it is a sum of all the values in the column and has no business value in this context
         tieredSummaryPivot = tieredSummaryPivot.ix[:-1]
         # tieredSummaryPivot.to_excel('outputs.xlsx',sheet_name='Summary_Table')
-    tieredSummaryPivot.reset_index(inplace=True)
+        tieredSummaryPivot.reset_index(inplace=True)
         return tieredSummaryPivot
 
 
-    def create_drill_down_summary(self,finalLong) :
     """
     Create summary for user download that applies to Drill Down optimizations
     Calculates space by tier-climate combination for user download
     """
+    def create_drill_down_summary(self,finalLong):
 
         # pivot the long table to create a data frame providing the store count for each Time-Category-ResultSpace by Category along with the total for all categories.
         drilldownSummaryPivot = pd.pivot_table(finalLong, index=['Time', 'Climate', 'Optimal Space'], columns='Category', values='Store', aggfunc=len, margins=True)
@@ -192,7 +182,7 @@ class Output():
         drilldownSummaryPivot.reset_index(inplace=True)
         return drilldownSummaryPivot
 
-    def output_validation(self,df, jobType, tierCounts, increment):
+    def output_validation(self,df, job_type, tierCounts, increment):
         df.reset_index(inplace=True,drop=True)
         try:
             nullTest = 0

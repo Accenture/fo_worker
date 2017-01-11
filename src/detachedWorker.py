@@ -18,7 +18,7 @@ from pymongo import MongoClient
 #from FixtureOptimization.preoptimizer import validate_space_data, validate_sales_data, prepare_data, bcolors
 from FixtureOptimization.optimizerTrad import optimizeTrad
 from FixtureOptimization.optimizerEnh import optimizeEnh
-from FixtureOptimization.outputFunctions import createLong, createWide, createDrillDownSummary, createTieredSummary, outputValidation
+#from FixtureOptimization.outputFunctions import createLong, createWide, createDrillDownSummary, createTieredSummary, outputValidation
 #from FixtureOptimization.optimizerDD import optimizeDD
 #from FixtureOptimization.optimizerDDEnh import optimizeEnhDD
 from pika import BlockingConnection, ConnectionParameters
@@ -39,6 +39,7 @@ from optimization.traditionalOptimizer import TraditionalOptimizer
 from optimization.dataMerger import DataMerger
 from optimization.preprocessor import PreProcessor
 from optimization.bcolors import Bcolors
+from optimization.output import Outputs
 
 import sys
 sys.path.append('/vagrant/fo_api/src/')
@@ -83,12 +84,15 @@ def print_verbose(title, data):
 ######################################################################################################
 def run(msg):
     
-    # A data handler object to read and merge data sources (sales and space)
+    # A data handler object to read and merge data sources (e.g sales and space)
     
     data_merger = DataMerger()
     
     # A preprocessor object
     pre_processor = PreProcessor()
+    
+    # An output agent 
+    output = Outputs()   
      
 
 	# ONLY FOR TESTING!!
@@ -329,11 +333,11 @@ def run(msg):
 
     if statusID == 'Optimal':
         # Call functions to create output information
-        longOutput = createLong(msg['jobType'], msg['optimizationType'], optimRes[1])
-        wideOutput = createWide(longOutput[0], msg['jobType'], msg['optimizationType'])
+        long_output = output.create_long(msg['jobType'], msg['optimizationType'], optimRes[1])
+        wide_output = output.create_wide(long_output[0], msg['jobType'], msg['optimizationType'])
 
-        longOutput[0].to_csv(filename='longOutput')
-        wideOutput.to_csv(filename='wideOutput')
+        long_output[0].to_csv(filename='longOutput')
+        wide_output.to_csv(filename='wideOutput')
 
         # print ("longOutput[0]")
         # print (longOutput[0].columns.values.tolist())
@@ -345,7 +349,7 @@ def run(msg):
         # print (wideOutput.columns.values.tolist())
 
     # Why?
-    return (sales_space_data, prepped_data, optimRes[len(optimRes)-1],longOutput[0], wideOutput)
+    return (sales_space_data, prepped_data, optimRes[len(optimRes)-1],long_output[0], wide_output)
 
 ######################################################################################################
 
@@ -407,7 +411,7 @@ if __name__ == '__main__':
     # body['spaceBounds'] = meta_space['extrema']
 
     # Trigger the new runner without logging any ID info.
-    dataMerged, preOpt, problem, longOutput, wideOutput = run(body)
+    dataMerged, preOpt, problem, long_output, wide_output = run(body)
 
     _dir = 'test/temp/'
 
@@ -415,8 +419,8 @@ if __name__ == '__main__':
         toCsv(dataMerged, _dir + 'intermediate/dataMerged.csv')
         toCsv(preOpt, _dir + 'intermediate/preOpt.csv')
         problem.writeLP(_dir + 'lp_problem/' + 'optimalSolution' + '.lp')
-        toCsv(longOutput, _dir + 'output/longOutput.csv')
-        toCsv(wideOutput, _dir + 'output/wideOutput.csv')
+        toCsv(long_output, _dir + 'output/longOutput.csv')
+        toCsv(wide_output, _dir + 'output/wideOutput.csv')
     else:
         print ("The problem is ", LpStatus[problem.status])
         problem.writeLP(_dir + 'lp_problem/' + 'infeasibleSolution' + '.lp')
