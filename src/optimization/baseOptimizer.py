@@ -15,15 +15,24 @@ class BaseOptimizer(object):
     Optimization Algorithms
     """
 
-    def __init__(self,job_name,job_type,stores,categories,increment,sales_penetration_threshold):
-        self.job_name = job_name    
-        self.job_type = job_type        
-        self.stores = stores
-        self.categories = categories      
-        self.increment = increment        
-        self.sales_penetration_threshold = sales_penetration_threshold
+    #def __init__(self,job_name,job_type,stores,categories,increment,sales_penetration_threshold):
+    def __init__(self, sales,space,future_space,brand_exit,config):
+        self.job_name = config['meta']['name']
+        self.job_type = config['jobType']
+
+        self.categories = config['salesCategories']
+        self.stores = space['Store'].unique()
+
+        self.increment = config['increment']
+        self.sales_penetration_threshold = config['salesPenetrationThreshold']
         self.lp_problem_status = None
         self.problem =  None
+
+        self.sales = sales
+        self.space = space
+        self.future_space = future_space
+        self.brand_exit = brand_exit
+        self.config = config
 
     def get_lp_problem_status(self):
         return self.lp_problem_status
