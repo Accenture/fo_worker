@@ -18,18 +18,18 @@ class CbcSolver(Solver):
         self.status = None
         self.name = name
     """
-    return number of bjectives
+    return number of objectives
     """
     def get_objectives_count(self):
-        pass
-    """
-    return number of varaibles
-    """
+        pass  
     """
     return number of constraints
     """
     def get_contraint_count(self):
         pass
+    """
+    return number of variables
+    """
     def get_variable_count(self):
         pass
     def create_problem(self,job_name,objective):
@@ -79,4 +79,8 @@ class CbcSolver(Solver):
 class GurobiSolver(Solver):
     def __init__(self,name):
         self.gurobi_solver = Model(name)    
-    
+    """
+    adds variables 
+    """
+    def add_variables(self,name,stores,categories,space_levels,lower_bound):
+        pass
