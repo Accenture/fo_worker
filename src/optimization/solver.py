@@ -4,6 +4,7 @@ Created on Jan 5, 2017
 @author: henok.s.mengistu
 '''
 from pulp import *
+from gurobipy import * 
 
 class Solver():
 
@@ -16,7 +17,21 @@ class CbcSolver(Solver):
         self.problem = None
         self.status = None
         self.name = name
-
+    """
+    return number of bjectives
+    """
+    def get_objectives_count(self):
+        pass
+    """
+    return number of varaibles
+    """
+    """
+    return number of constraints
+    """
+    def get_contraint_count(self):
+        pass
+    def get_variable_count(self):
+        pass
     def create_problem(self,job_name,objective):
         if objective =='MIN':
             self.problem = LpProblem(job_name,LpMinimize)
@@ -59,3 +74,9 @@ class CbcSolver(Solver):
 
     def getStatus(self):
         return self.status
+    
+
+class GurobiSolver(Solver):
+    def __init__(self,name):
+        self.gurobi_solver = Model(name)    
+    
