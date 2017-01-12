@@ -7,7 +7,6 @@ from pulp import *
 from gurobipy import * 
 
 class Solver():
-
     def __init__(self):
         pass
 
@@ -31,6 +30,12 @@ class CbcSolver(Solver):
     return number of variables
     """
     def get_variable_count(self):
+        pass    
+    def get_objectives(self):
+        pass
+    def get_contraints(self):
+        pass
+    def get_varibles(self):
         pass
     def create_problem(self,job_name,objective):
         if objective =='MIN':
