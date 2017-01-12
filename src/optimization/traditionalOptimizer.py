@@ -25,7 +25,7 @@ class TraditionalOptimizer(BaseOptimizer):
 
         self.sales_penetration_threshold = config['salesPenetrationThreshold']
         self.solver = CbcSolver("CBC Solver")
-        self.solver = GurobiSolver("Gurobi SOlver")
+        #self.solver = GurobiSolver("Gurobi SOlver")
 
     """
     Returns a vector with the maximum percent of the original total store space between two increment sizes and 10 percent of the store space

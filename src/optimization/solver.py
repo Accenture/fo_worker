@@ -37,6 +37,7 @@ class CbcSolver(Solver):
         pass
     def get_varibles(self):
         pass
+    
     def create_problem(self,job_name,objective):
         if objective =='MIN':
             self.problem = LpProblem(job_name,LpMinimize)
