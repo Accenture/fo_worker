@@ -27,7 +27,7 @@ class CbcSolver(Solver):
     """
     return number of constraints
     """
-    def get_contraint_count(self):
+    def get_constraint_count(self):
         return len(self.problem.constraints)
 
     """
@@ -45,13 +45,13 @@ class CbcSolver(Solver):
     """
     return contraints of a problem
     """
-    def get_contraints(self):
+    def get_constraints(self):
         return self.problem.constraints
 
     """
     return Lp Variables of a problem
     """
-    def get_varibles(self):
+    def get_variables(self):
         return self.problem.variables()
     
     def create_problem(self,job_name,objective):
