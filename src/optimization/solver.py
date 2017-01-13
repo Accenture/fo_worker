@@ -37,21 +37,17 @@ class CbcSolver(Solver):
         return len(self.problem.variables())    
 
     """
-    return Objectives of a problem
+    return Objectives 
     """
     def get_objectives(self):
         return self.problem.objective        
-    def get_contraints(self):
-        pass
-    def get_variables(self):
-        pass    
     """
-    return constraints of a problem
+    return constraints
     """
     def get_constraints(self):
         return self.problem.constraints
     """
-    return Lp Variables of a problem
+    return Lp Variables 
     """
     def get_variables(self):
         return self.problem.variables()
@@ -108,24 +104,20 @@ class GurobiSolver(Solver):
     """
     add variables 
     """
-    def add_variables(self,names,stores,categories,space_levels,lower_bound):  
-        test = [(st,cat,sp_lev) for st in stores for cat in categories for sp_lev in space_levels ]
-        print (test)
-        print ("###################")
-        d = self.gurobi_model.addVars(test,name = names)
+    def format_name(self,name_string):
+        return name_string.replace(" ","_")
         
-        print (d)
-        exit(0)
+    def add_variables(self,names,stores,categories,space_levels,lower_bound):  
         store_category_level = {}      
         for (i, store) in enumerate(stores):
+            store_category_level[store] = {}
             for (j, category) in enumerate(categories):
+                store_category_level[store][category] = {}
                 for (k, level) in enumerate(space_levels):
-                    store_category_level[store,category,level]=self.gurobi_model.addVar(obj=0,lb=lower_bound,ub=1,vtype="B",name=names+"_%s_%s_%s"%(store,category,level))
+                    store_category_level[store][category][level]=self.gurobi_model.addVar(obj=0,lb=lower_bound,ub=1,vtype="B",\
+                                                                                         name=self.format_name(names)+\
+                                                                                         "_%s_%s_%s"%(store,category,level))
         self.gurobi_model.update()
-        print (store_category_level) 
-        #for key in  store_category_level.keys():
-            #print( key)
-        #print (store_category_level[7, 'VH', 4.5])
         return store_category_level   
                 
     def create_variables(self, name, categories, space_levels, lower_bound):
