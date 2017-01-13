@@ -35,7 +35,7 @@ class CbcSolver(Solver):
         pass
     def get_contraints(self):
         pass
-    def get_varibles(self):
+    def get_variables(self):
         pass
     
     def create_problem(self,job_name,objective):
@@ -91,6 +91,13 @@ class GurobiSolver(Solver):
     add variables 
     """
     def add_variables(self,names,stores,categories,space_levels,lower_bound):  
+        test = [(st,cat,sp_lev) for st in stores for cat in categories for sp_lev in space_levels ]
+        print (test)
+        print ("###################")
+        d = self.gurobi_model.addVars(test,name = names)
+        
+        print (d)
+        exit(0)
         store_category_level = {}      
         for (i, store) in enumerate(stores):
             for (j, category) in enumerate(categories):
@@ -98,11 +105,13 @@ class GurobiSolver(Solver):
                     store_category_level[store,category,level]=self.gurobi_model.addVar(obj=0,lb=lower_bound,ub=1,vtype="B",name=names+"_%s_%s_%s"%(store,category,level))
         self.gurobi_model.update()
         print (store_category_level) 
-        for key in  store_category_level.keys():
-            print( key)
+        #for key in  store_category_level.keys():
+            #print( key)
         #print (store_category_level[7, 'VH', 4.5])
-        return store_category_level
-    
-        exit(0)           
+        return store_category_level   
+                
     def create_variables(self, name, categories, space_levels, lower_bound):
+        pass
+    def add_objective(self,objective,tag):
+        self.gurobi_model.setObjective(objective,tag)
         pass
