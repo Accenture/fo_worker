@@ -2,6 +2,7 @@
 Created on Jan 5, 2017
 
 @author: henok.s.mengistu
+@author: omkar.marathe
 '''
 from pulp import *
 from gurobipy import * 
@@ -16,27 +17,44 @@ class CbcSolver(Solver):
         self.problem = None
         self.status = None
         self.name = name
+
     """
     return number of objectives
     """
     def get_objectives_count(self):
-        pass  
+        pass
+  
     """
     return number of constraints
     """
-    def get_contraint_count(self):
-        pass
+    def get_constraint_count(self):
+        return len(self.problem.constraints)
+
     """
     return number of variables
     """
     def get_variable_count(self):
-        pass    
+        return len(self.problem.variables())    
+
+    """
+    return Objectives of a problem
+    """
     def get_objectives(self):
-        pass
+        return self.problem.objective        
     def get_contraints(self):
         pass
     def get_variables(self):
-        pass
+        pass    
+    """
+    return constraints of a problem
+    """
+    def get_constraints(self):
+        return self.problem.constraints
+    """
+    return Lp Variables of a problem
+    """
+    def get_variables(self):
+        return self.problem.variables()
     
     def create_problem(self,job_name,objective):
         if objective =='MIN':
