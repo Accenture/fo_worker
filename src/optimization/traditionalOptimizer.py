@@ -24,8 +24,9 @@ class TraditionalOptimizer(BaseOptimizer):
         super(TraditionalOptimizer,self).__init__(sales, space, future_space, brand_exit, config)
 
         self.sales_penetration_threshold = config['salesPenetrationThreshold']
-        self.solver = CbcSolver("CBC Solver")
-        #self.solver = GurobiSolver("Gurobi SOlver")
+        #self.solver = CbcSolver("CBC Solver")
+        self.solver = GurobiSolver("Gurobi SOlver")
+        
 
     """
     Returns a vector with the maximum percent of the original total store space between two increment sizes and 10 percent of the store space
@@ -110,8 +111,10 @@ class TraditionalOptimizer(BaseOptimizer):
     def create_variables(self):
         # Selected Tier(k) for store(i) and category(j) is Binary
         # selected_tier = LpVariable.dicts('Selected Tier', (self.stores, self.categories, space_levels), 0, upBound=1, cat='Binary')
+        self.stores = self.stores[0:2]
         self.selected_tier = self.solver.add_variables('Selected Tier', self.stores, self.categories, self.space_levels, 0)
-
+        print (self.selected_tier)
+        exit(0)
         # Created Tier(k) for category(j) is Binary
         if self.job_type == 'tiered':
             logging.info('Creating LP Variable created_tier')

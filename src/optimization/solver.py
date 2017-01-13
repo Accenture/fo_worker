@@ -84,9 +84,25 @@ class CbcSolver(Solver):
 
 class GurobiSolver(Solver):
     def __init__(self,name):
-        self.gurobi_solver = Model(name)    
+        self.gurobi_model = Model(name) 
+        # variables        
+        self.selected_tier = {}
     """
-    adds variables 
+    add variables 
     """
-    def add_variables(self,name,stores,categories,space_levels,lower_bound):
+    def add_variables(self,names,stores,categories,space_levels,lower_bound):  
+        store_category_level = {}      
+        for (i, store) in enumerate(stores):
+            for (j, category) in enumerate(categories):
+                for (k, level) in enumerate(space_levels):
+                    store_category_level[store,category,level]=self.gurobi_model.addVar(obj=0,lb=lower_bound,ub=1,vtype="B",name=names+"_%s_%s_%s"%(store,category,level))
+        self.gurobi_model.update()
+        print (store_category_level) 
+        for key in  store_category_level.keys():
+            print( key)
+        #print (store_category_level[7, 'VH', 4.5])
+        return store_category_level
+    
+        exit(0)           
+    def create_variables(self, name, categories, space_levels, lower_bound):
         pass
