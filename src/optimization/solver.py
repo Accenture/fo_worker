@@ -6,6 +6,7 @@ Created on Jan 5, 2017
 '''
 from pulp import *
 from gurobipy import * 
+from pip.cmdoptions import constraints
 
 class Solver():
     def __init__(self):
@@ -71,6 +72,9 @@ class CbcSolver(Solver):
         
     def add_constraint(self,constraint,operation,value,tag=None):
         if  operation == 'eq':
+            print (constraint)
+            print (value)
+            exit(0)
             self.problem += lpSum(constraint) == value,tag
         if  operation == 'lte':
             self.problem += lpSum(constraint) <= value,tag
@@ -142,5 +146,16 @@ class GurobiSolver(Solver):
             self.gurobi_model.ModelSense = GRB.MINIMIZE
         else:
             self.gurobi_model.ModelSense = GRB.MAXIMIZE
+     
+    def add_constraint(self,constraint,operation,value,tag=None):
+        if  operation == 'eq':
+            print (len(constraint))
+            print (value)
+            print (tag)
+            self.gurobi_model.addConstr(constraint == value,tag)
+        if  operation == 'lte':
+            self.gurobi_model.addConstr(constraint <= value,tag)            
+        if  operation == 'gte':
+            self.gurobi_model.addConstr(constraint >= value,tag)                        
         
          

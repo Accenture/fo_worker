@@ -24,8 +24,8 @@ class TraditionalOptimizer(BaseOptimizer):
         super(TraditionalOptimizer,self).__init__(sales, space, future_space, brand_exit, config)
 
         self.sales_penetration_threshold = config['salesPenetrationThreshold']
-        #self.solver = CbcSolver("CBC Solver")
-        self.solver = GurobiSolver("Gurobi SOlver")
+        self.solver = CbcSolver("CBC Solver")
+        #self.solver = GurobiSolver("Gurobi SOlver")
         
 
     """
@@ -118,7 +118,7 @@ class TraditionalOptimizer(BaseOptimizer):
         # selected_tier = LpVariable.dicts('Selected Tier', (self.stores, self.categories, space_levels), 0, upBound=1, cat='Binary')
         self.stores = self.stores[0:2]
         self.selected_tier = self.solver.add_variables('Selected Tier', self.stores, self.categories, self.space_levels, 0)
-        print (self.selected_tier)           
+        #print (self.selected_tier)           
         # Created Tier(k) for category(j) is Binary
         if self.job_type == 'tiered':
             logging.info('Creating LP Variable created_tier')
