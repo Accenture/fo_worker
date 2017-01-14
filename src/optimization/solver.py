@@ -57,10 +57,17 @@ class CbcSolver(Solver):
             self.problem = LpProblem(job_name,LpMinimize)
         else:
             self.problem = LpProblem(job_name,LpMaximize)
+        
+        #what is the need for this return statement 
         return self.problem
         
-    def add_objective(self,objective,tag=None):
-        self.problem += lpSum(objective),tag
+    def add_objective(self,selected_tier,error,stores,categories,space_levels,tag):        
+        self.problem += lpSum([(selected_tier[store][category][level] * error[i][j][k]) \
+                         for (i, store) in enumerate(stores) \
+                            for (j, category) in enumerate(categories) \
+                                for (k, level) in enumerate(space_levels)]), tag
+                                    
+        #self.problem += lpSum(objective),tag
         
     def add_constraint(self,constraint,operation,value,tag=None):
         if  operation == 'eq':
@@ -98,21 +105,20 @@ class CbcSolver(Solver):
 
 class GurobiSolver(Solver):
     def __init__(self,name):
-        self.gurobi_model = Model(name) 
-        # variables        
-        self.selected_tier = {}
+        self.gurobi_model = Model(name)        
+    
     """
     add variables 
     """
     def format_name(self,name_string):
         return name_string.replace(" ","_")
         
-    def add_variables(self,names,stores,categories,space_levels,lower_bound):  
-        store_category_level = {}      
+    def add_variables(self,names,stores,categories,space_levels,lower_bound):                
+        store_category_level = {}
         for (i, store) in enumerate(stores):
             store_category_level[store] = {}
             for (j, category) in enumerate(categories):
-                store_category_level[store][category] = {}
+                self.store_category_level[store][category] = {}
                 for (k, level) in enumerate(space_levels):
                     store_category_level[store][category][level]=self.gurobi_model.addVar(obj=0,lb=lower_bound,ub=1,vtype="B",\
                                                                                          name=self.format_name(names)+\
@@ -122,6 +128,18 @@ class GurobiSolver(Solver):
                 
     def create_variables(self, name, categories, space_levels, lower_bound):
         pass
-    def add_objective(self,objective,tag):
-        self.gurobi_model.setObjective(objective,tag)
-        pass
+    def add_objective(self,selected_tier,error,stores,categories,space_levels,tag=None):
+        objectives+=([(self.selected_tier[store][category][level] * self.error[i][j][k]) \
+                     for (i, store) in enumerate(self.stores) \
+                        for (j, category) in enumerate(self.categories) \
+                            for (k, level) in enumerate(self.space_levels)])                               
+        
+        self.gurobi_model.setObjective(objective,None)        
+    
+    def create_problem(self,job_name=None,objective):
+        if objective =='MIN':
+            self.gurobi_model.MakeSense = GRB.MINIMIZE
+        else:
+            self.gurobi_model.MakeSense = GRB.MAXIMIZE
+        
+         
