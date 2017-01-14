@@ -24,8 +24,8 @@ class TraditionalOptimizer(BaseOptimizer):
         super(TraditionalOptimizer,self).__init__(sales, space, future_space, brand_exit, config)
 
         self.sales_penetration_threshold = config['salesPenetrationThreshold']
-        self.solver = CbcSolver("CBC Solver")
-        #self.solver = GurobiSolver("Gurobi SOlver")
+        #self.solver = CbcSolver("CBC Solver")
+        self.solver = GurobiSolver("Gurobi SOlver")
         
 
     """

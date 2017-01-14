@@ -52,7 +52,7 @@ class CbcSolver(Solver):
     def get_variables(self):
         return self.problem.variables()
     
-    def create_problem(self,job_name,objective):
+    def create_problem(self,objective,job_name):
         if objective =='MIN':
             self.problem = LpProblem(job_name,LpMinimize)
         else:
@@ -118,7 +118,7 @@ class GurobiSolver(Solver):
         for (i, store) in enumerate(stores):
             store_category_level[store] = {}
             for (j, category) in enumerate(categories):
-                self.store_category_level[store][category] = {}
+                store_category_level[store][category] = {}
                 for (k, level) in enumerate(space_levels):
                     store_category_level[store][category][level]=self.gurobi_model.addVar(obj=0,lb=lower_bound,ub=1,vtype="B",\
                                                                                          name=self.format_name(names)+\
@@ -129,17 +129,18 @@ class GurobiSolver(Solver):
     def create_variables(self, name, categories, space_levels, lower_bound):
         pass
     def add_objective(self,selected_tier,error,stores,categories,space_levels,tag=None):
-        objectives+=([(self.selected_tier[store][category][level] * self.error[i][j][k]) \
-                     for (i, store) in enumerate(self.stores) \
-                        for (j, category) in enumerate(self.categories) \
-                            for (k, level) in enumerate(self.space_levels)])                               
+        objectives = None
+        for (i, store) in enumerate(stores):
+            for (j, category) in enumerate(categories):
+                for (k, level) in enumerate(space_levels):
+                    objectives+=selected_tier[store][category][level] * error[i][j][k]                           
         
-        self.gurobi_model.setObjective(objective,None)        
+        self.gurobi_model.setObjective(objectives,None)        
     
-    def create_problem(self,job_name=None,objective):
+    def create_problem(self,job_name,objective):
         if objective =='MIN':
-            self.gurobi_model.MakeSense = GRB.MINIMIZE
+            self.gurobi_model.ModelSense = GRB.MINIMIZE
         else:
-            self.gurobi_model.MakeSense = GRB.MAXIMIZE
+            self.gurobi_model.ModelSense = GRB.MAXIMIZE
         
          
