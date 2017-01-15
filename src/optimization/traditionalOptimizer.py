@@ -24,8 +24,8 @@ class TraditionalOptimizer(BaseOptimizer):
         super(TraditionalOptimizer,self).__init__(sales, space, future_space, brand_exit, config)
 
         self.sales_penetration_threshold = config['salesPenetrationThreshold']
-        self.solver = CbcSolver("CBC Solver")
-        #self.solver = GurobiSolver("Gurobi SOlver")
+        #self.solver = CbcSolver("CBC Solver")
+        self.solver = GurobiSolver("Gurobi SOlver")
         
 
     """
@@ -468,9 +468,13 @@ class TraditionalOptimizer(BaseOptimizer):
         self.create_error()
         logging.info("Adding objective function")
         self.add_objective()
+        print ("Objectives added")
         self.add_constraints_forlocalbalanceback()
+        print ("for local balanced back constraints added")
         self.add_constraints_forspaclevelstorecategory()
+        print ("for space level store category constraints added")
         self.add_constraints_forspaceboundstorecategory()
+        print ("for space bound store category constraints added")
         if self.job_type == 'tiered':
             self.add_constraintsfortiered()
 

@@ -148,14 +148,15 @@ class GurobiSolver(Solver):
             self.gurobi_model.ModelSense = GRB.MAXIMIZE
      
     def add_constraint(self,constraint,operation,value,tag=None):
-        if  operation == 'eq':
-            print (len(constraint))
-            print (value)
-            print (tag)
-            self.gurobi_model.addConstr(constraint == value,tag)
-        if  operation == 'lte':
-            self.gurobi_model.addConstr(constraint <= value,tag)            
-        if  operation == 'gte':
-            self.gurobi_model.addConstr(constraint >= value,tag)                        
+        for const in (constraint):                               
+            if  operation == 'eq':           
+                self.gurobi_model.addConstr(const == value,tag)
+            if  operation == 'lte':
+                self.gurobi_model.addConstr(const <= value,tag)            
+            if  operation == 'gte':
+                self.gurobi_model.addConstr(const >= value,tag)                    
+# for debugging purposes         
+#         for v in self.gurobi_model.getConstrs():
+#             print (v)                    
         
          
