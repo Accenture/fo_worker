@@ -71,10 +71,7 @@ class CbcSolver(Solver):
         #self.problem += lpSum(objective),tag
         
     def add_constraint(self,constraint,operation,value,tag=None):
-        if  operation == 'eq':
-            print (constraint)
-            print (value)
-            exit(0)
+        if  operation == 'eq':          
             self.problem += lpSum(constraint) == value,tag
         if  operation == 'lte':
             self.problem += lpSum(constraint) <= value,tag
@@ -130,8 +127,17 @@ class GurobiSolver(Solver):
         self.gurobi_model.update()
         return store_category_level   
                 
-    def create_variables(self, name, categories, space_levels, lower_bound):
-        pass
+    def create_variables(self, names, categories, space_levels, lower_bound):
+        category_level = {}
+        for (j, category) in enumerate(categories):
+                category_level[category] = {}
+                for (k, level) in enumerate(space_levels):
+                    category_level[category][level]=self.gurobi_model.addVar(obj=0,lb=lower_bound,ub=1,vtype="B",\
+                                                                                         name=self.format_name(names)+\
+                                                                                         "_%s_%s"%(category,level))
+        self.gurobi_model.update()        
+        print (category_level)
+        return category_level
     def add_objective(self,selected_tier,error,stores,categories,space_levels,tag=None):
         objectives = None
         for (i, store) in enumerate(stores):

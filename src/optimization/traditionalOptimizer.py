@@ -25,7 +25,7 @@ class TraditionalOptimizer(BaseOptimizer):
 
         self.sales_penetration_threshold = config['salesPenetrationThreshold']
         #self.solver = CbcSolver("CBC Solver")
-        self.solver = GurobiSolver("Gurobi SOlver")
+        self.solver = GurobiSolver("Gurobi Solver")
         
 
     """
@@ -204,12 +204,11 @@ class TraditionalOptimizer(BaseOptimizer):
             ################################
             # Constraint 2a) [Specification constraint 2.5.1.]
             # number of tiers >= lower tier count bound
-            for (j, category) in enumerate(self.categories):
+            for (j, category) in enumerate(self.categories):                
                 self.solver.add_constraint([self.created_tier[category][level] \
                                   for (k, level) in enumerate(self.space_levels)], \
                            'gte',self.category_bounds['Lower Tier Bound'].loc[category], \
-                           "Lower Tier Bound for Category" + category)
-
+                           "Lower Tier Bound for Category" + category)          
             ################################
             # Constraint 2b) [Specification constraint 2.5.1.]
             # number of tiers <= upper tier count bound
