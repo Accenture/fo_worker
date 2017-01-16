@@ -18,12 +18,13 @@ class CbcSolver(Solver):
         self.problem = None
         self.status = None
         self.name = name
+        self.objectives_count = 0
 
     """
     return number of objectives
     """
     def get_objectives_count(self):
-        pass
+        return self.objectives_count
   
     """
     return number of constraints
@@ -67,6 +68,7 @@ class CbcSolver(Solver):
                          for (i, store) in enumerate(stores) \
                             for (j, category) in enumerate(categories) \
                                 for (k, level) in enumerate(space_levels)]), tag
+        self.objectives_count += 1
                                     
         #self.problem += lpSum(objective),tag
         
