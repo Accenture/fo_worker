@@ -18,7 +18,7 @@ class CbcSolver(Solver):
         self.problem = None
         self.status = None
         self.name = name
-        self.objectives_count = 0
+        self.objectives_count = 0   
 
     """
     return number of objectives
@@ -108,7 +108,22 @@ class CbcSolver(Solver):
 
 class GurobiSolver(Solver):
     def __init__(self,name):
-        self.gurobi_model = Model(name)        
+        self.gurobi_model = Model(name)      
+        self.status_codes = {1:"LOADED",
+                             2:"OPTIMAL",
+                             3:"INFEASIBLE",
+                             4:"INF_OR_UNBD",
+                             5:"UNBOUNDED",
+                             6:"CUTOFF",
+                             7:"ITERATION_LIMIT",
+                             8:"NODE_LIMIT",
+                             9:"TIME_LIMIT",
+                             10:"SOLUTION_LIMIT",
+                             11:"INTERRUPTED",
+                             12:"NUMERIC",
+                             13:"SUBOPTIMAL",
+                             14:"INPROGRESS",
+                             15:"USER_OBJ_LIMIT"}  
     
     """
     add variables 
@@ -138,8 +153,8 @@ class GurobiSolver(Solver):
                                                                                          name=self.format_name(names)+\
                                                                                          "_%s_%s"%(category,level))
         self.gurobi_model.update()        
-        print (category_level)
         return category_level
+    
     def add_objective(self,selected_tier,error,stores,categories,space_levels,tag=None):
         objectives = None
         for (i, store) in enumerate(stores):
@@ -147,7 +162,8 @@ class GurobiSolver(Solver):
                 for (k, level) in enumerate(space_levels):
                     objectives+=selected_tier[store][category][level] * error[i][j][k]                           
         
-        self.gurobi_model.setObjective(objectives,None)        
+        self.gurobi_model.setObjective(objectives,None)  
+        self.gurobi_model.update()      
     
     def create_problem(self,job_name,objective):
         if objective =='MIN':
@@ -156,15 +172,29 @@ class GurobiSolver(Solver):
             self.gurobi_model.ModelSense = GRB.MAXIMIZE
      
     def add_constraint(self,constraint,operation,value,tag=None):
-        for const in (constraint):                               
+        for const in constraint:                               
             if  operation == 'eq':           
-                self.gurobi_model.addConstr(const == value,tag)
+                self.gurobi_model.addConstr(const,GRB.EQUAL, value,tag)
             if  operation == 'lte':
-                self.gurobi_model.addConstr(const <= value,tag)            
+                self.gurobi_model.addConstr(const, GRB.LESS_EQUAL, value,tag)            
             if  operation == 'gte':
-                self.gurobi_model.addConstr(const >= value,tag)                    
-# for debugging purposes         
-#         for v in self.gurobi_model.getConstrs():
-#             print (v)                    
+                self.gurobi_model.addConstr(const, GRB.GREATER_EQUAL, value,tag)                    
         
-         
+        # for debugging purposes         
+        #         for v in self.gurobi_model.getConstrs():
+        #             print (v)                    
+        
+    def add_constraintdivision(self,constraint,division,operation,value,tag):
+        #print (constraint)
+        for const in constraint:
+            if  operation == 'eq':           
+                self.gurobi_model.addConstr(const/division,GRB.EQUAL, value,tag)
+            if  operation == 'lte':
+                self.gurobi_model.addConstr(const/division, GRB.LESS_EQUAL,value,tag)            
+            if  operation == 'gte':
+                self.gurobi_model.addConstr(const/division, GRB.GREATER_EQUAL,value,tag)  
+    
+    def solveProblem(self):
+        self.gurobi_model.optimize()          
+        self.status = self.status_codes[self.gurobi_model.getAttr(GRB.Attr.Status)]   
+        self.gurobi_model.write("gurobiLp.lp")    

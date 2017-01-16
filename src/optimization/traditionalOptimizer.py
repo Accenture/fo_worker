@@ -225,7 +225,7 @@ class TraditionalOptimizer(BaseOptimizer):
             # Selected Tier can only be chosen if the corresponding Tier is a valid one for the category
             for (j, category) in enumerate(self.categories):
                 for (k, level) in enumerate(self.space_levels):
-                     self.solver.add_constraintdivision([self.selected_tier[store][category][level] \
+                    self.solver.add_constraintdivision([self.selected_tier[store][category][level] \
                                       for (i, store) in enumerate(self.stores)],len(self.stores), \
                                'lte',self.created_tier[category][level], \
                                "Selected tier " + str(k) + "('" + str(level) + "') must be valid for category" + category)
@@ -309,8 +309,10 @@ class TraditionalOptimizer(BaseOptimizer):
     todo: remove dependency of pulp api
     """
     def get_lpresults(self):
-        self.lp_problem_status = LpStatus[self.problem.status]
-        if LpStatus[self.problem.status] == 'Optimal':
+        #self.lp_problem_status = LpStatus[self.problem.status]
+        lp_problem_status = self.solver.status
+        #if LpStatus[self.problem.status] == 'Optimal':
+        if lp_problem_status == 'Optimal':
             # determines the allocated space from the decision variable selected_tier per store and category
             allocated_space = pd.DataFrame(index=self.stores, columns=self.categories)
             for (i, store) in enumerate(self.stores):
@@ -334,11 +336,11 @@ class TraditionalOptimizer(BaseOptimizer):
 
             self.data = self.data.merge(b, on=['Store', 'Category'], how='inner')
 
-            return (LpStatus[self.problem.status], self.data, value(self.problem.objective), self.problem)  # (longOutput)#,wideOutput)
+            return (lp_problem_status, self.data, value(self.problem.objective), self.problem)  # (longOutput)#,wideOutput)
         else:
             self.data['Result Space'] = 0
 
-            return (LpStatus[self.problem.status], self.data, 0, self.problem)
+            return (lp_problem_status, self.data, 0, self.problem)
 
     """
     """
