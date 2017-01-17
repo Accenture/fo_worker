@@ -57,24 +57,26 @@ class CbcSolver(Solver):
     def get_variabl_value(self, variable):
         return value(variable)
     
+    """
+    returns the problem
+    """
+    def get_problem(self):
+        return self.problem
+    
     def create_problem(self,objective,job_name):
         if objective =='MIN':
             self.problem = LpProblem(job_name,LpMinimize)
         else:
             self.problem = LpProblem(job_name,LpMaximize)
         
-        #what is the need for this return statement 
-        return self.problem
-        
+ 
     def add_objective(self,selected_tier,error,stores,categories,space_levels,tag):        
         self.problem += lpSum([(selected_tier[store][category][level] * error[i][j][k]) \
                          for (i, store) in enumerate(stores) \
                             for (j, category) in enumerate(categories) \
                                 for (k, level) in enumerate(space_levels)]), tag
-        self.objectives_count += 1
-                                    
-        #self.problem += lpSum(objective),tag
-        
+        self.objectives_count += 1                                    
+               
     def add_constraint(self,constraint,operation,value,tag=None):
         if  operation == 'eq':          
             self.problem += lpSum(constraint) == value,tag
@@ -113,28 +115,52 @@ class CbcSolver(Solver):
 class GurobiSolver(Solver):
     def __init__(self,name):
         self.gurobi_model = Model(name)      
-        self.status_codes = {1:"LOADED",
+        self.status_codes = {1:"Loaded",
                              2:"Optimal",
-                             3:"INFEASIBLE",
-                             4:"INF_OR_UNBD",
-                             5:"UNBOUNDED",
-                             6:"CUTOFF",
-                             7:"ITERATION_LIMIT",
-                             8:"NODE_LIMIT",
-                             9:"TIME_LIMIT",
-                             10:"SOLUTION_LIMIT",
-                             11:"INTERRUPTED",
-                             12:"NUMERIC",
-                             13:"SUBOPTIMAL",
-                             14:"INPROGRESS",
-                             15:"USER_OBJ_LIMIT"}  
+                             3:"Infeasible",
+                             4:"Info_or_Unbd",
+                             5:"Unbounded",
+                             6:"Cutoff",
+                             7:"Iteration_Limit",
+                             8:"Node_Limit",
+                             9:"Time_Limit",
+                             10:"Solution_Limit",
+                             11:"Interrupted",
+                             12:"Numeric",
+                             13:"Suboptimal",
+                             14:"Inprogress",
+                             15:"User_Obj_Limit"}      
+  
+    """
+    returns the model/problem
+    """
+    def get_problem(self):
+        return self.gurobi_model    
     
     """
-    add variables 
+    return Objectives 
     """
+    def get_objectives(self):
+        return self.gurobi_model.getObjective()  
+    
+    """
+    return the optimized objective value
+    """
+    def get_objective_value(self):
+        obj_value = self.gurobi_model.getObjective()
+        return obj_value.getValue()
+    """
+    returns an optimized value for a variable. Should be called after an optimal solution was found
+    """
+    def get_variable_value(self, variable):
+        return variable.X 
+    
     def format_name(self,name_string):
         return name_string.replace(" ","_")
         
+    """
+    add variables 
+    """
     def add_variables(self,names,stores,categories,space_levels,lower_bound):                
         store_category_level = {}
         for (i, store) in enumerate(stores):
@@ -166,8 +192,8 @@ class GurobiSolver(Solver):
                 for (k, level) in enumerate(space_levels):
                     objectives+=selected_tier[store][category][level] * error[i][j][k]                           
         
-        self.gurobi_model.setObjective(objectives,None)  
-        self.gurobi_model.update()      
+        self.gurobi_model.setObjective(objectives,None)         
+        self.gurobi_model.update()          
     
     def create_problem(self,job_name,objective):
         if objective =='MIN':
@@ -175,18 +201,14 @@ class GurobiSolver(Solver):
         else:
             self.gurobi_model.ModelSense = GRB.MAXIMIZE
      
-    def add_constraint(self,constraint,operation,value,tag=None):  
-        print (constraint)                                    
+    def add_constraint(self,constraint,operation,value,tag=None):                                           
         if  operation == 'eq':           
             self.gurobi_model.addConstr(quicksum(const for const in constraint), GRB.EQUAL, value,tag)
         if  operation == 'lte':
             self.gurobi_model.addConstr(quicksum(const for const in constraint), GRB.LESS_EQUAL, value,tag)            
         if  operation == 'gte':
             self.gurobi_model.addConstr(quicksum(const for const in constraint), GRB.GREATER_EQUAL, value,tag)                    
-        
-        # for debugging purposes         
-        #         for v in self.gurobi_model.getConstrs():
-        #             print (v)                    
+                          
         
     def add_constraintdivision(self,constraint,division,operation,value,tag):             
         if  operation == 'eq':           
@@ -201,5 +223,4 @@ class GurobiSolver(Solver):
         self.status = self.status_codes[self.gurobi_model.getAttr(GRB.Attr.Status)]   
         self.gurobi_model.write("gurobiLp.lp")   
     
-    def get_variabl_value(self, variable):
-        return variable.X    
+      

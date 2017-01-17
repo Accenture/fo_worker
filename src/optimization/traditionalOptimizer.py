@@ -310,16 +310,16 @@ class TraditionalOptimizer(BaseOptimizer):
     """
     def get_lpresults(self):
         #self.lp_problem_status = LpStatus[self.problem.status]
-        lp_problem_status = self.solver.status
+        self.lp_problem_status = self.solver.status
         #if LpStatus[self.problem.status] == 'Optimal':
-        print ("the status of the Gurobi solver is:", lp_problem_status)
-        if lp_problem_status == 'Optimal':
+        print ("the status of the Gurobi solver is:", self.lp_problem_status)
+        if self.lp_problem_status == 'Optimal':
             # determines the allocated space from the decision variable selected_tier per store and category
             allocated_space = pd.DataFrame(index=self.stores, columns=self.categories)
             for (i, store) in enumerate(self.stores):
                 for (j, category) in enumerate(self.categories):
                     for (k, level) in enumerate(self.space_levels):
-                        if self.solver.get_variabl_value(self.selected_tier[store][category][level]) == 1:
+                        if self.solver.get_variable_value(self.selected_tier[store][category][level]) == 1:
                         #if self.selected_tier[store][category][level] == 1:                            
                             allocated_space[category][store] = level
 
@@ -338,11 +338,12 @@ class TraditionalOptimizer(BaseOptimizer):
 
             self.data = self.data.merge(b, on=['Store', 'Category'], how='inner')
 
-            return (lp_problem_status, self.data, value(self.problem.objective), self.problem)  # (longOutput)#,wideOutput)
+            #return (lp_problem_status, self.data, value(self.problem.objective), self.problem)  # (longOutput)#,wideOutput)
+            return (self.lp_problem_status, self.data, self.solver.get_objectives(), self.solver.get_problem())  # (longOutput)#,wideOutput)
         else:
             self.data['Result Space'] = 0
 
-            return (lp_problem_status, self.data, 0, self.problem)
+            return (self.lp_problem_status, self.data, 0, self.problem)
 
     """
     """
@@ -471,13 +472,13 @@ class TraditionalOptimizer(BaseOptimizer):
         self.create_error()
         logging.info("Adding objective function")
         self.add_objective()
-        print ("Objectives added")
+        
         self.add_constraints_forlocalbalanceback()
-        print ("for local balanced back constraints added")
+        
         self.add_constraints_forspaclevelstorecategory()
-        print ("for space level store category constraints added")
+        
         self.add_constraints_forspaceboundstorecategory()
-        print ("for space bound store category constraints added")
+        
         if self.job_type == 'tiered':
             self.add_constraintsfortiered()
 
@@ -485,7 +486,7 @@ class TraditionalOptimizer(BaseOptimizer):
         self.add_constraints_forbrandexit()
 
         logging.info("The problem has been formulated")
-        print("The problem has been formulated")
+        
 
         #status = self.solver.solveProblem()
         self.solver.solveProblem()
