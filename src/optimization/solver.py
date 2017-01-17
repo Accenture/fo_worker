@@ -21,40 +21,40 @@ class CbcSolver(Solver):
         self.objectives_count = 0   
 
     """
-    return number of objectives
+    returns number of objectives
     """
     def get_objectives_count(self):
         return self.objectives_count
   
     """
-    return number of constraints
+    returns number of constraints
     """
     def get_constraint_count(self):
         return len(self.problem.constraints)
 
     """
-    return number of variables
+    returns number of variables
     """
     def get_variable_count(self):
         return len(self.problem.variables())    
 
     """
-    return Objectives 
+    returns Objectives 
     """
     def get_objectives(self):
         return self.problem.objective        
     """
-    return constraints
+    returns constraints
     """
     def get_constraints(self):
         return self.problem.constraints
     """
-    return Lp Variables 
+    returns problem Variables 
     """
     def get_variables(self):
         return self.problem.variables()
     
-    def get_variabl_value(self, variable):
+    def get_variable_value(self, variable):
         return value(variable)
     
     """
@@ -112,9 +112,10 @@ class CbcSolver(Solver):
         return self.status
     
 
+
 class GurobiSolver(Solver):
     def __init__(self,name):
-        self.gurobi_model = Model(name)      
+        self.gurobi_model = Model(name)  
         self.status_codes = {1:"Loaded",
                              2:"Optimal",
                              3:"Infeasible",
@@ -129,7 +130,7 @@ class GurobiSolver(Solver):
                              12:"Numeric",
                              13:"Suboptimal",
                              14:"Inprogress",
-                             15:"User_Obj_Limit"}      
+                             15:"User_Obj_Limit" }     
   
     """
     returns the model/problem
@@ -138,10 +139,16 @@ class GurobiSolver(Solver):
         return self.gurobi_model    
     
     """
-    return Objectives 
+    returns number of objectives
+    """
+    def get_objectives_count(self):        
+        return self.gurobi_model.NumObj
+  
+    """
+    returns Objectives 
     """
     def get_objectives(self):
-        return self.gurobi_model.getObjective()  
+        return self.gurobi_model.getObjective() 
     
     """
     return the optimized objective value
@@ -149,6 +156,31 @@ class GurobiSolver(Solver):
     def get_objective_value(self):
         obj_value = self.gurobi_model.getObjective()
         return obj_value.getValue()
+    
+    """
+    returns model constraints
+    """
+    def get_constraints(self):
+        return self.gurobi_model.getConstrs()  
+    
+    """
+    returns number of constraints
+    """
+    def get_constraint_count(self):
+        return len(self.gurobi_model.getConstrs())        
+
+    """
+    returns the number of variables
+    """
+    def get_variable_count(self):
+        return len(self.gurobi_model.getVars())
+    
+    """
+    returns model Variables 
+    """
+    def get_variables(self):
+        return self.gurobi_model.getVars()    
+    
     """
     returns an optimized value for a variable. Should be called after an optimal solution was found
     """
@@ -201,13 +233,22 @@ class GurobiSolver(Solver):
         else:
             self.gurobi_model.ModelSense = GRB.MAXIMIZE
      
-    def add_constraint(self,constraint,operation,value,tag=None):                                           
-        if  operation == 'eq':           
-            self.gurobi_model.addConstr(quicksum(const for const in constraint), GRB.EQUAL, value,tag)
-        if  operation == 'lte':
-            self.gurobi_model.addConstr(quicksum(const for const in constraint), GRB.LESS_EQUAL, value,tag)            
-        if  operation == 'gte':
-            self.gurobi_model.addConstr(quicksum(const for const in constraint), GRB.GREATER_EQUAL, value,tag)                    
+    def add_constraint(self,constraint,operation,value,tag=None):                                                  
+        try:
+            if  operation == 'eq':           
+                self.gurobi_model.addConstr(quicksum(const for const in constraint), GRB.EQUAL, value,tag)
+            if  operation == 'lte':
+                self.gurobi_model.addConstr(quicksum(const for const in constraint), GRB.LESS_EQUAL, value,tag)            
+            if  operation == 'gte':
+                self.gurobi_model.addConstr(quicksum(const for const in constraint), GRB.GREATER_EQUAL, value,tag)  
+        except:
+            if  operation == 'eq':           
+                self.gurobi_model.addConstr(constraint, GRB.EQUAL, value,tag)
+            if  operation == 'lte':
+                self.gurobi_model.addConstr(constraint, GRB.LESS_EQUAL, value,tag)            
+            if  operation == 'gte':
+                self.gurobi_model.addConstr(constraint, GRB.GREATER_EQUAL, value,tag)  
+                                    
                           
         
     def add_constraintdivision(self,constraint,division,operation,value,tag):             

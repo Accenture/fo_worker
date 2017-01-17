@@ -116,7 +116,7 @@ class TraditionalOptimizer(BaseOptimizer):
     def create_variables(self):
         # Selected Tier(k) for store(i) and category(j) is Binary
         # selected_tier = LpVariable.dicts('Selected Tier', (self.stores, self.categories, space_levels), 0, upBound=1, cat='Binary')
-        self.stores = self.stores[0:2]
+        self.stores = self.stores[0:25]
         self.selected_tier = self.solver.add_variables('Selected Tier', self.stores, self.categories, self.space_levels, 0)
         #print (self.selected_tier)           
         # Created Tier(k) for category(j) is Binary
@@ -246,6 +246,7 @@ class TraditionalOptimizer(BaseOptimizer):
                     constraint_str = " for category " + category + ": Sales Penetration too low or Brand exit planned."
 
                     # sets space to zero for category in store
+                    print (self.selected_tier[store][category][0.0])
                     self.solver.add_constraint(self.selected_tier[store][category][0.0], 'eq', 1, \
                                "No space in store " + str(store) + constraint_str)
 
@@ -446,6 +447,8 @@ class TraditionalOptimizer(BaseOptimizer):
                                                         self.config["optimizedMetrics"])
 
 
+    def insert_lp_file(self, file_name):
+        pass
     """
     Run the Tiered Traditional LP-based optimization
     """
@@ -473,6 +476,7 @@ class TraditionalOptimizer(BaseOptimizer):
         logging.info("Adding objective function")
         self.add_objective()
         
+        
         self.add_constraints_forlocalbalanceback()
         
         self.add_constraints_forspaclevelstorecategory()
@@ -485,6 +489,10 @@ class TraditionalOptimizer(BaseOptimizer):
         logging.info('Adding Brand Exit constraints & Sales Penetration Constraint')
         self.add_constraints_forbrandexit()
 
+#         print ("#################")
+#         print ("constraint count is ", self.solver.get_constraint_count())
+#         print ("%%%%%%%%%%")
+#         print ("constraints are ",self.solver.get_constraints())
         logging.info("The problem has been formulated")
         
 
