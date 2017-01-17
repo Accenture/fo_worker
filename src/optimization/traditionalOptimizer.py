@@ -312,13 +312,15 @@ class TraditionalOptimizer(BaseOptimizer):
         #self.lp_problem_status = LpStatus[self.problem.status]
         lp_problem_status = self.solver.status
         #if LpStatus[self.problem.status] == 'Optimal':
+        print ("the status of the Gurobi solver is:", lp_problem_status)
         if lp_problem_status == 'Optimal':
             # determines the allocated space from the decision variable selected_tier per store and category
             allocated_space = pd.DataFrame(index=self.stores, columns=self.categories)
             for (i, store) in enumerate(self.stores):
                 for (j, category) in enumerate(self.categories):
                     for (k, level) in enumerate(self.space_levels):
-                        if value(self.selected_tier[store][category][level]) == 1:
+                        if self.solver.get_variabl_value(self.selected_tier[store][category][level]) == 1:
+                        #if self.selected_tier[store][category][level] == 1:                            
                             allocated_space[category][store] = level
 
             # resets the index
@@ -465,7 +467,7 @@ class TraditionalOptimizer(BaseOptimizer):
         logging.info('Creating LP Variable selected_tier')
 
         self.create_variables()
-        self.problem = self.solver.create_problem(self.job_name, 'MIN')
+        self.solver.create_problem(self.job_name, 'MIN')
         self.create_error()
         logging.info("Adding objective function")
         self.add_objective()
@@ -483,6 +485,7 @@ class TraditionalOptimizer(BaseOptimizer):
         self.add_constraints_forbrandexit()
 
         logging.info("The problem has been formulated")
+        print("The problem has been formulated")
 
         #status = self.solver.solveProblem()
         self.solver.solveProblem()
