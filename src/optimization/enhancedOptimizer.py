@@ -14,6 +14,8 @@ import config
 import datetime as dt
 from optimization.baseOptimizer import BaseOptimizer
 import logging
+from logging.handlers import RotatingFileHandler
+from optimization.loggerManager import LoggerManager
 
 class EnhancedOptimizer(BaseOptimizer):
     """
@@ -110,7 +112,7 @@ class EnhancedOptimizer(BaseOptimizer):
                                                                                                               Level,
                                                                                                               pU) + (
                     enh_metrics[uL] / 100) * self.forecast(str_cat, Level, uU))
-        logging.info('finished forecasting')
+        LoggerManager.getLogger().info('finished forecasting')
         return est_neg_spu_by_lev
 
     # Helper function for optimize function, to create objective function of error by level for Traditional optimizations
@@ -163,9 +165,9 @@ class EnhancedOptimizer(BaseOptimizer):
         self.cfbs_output.reset_index(inplace=True)
         self.cfbs_output.rename(columns={'level_0': 'Store', 'level_1': 'Category'}, inplace=True)
         self.merged_preoptCF = pd.merge(self.cfbs_output, self.preopt[['Store', 'Category', 'VSG', 'Store Space', 'Penetration','Exit Flag','Sales Penetration','BOH $', 'Receipts  $','BOH Units', 'Receipts Units', 'Profit %','CC Count w/ BOH',]],on=['Store', 'Category'])
-        logging.info('Finished merge')
+        LoggerManager.getLogger().info('Finished merge')
         self.merged_preoptCF = self.merged_preoptCF.apply(lambda x: pd.to_numeric(x, errors='ignore'))
-        logging.info('Set the index')
+        LoggerManager.getLogger().info('Set the index')
         self.merged_preoptCF.set_index(['Store','Category'],inplace=True)
         
         
@@ -196,7 +198,7 @@ class EnhancedOptimizer(BaseOptimizer):
             objective = self.create_negSPUbylevel(self.stores, self.categories, self.levels, self.merged_preoptCF, self.weights)            
             objectivetype = "Total Negative SPU"    
         
-        logging.info('objective function data is created')
+        LoggerManager.getLogger().info('objective function data is created')
         # Add the objective function to the optimization problem
         self.solver.add_objective([(st[store][category][level] * objective[i][j][k]) for (i, store) in enumerate(self.stores) 
                                    for (j, category) in enumerate(self.categories) for (k, level) in enumerate(self.levels)])
@@ -237,7 +239,7 @@ class EnhancedOptimizer(BaseOptimizer):
     def add_constraintsfortiered(self):
        try:
         if self.job_type == 'tiered':
-            logging.info('jobType is tiered')
+            LoggerManager.getLogger().info('jobType is tiered')
             for (j,Category) in enumerate(self.categories):                    
                 # The number of created tiers must be within the tier count limits for each product.
                 self.solver.add_constraint([ct[Category][Level] for (k,Level) in enumerate(self.levels)],\
@@ -253,7 +255,7 @@ class EnhancedOptimizer(BaseOptimizer):
                                 'lte',ct[Category][Level],\
                                 "Selected-Created Tier Relationship - CAT " + str(Category) + ", LEV: " + str(Level))
                 
-        logging.info('finished second block of constraints')
+        LoggerManager.getLogger().info('finished second block of constraints')
        except Exception as e:
             logging.exception('Exception in processing second block of constraints')
         
@@ -279,7 +281,7 @@ class EnhancedOptimizer(BaseOptimizer):
         logging.debug(solver_status)
         logging.debug("#####################################################################")
         if solver_status == 'Optimal':
-            logging.info('an optimal solution is found')
+            LoggerManager.getLogger().info('an optimal solution is found')
             results=pd.DataFrame(index=self.stores,columns=self.categories)
             for (i,Store) in enumerate(self.stores):
                 for (j,Category) in enumerate(self.categories):
@@ -305,11 +307,11 @@ class EnhancedOptimizer(BaseOptimizer):
         logging.debug('In the Enhanced optimization')    
         self.eligible_space_levels()
     
-        logging.info('merged the files in the new optimization')
+        LoggerManager.getLogger().info('merged the files in the new optimization')
     
         if self.job_type == 'tiered' or 'unconstrained':          
     
-            logging.info('completed all of the function definitions')
+            LoggerManager.getLogger().info('completed all of the function definitions')
             # Identify the total amount of space to fill in the optimization for each location and for all locations
             
             locspacetofill = self.merged_preoptCF.groupby(level=0)['Space_to_Fill'].agg(np.mean)
@@ -320,38 +322,38 @@ class EnhancedOptimizer(BaseOptimizer):
             agg_balback_bound = 0.05 # 5%
             loc_balback_Bound = 0.05 # 10%
     
-            logging.info('now have balance back bounds')
+            LoggerManager.getLogger().info('now have balance back bounds')
             self.balance_back()    
-            logging.info('local balance back is found')
+            LoggerManager.getLogger().info('local balance back is found')
          
             self.create_space_levels()         
-            logging.info('levels are obtained')
+            LoggerManager.getLogger().info('levels are obtained')
             # Set up created tier decision variable - has a value of 1 if that space level for that category will be a tier, else 0
             
             #ct = LpVariable.dicts('CT', (self.categories, levels), 0, upBound=1, cat='Binary')
             ct = solver.create_variables('CT', self.categories, self.levels, 0)
-            logging.info('tiers are created')
+            LoggerManager.getLogger().info('tiers are created')
             # Set up selected tier decision variable - has a value of 1 if a store will be assigned to the tier at that space level for that category, else 0
             #st = LpVariable.dicts('ST', (self.stores, self.categories, levels), 0, upBound=1, cat='Binary')
             st = solver.add_variables('ST', self.stores, self.categories, self.levels, 0)
-            logging.info('tiers are selected')
+            LoggerManager.getLogger().info('tiers are selected')
             
             # Initialize the optimization problem
             self.solver.create_problem(self.job_name, 'MIN')
-            logging.info('problem is initialized')
+            LoggerManager.getLogger().info('problem is initialized')
     
-            logging.info('adding objectives')
+            LoggerManager.getLogger().info('adding objectives')
             self.add_objecitve(st)
             #self.problem += lpSum(
             # [(st[store][category][level] * objective[i][j][k]) for (i, store) in enumerate(self.stores) for (j, category)
             #     in enumerate(self.categories) for (k, level) in enumerate(levels)])#, objectivetype
-            logging.info('objective function is created')
+            LoggerManager.getLogger().info('objective function is created')
             
-            logging.info('Begin adding constraint')
+            LoggerManager.getLogger().info('Begin adding constraint')
     
             self.add_constraints_forspaclevelstorecategory() 
     
-            logging.info('finished first block of constraints') 
+            LoggerManager.getLogger().info('finished first block of constraints') 
             self.add_constraintsfortiered()     
     
             
@@ -363,7 +365,7 @@ class EnhancedOptimizer(BaseOptimizer):
             self.merged_preoptCF.reset_index(inplace=True)
     
             # Solve the problem using open source solver
-            logging.info('optional hidden parameters')
+            LoggerManager.getLogger().info('optional hidden parameters')
     
             if 'PreSolve' in job_name:
                 preSolving = True
@@ -377,7 +379,7 @@ class EnhancedOptimizer(BaseOptimizer):
             # Time stamp for optimization solve time
             solve_end_seconds = dt.datetime.today().hour*60*60 + dt.datetime.today().minute*60 + dt.datetime.today().second
             solve_seconds = solve_end_seconds - start_seconds
-            logging.info("Time taken to solve optimization is:" + str(solve_seconds))
+            LoggerManager.getLogger().info("Time taken to solve optimization is:" + str(solve_seconds))
             return self.debugging()                     
         else:
             self.merged_preoptCF.reset_index(inplace=True)

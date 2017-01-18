@@ -4,6 +4,8 @@ from scipy.special import erf
 import math
 import traceback
 import logging
+from logging.handlers import RotatingFileHandler
+from optimization.loggerManager import LoggerManager
 
 class Outputs():
     def __init__(self):
@@ -36,8 +38,8 @@ class Outputs():
     :return: Creates a long table output for user and a version for internal testing
     """
     def create_long(self,job_type, optimization_type, linput):
-        logging.info('Creating a long table output')
-        logging.info(linput.columns)
+        LoggerManager.getLogger().info('Creating a long table output')
+        LoggerManager.getLogger().info(linput.columns)
 
         loutput = linput.apply(lambda x: pd.to_numeric(x, errors='ignore'))
         # Merge the optimize output with the curve-fitting output (which was already merged with the preoptimize output)

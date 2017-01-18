@@ -4,6 +4,8 @@
 import numpy as np
 import pandas as pd
 import logging
+from logging.handlers import RotatingFileHandler
+from optimization.loggerManager import LoggerManager
 import traceback
 from optimization.bcolors import Bcolors
 
@@ -26,10 +28,10 @@ class PreProcessor():
         data.loc[data[column] < 0, (column)] = 0
 
     def print_warning(self,title, data):
-        logging.info(' ')
-        logging.info(Bcolors.BOLD + Bcolors.UNDERLINE + Bcolors.FAIL + title + Bcolors.ENDC)
-        logging.info(' ')
-        logging.info(data)
+        LoggerManager.getLogger().info(' ')
+        LoggerManager.getLogger().info(Bcolors.BOLD + Bcolors.UNDERLINE + Bcolors.FAIL + title + Bcolors.ENDC)
+        LoggerManager.getLogger().info(' ')
+        LoggerManager.getLogger().info(data)
 
     """
     Performns validation of sales data respective expected range of data:
@@ -59,21 +61,21 @@ class PreProcessor():
             for sales_column in sales_columns:
                 self.set_negative_to_zero(sales_data, sales_column)
 
-            logging.info(' ')
-            logging.info('Data post cleaning:')
-            logging.info(' ')
-            logging.info(sales_data[idx])
+            LoggerManager.getLogger().info(' ')
+            LoggerManager.getLogger().info('Data post cleaning:')
+            LoggerManager.getLogger().info(' ')
+            LoggerManager.getLogger().info(sales_data[idx])
 
         # Summary per category
         x = sales_data.groupby('Category')[['Sales $', 'Profit $']].sum()
 
         x['Profit %'] = x['Profit $'] / x['Sales $']
 
-        logging.info(' ')
-        logging.info('Calculates Profit in % of Sales for each category across all stores')
-        logging.info(' ')
-        logging.info(x)
-        logging.info(' ')
+        LoggerManager.getLogger().info(' ')
+        LoggerManager.getLogger().info('Calculates Profit in % of Sales for each category across all stores')
+        LoggerManager.getLogger().info(' ')
+        LoggerManager.getLogger().info(x)
+        LoggerManager.getLogger().info(' ')
 
         return sales_data, idx
 
@@ -95,14 +97,14 @@ class PreProcessor():
             # gets the unique space values for the category from Current Space across all stores
             space_values = space_data[space_data['Category'] == category]['Current Space'].unique()
 
-            logging.info(category + ':' + \
+            LoggerManager.getLogger().info(category + ':' + \
               str(bound['Lower Space Bound'].values) + ' <= ' + \
               str(np.sort(space_values)) + ' <= ' + \
               str(bound['Upper Space Bound'].values))
 
         space_values = np.sort(space_data['Current Space'].unique())
 
-        logging.info(space_data.groupby(['Category', 'Current Space'])['Store'].count())
+        LoggerManager.getLogger().info(space_data.groupby(['Category', 'Current Space'])['Store'].count())
 
         space_data.pivot(index='Current Space', columns='Category', values='Optimal Space')
 
@@ -153,10 +155,10 @@ class PreProcessor():
 
         # if there is any negative Spread print out entire row
         if np.sum(idx_spread) > 0:
-            logging.info(' ')
-            logging.info(Bcolors.BOLD + Bcolors.UNDERLINE + Bcolors.FAIL + 'Negative Spread:' + Bcolors.ENDC)
-            logging.info(' ')
-            logging.info(data[idx_spread])
+            LoggerManager.getLogger().info(' ')
+            LoggerManager.getLogger().info(Bcolors.BOLD + Bcolors.UNDERLINE + Bcolors.FAIL + 'Negative Spread:' + Bcolors.ENDC)
+            LoggerManager.getLogger().info(' ')
+            LoggerManager.getLogger().info(data[idx_spread])
             # sets a negative spread to 0
             data.loc[idx_spread, ('Spread')] = 0
 
@@ -169,8 +171,8 @@ class PreProcessor():
 
         # if there is any negative Spread print out entire row
         if np.sum(idx_sales_per_space) > 0:
-            logging.info(' ')
-            logging.info(Bcolors.BOLD + Bcolors.UNDERLINE + Bcolors.FAIL + 'There are ' + str(np.sum(idx_sales_per_space)) + \
+            LoggerManager.getLogger().info(' ')
+            LoggerManager.getLogger().info(Bcolors.BOLD + Bcolors.UNDERLINE + Bcolors.FAIL + 'There are ' + str(np.sum(idx_sales_per_space)) + \
               ' negative Sales per Space. They will be set to 0!' + Bcolors.ENDC)
             # sets a negative sales per space to 0
             data.loc[idx_sales_per_space, ('Sales per Space')] = 0
@@ -218,8 +220,8 @@ class PreProcessor():
                       bizmetrics['profits'] * data['Profit $'] + \
                       bizmetrics['units']   * data['Sales Units']
         else:
-            logging.info('Unknown optimization type:')
-            logging.info(optimizationType)
+            LoggerManager.getLogger().info('Unknown optimization type:')
+            LoggerManager.getLogger().info(optimizationType)
             penetration = 0
 
         # FOR NOW: CHANGED TO DIVIDION BY 100 (12/30/16 RL)
@@ -240,8 +242,8 @@ class PreProcessor():
         idx_exit = (data['Sales %'] < salesPenThreshold) | (data['Exit Flag'] == 1)
 
         if np.sum(idx_exit) > 0:
-            logging.info('Setting Penetration to ZERO due to Brand exit flag or too low threshold: ')
-            logging.info(data[idx_exit])
+            LoggerManager.getLogger().info('Setting Penetration to ZERO due to Brand exit flag or too low threshold: ')
+            LoggerManager.getLogger().info(data[idx_exit])
             penetration[idx_exit] = 0
 
         
@@ -249,10 +251,10 @@ class PreProcessor():
         # but doesnt change the value yet. We need confirmation from business!
         def test_for_nan(data, column_name):
             if np.sum(np.isnan(data[column_name])) > 0:
-                logging.info(' ')
-                logging.info(Bcolors.BOLD + Bcolors.UNDERLINE + 'NaN in ' + column_name + Bcolors.ENDC)
-                logging.info(' ')                
-                logging.info(data[np.isnan(data[column_name])])
+                LoggerManager.getLogger().info(' ')
+                LoggerManager.getLogger().info(Bcolors.BOLD + Bcolors.UNDERLINE + 'NaN in ' + column_name + Bcolors.ENDC)
+                LoggerManager.getLogger().info(' ')                
+                LoggerManager.getLogger().info(data[np.isnan(data[column_name])])
 
             # Wont fill NaN for now since we need more feedback from the customer regarding what should be done with them
             #return data[column_name].fillna(0)

@@ -4,6 +4,8 @@
 import math
 import numpy as np
 import logging
+from logging.handlers import RotatingFileHandler
+from optimization.loggerManager import LoggerManager
 
 class BaseOptimizer(object):
     """
@@ -79,7 +81,7 @@ class BaseOptimizer(object):
                     break
             try:
                 search_params = int(jobName[(len(search) + begin):(len(search) + begin + length)]) / 100
-                logging.info('{} has been changed to {}'.format(search,search_params))
+                LoggerManager.getLogger().info('{} has been changed to {}'.format(search,search_params))
                 return searchParam
             except:
                 return True

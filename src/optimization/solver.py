@@ -247,8 +247,7 @@ class GurobiSolver(Solver):
             if  operation == 'lte':
                 self.gurobi_model.addConstr(constraint, GRB.LESS_EQUAL, value,tag)            
             if  operation == 'gte':
-                self.gurobi_model.addConstr(constraint, GRB.GREATER_EQUAL, value,tag)  
-                                    
+                self.gurobi_model.addConstr(constraint, GRB.GREATER_EQUAL, value,tag)                                
                           
         
     def add_constraintdivision(self,constraint,division,operation,value,tag):             

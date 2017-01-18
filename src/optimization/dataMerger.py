@@ -3,6 +3,8 @@ import numpy as np
 import sys
 import traceback
 import logging
+from logging.handlers import RotatingFileHandler
+from optimization.loggerManager import LoggerManager
 from itertools import product
 
 
@@ -255,17 +257,17 @@ class DataMerger():
         # spaceBound is holding the lower and upper space bound for each category
         space_bound = self.extract_space_bound(space_bound, increment)
 
-        logging.info(' ')
-        logging.info('1a. Extracting Space bounds')
-        logging.info(' ')
-        logging.info(space_bound)
+        LoggerManager.getLogger().info(' ')
+        LoggerManager.getLogger().info('1a. Extracting Space bounds')
+        LoggerManager.getLogger().info(' ')
+        LoggerManager.getLogger().info(space_bound)
 
         if tier_bound is not None:
             tier_bound = self.extract_tier_bound(tier_bound)
-            logging.info(' ')
-            logging.info('1b. Extracting Tier bounds')
-            logging.info(' ')
-            logging.info(tier_bound)
+            LoggerManager.getLogger().info(' ')
+            LoggerManager.getLogger().info('1b. Extracting Tier bounds')
+            LoggerManager.getLogger().info(' ')
+            LoggerManager.getLogger().info(tier_bound)
 
             bounds = space_bound.merge(tier_bound, on=['Category'], how='outer')
         else:

@@ -4,6 +4,8 @@ from pulp import *
 import numpy as np
 import pandas as pd
 import logging
+from logging.handlers import RotatingFileHandler
+from optimization.loggerManager import LoggerManager
 from optimization.baseOptimizer import BaseOptimizer
 from optimization.solver import CbcSolver, GurobiSolver
 from optimization.dataMerger import DataMerger
@@ -121,7 +123,7 @@ class TraditionalOptimizer(BaseOptimizer):
         #print (self.selected_tier)           
         # Created Tier(k) for category(j) is Binary
         if self.job_type == 'tiered':
-            logging.info('Creating LP Variable created_tier')
+            LoggerManager.getLogger().info('Creating LP Variable created_tier')
 
             # created_tier = LpVariable.dicts('Created Tier', (self.categories, space_levels), 0, upBound=1, cat='Binary')
             self.created_tier = self.solver.create_variables('Created Tier', self.categories, self.space_levels, 0)
@@ -141,7 +143,7 @@ class TraditionalOptimizer(BaseOptimizer):
         self.optimal_space = self.data.pivot(index='Store', columns='Category', values='Optimal Space')
         self.sales_penetration = self.data.pivot(index='Store', columns='Category', values='Sales %')
 
-        logging.info('Calculates error to be minimized')
+        LoggerManager.getLogger().info('Calculates error to be minimized')
         self.error = np.zeros((num_stores, num_categories, num_levels))
         for (i, store) in enumerate(self.stores):
             for (j, category) in enumerate(self.categories):
@@ -309,11 +311,9 @@ class TraditionalOptimizer(BaseOptimizer):
     """
     todo: remove dependency of pulp api
     """
-    def get_lpresults(self):
-        #self.lp_problem_status = LpStatus[self.problem.status]
-        self.lp_problem_status = self.solver.status
-        #if LpStatus[self.problem.status] == 'Optimal':
-        print ("the status of the Gurobi solver is:", self.lp_problem_status)
+    def get_lpresults(self):        
+        self.lp_problem_status = self.solver.status        
+        
         if self.lp_problem_status == 'Optimal':
             # determines the allocated space from the decision variable selected_tier per store and category
             allocated_space = pd.DataFrame(index=self.stores, columns=self.categories)
@@ -338,8 +338,7 @@ class TraditionalOptimizer(BaseOptimizer):
             # allocated_space = allocated_space.apply(lambda x: pd.to_numeric(x, errors='ignore'))
 
             self.data = self.data.merge(b, on=['Store', 'Category'], how='inner')
-
-            #return (lp_problem_status, self.data, value(self.problem.objective), self.problem)  # (longOutput)#,wideOutput)
+            
             return (self.lp_problem_status, self.data, self.solver.get_objectives(), self.solver.get_problem())  # (longOutput)#,wideOutput)
         else:
             self.data['Result Space'] = 0
@@ -359,13 +358,13 @@ class TraditionalOptimizer(BaseOptimizer):
         # Calculate Total space across all stores
         total_space = self.data['Optimal Space'].sum()
 
-        logging.info('Total Optional Space to be filled:')
-        logging.info(total_space)
+        LoggerManager.getLogger().info('Total Optional Space to be filled:')
+        LoggerManager.getLogger().info(total_space)
 
         # Validation that optimal space = current space
-        logging.info('Should match total Current Space:')
-        logging.info(self.data['Current Space'].sum())
-        logging.info(self.data[self.data['Store'] == 52])
+        LoggerManager.getLogger().info('Should match total Current Space:')
+        LoggerManager.getLogger().info(self.data['Current Space'].sum())
+        LoggerManager.getLogger().info(self.data[self.data['Store'] == 52])
 
     """
     """
@@ -376,7 +375,7 @@ class TraditionalOptimizer(BaseOptimizer):
         # determines zero's in the minimum for Optimal Space (at least one store is exiting this brand)
         categories_exit_idx = (space_minimum == 0)
 
-        logging.info(self.category_bounds)
+        LoggerManager.getLogger().info(self.category_bounds)
 
         # setting Lower Space Bound for these category to zero
         # THERE IS SOME BETTER WAY OF CODING THIS ACCORDING TO PYCHARM!
@@ -403,8 +402,8 @@ class TraditionalOptimizer(BaseOptimizer):
         self.local_balance_back_adjustment = self.local_space_to_fill.apply(lambda row: self.adjust_for_twoincr(row, alpha, self.increment))
 
 
-        logging.info('2. Creating the Local Balance Back values (using 2*increment modifier)')
-        logging.info(self.local_balance_back_adjustment)
+        LoggerManager.getLogger().info('2. Creating the Local Balance Back values (using 2*increment modifier)')
+        LoggerManager.getLogger().info(self.local_balance_back_adjustment)
 
     """
     """
@@ -454,26 +453,26 @@ class TraditionalOptimizer(BaseOptimizer):
     """
     def optimize(self):
 
-        logging.info('==> optimizeTrad()')
+        LoggerManager.getLogger().info('==> optimizeTrad()')
 
         self.prepare_data()
 
         self.space_levels = self.create_spacelevels(self.category_bounds, self.increment)
-        logging.info('1. Creates Tiers aka Space levels')        
-        logging.info(self.space_levels)
+        LoggerManager.getLogger().info('1. Creates Tiers aka Space levels')        
+        LoggerManager.getLogger().info(self.space_levels)
 
         self.update_blancebackadjustments()
         self.update_optimalspace()
         self.update_categorybounds()
 
-        logging.info(self.category_bounds)
+        LoggerManager.getLogger().info(self.category_bounds)
 
-        logging.info('Creating LP Variable selected_tier')
+        LoggerManager.getLogger().info('Creating LP Variable selected_tier')
 
         self.create_variables()
         self.solver.create_problem(self.job_name, 'MIN')
         self.create_error()
-        logging.info("Adding objective function")
+        LoggerManager.getLogger().info("Adding objective function")
         self.add_objective()
         
         
@@ -486,20 +485,20 @@ class TraditionalOptimizer(BaseOptimizer):
         if self.job_type == 'tiered':
             self.add_constraintsfortiered()
 
-        logging.info('Adding Brand Exit constraints & Sales Penetration Constraint')
+        LoggerManager.getLogger().info('Adding Brand Exit constraints & Sales Penetration Constraint')
         self.add_constraints_forbrandexit()
 
 #         print ("#################")
 #         print ("constraint count is ", self.solver.get_constraint_count())
 #         print ("%%%%%%%%%%")
 #         print ("constraints are ",self.solver.get_constraints())
-        logging.info("The problem has been formulated")
+        LoggerManager.getLogger().info("The problem has been formulated")
         
 
         #status = self.solver.solveProblem()
         self.solver.solveProblem()
-        #logging.info(LpStatus[self.problem.status])
-        logging.info(self.solver.status)
+        #LoggerManager.getLogger().info(LpStatus[self.problem.status])
+        LoggerManager.getLogger().info(self.solver.status)
 
         return self.get_lpresults()
 
