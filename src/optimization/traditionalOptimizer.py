@@ -27,7 +27,7 @@ class TraditionalOptimizer(BaseOptimizer):
 
         self.sales_penetration_threshold = config['salesPenetrationThreshold']
         #self.solver = CbcSolver("CBC Solver")
-        self.solver = GurobiSolver("Gurobi Solver")
+        self.solver = GurobiSolver("Gurobi Solver", 0.0001) # creates a gurobi solver with a time limitation of 0.0001 min
         
 
     """
@@ -313,7 +313,7 @@ class TraditionalOptimizer(BaseOptimizer):
     """
     def get_lpresults(self):        
         self.lp_problem_status = self.solver.status        
-        
+        print(self.lp_problem_status)
         if self.lp_problem_status == 'Optimal':
             # determines the allocated space from the decision variable selected_tier per store and category
             allocated_space = pd.DataFrame(index=self.stores, columns=self.categories)

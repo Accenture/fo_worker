@@ -114,8 +114,9 @@ class CbcSolver(Solver):
 
 
 class GurobiSolver(Solver):
-    def __init__(self,name):
+    def __init__(self,name,time_limit=float('inf')):
         self.gurobi_model = Model(name)  
+        self.gurobi_model.setParam('TimeLimit', time_limit*60)
         self.status_codes = {1:"Loaded",
                              2:"Optimal",
                              3:"Infeasible",
