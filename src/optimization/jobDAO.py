@@ -6,23 +6,23 @@ import datetime as dt
 from bson.objectid import ObjectId
 import socket
 import logging
+import gridfs
 
+"""
+A class for MongoDB operations on
+Jobs collection
+"""
 class JobDAO():
-    """
-    Created on Sat Dec 31 14:15:51 2016 ISt
-    A class for MongoDB operations on
-    Jobs collection
-    @author: omkar.marathe
-    """
-
     def __init__(self):
         pass
 
-    def findJob(self,objectId):
-        # Find job to check status of job
+    """
+     Finds a job to check status of job
+    """
+    def find_job(self,objectId):       
         return MongoConnection.db.jobs.find_one({'_id': ObjectId(objectId)})
 
-    def updateJobStatusTime(self,jobId,status,upsert):
+    def update_job_status_time(self,jobId,status,upsert):
         MongoConnection.db.jobs.update_one(
             {'_id': jobId },
             {
@@ -33,7 +33,7 @@ class JobDAO():
             }
         ,upsert)
 
-    def updateJobOutputIdsInvalidVal(self,jobId,status,idList,objValue,invalidsList,upsert):
+    def update_job_outputIds_invalid_val(self,jobId,status,idList,objValue,invalidsList,upsert):
         MongoConnection.db.jobs.update_one(
                 {'_id': jobId},
                 {
@@ -59,7 +59,20 @@ class JobDAO():
                 }
             ,upsert)
 
-    def updateJobOutputIds(self,jobId,status,idList,upsert):
+    def update_job_problem_file(self, job_id,lp_filename):        
+        fs =  gridfs.GridFS(MongoConnection.db)
+        file_id = fs.put(open(lp_filename,'rb'))
+        
+        MongoConnection.db.jobs.update_one(
+            {'_id':job_id},
+            {
+                "$set":{
+                    'lp_problem_name':lp_filename,
+                    'lp_problem_id':file_id
+                     }
+             }
+            )
+    def update_job_outputIds(self,jobId,status,idList,upsert):
             MongoConnection.db.jobs.update_one(
             {'_id': jobId},
             {
@@ -76,7 +89,7 @@ class JobDAO():
             }
         ,upsert)
 
-    def updateJobObjValue(self,jobId,status,objValue,upsert):
+    def update_jobobj_value(self,jobId,status,objValue,upsert):
             MongoConnection.db.jobs.update_one(
                 {'_id': jobId},
                 {
@@ -118,7 +131,7 @@ class JobDAO():
         )
         logging.info('RECONCILE DB')
 
-    def updateEnd(self, id):
+    def update_end(self, id):
         MongoConnection.db.jobs.update_one(
             {'_id': ObjectId(id)},
             {
@@ -134,10 +147,11 @@ class JobDAO():
         logging.info('updated failed time')
 
 if __name__ == "__main__" :
+    #This is a test
     MongoConnection.db.countries.insert({"name" : "India"})
     country = MongoConnection.db.countries.find_one()
     jobDAO = JobDAO()
-    jobDAO.updateJobStatusTime(1,"running",True) 
-    jobDAO.updateJobOutputIdsInvalidVal(1, "complete",[1234567,987654,123,456,9999],56,[1,2,3,4,5],True)
-    jobDAO.updateJobObjValue(1,"complete",78,False)
+    jobDAO.update_job_status_time(1,"running",True) 
+    jobDAO.update_job_outputIds_invalid_val(1, "complete",[1234567,987654,123,456,9999],56,[1,2,3,4,5],True)
+    jobDAO.update_jobobj_value(1,"complete",78,False)
     print(MongoConnection.db.jobs.find_one())
