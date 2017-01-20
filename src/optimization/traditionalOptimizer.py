@@ -27,7 +27,7 @@ class TraditionalOptimizer(BaseOptimizer):
 
         self.sales_penetration_threshold = config['salesPenetrationThreshold']
         #self.solver = CbcSolver("CBC Solver")
-        self.solver = GurobiSolver("Gurobi Solver", 0.0001) # creates a gurobi solver with a time limitation of 0.0001 min
+        self.solver = GurobiSolver("Gurobi Solver") # creates a gurobi solver with a time limitation of 0.0001 min
         
 
     """
@@ -340,6 +340,11 @@ class TraditionalOptimizer(BaseOptimizer):
             self.data = self.data.merge(b, on=['Store', 'Category'], how='inner')
             
             return (self.lp_problem_status, self.data, self.solver.get_objectives(), self.solver.get_problem())  # (longOutput)#,wideOutput)
+        
+        elif self.lp_problem_status == 'Infeasible':
+            LoggerManager.getLogger().info('The problem is Infeasible, computing an Irreducible Inconsistent Subsystem analysis')
+            self.solver.compute_iis()            
+            
         else:
             self.data['Result Space'] = 0
 

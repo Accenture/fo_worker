@@ -8,6 +8,10 @@ from pulp import *
 from gurobipy import * 
 from pip.cmdoptions import constraints
 
+import logging
+from logging.handlers import RotatingFileHandler
+from optimization.loggerManager import LoggerManager
+
 class Solver():
     def __init__(self):
         pass
@@ -262,6 +266,27 @@ class GurobiSolver(Solver):
     def solveProblem(self):
         self.gurobi_model.optimize()          
         self.status = self.status_codes[self.gurobi_model.getAttr(GRB.Attr.Status)]   
-        self.gurobi_model.write("gurobiLp.lp")   
+        self.gurobi_model.write("gurobiLp.lp") 
+    
+    def compute_iis(self):
+        self.gurobi_model.computeIIS()
+        
+        #self.gurobi_modelwrite("iss.ilp")
+        
+        # logs constraints that form infeasible problem.
+        # NOTE: If all constraints in the model except those in the IIS are removed, the model is still infeasible. 
+        # However, further removing any one member of the IIS produces a feasible result.
+        
+        for c in self.gurobi_model.getConstrs():
+             if (c.IISConstr):
+                 LoggerManager.getLogger().info(c.constrName)
+        
+        #logs the variables that involved in the unattainable 
+        for var in self.gurobi_model.getVars():
+            if var.IISLB:
+                LoggerManager.getLogger().info(var)
+        
+        return self.gurobi_model.getConstrs()        
+                 
     
       
